@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { createArena,upgradeArena,advance,applyCommands,join,snapshot,type Arena,type Scores,type Run,type FinishedRun } from '../../../lib/arena';
-import type { Command } from '../../../lib/physics';
+import { MAX_PACKET_COMMANDS,type Command } from '../../../lib/physics';
 export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 async function database(){const db=(env as unknown as {DB:D1Database}).DB;if(!db)throw new Error('The shared arena database is unavailable.');return db;}
@@ -36,7 +36,7 @@ export async function POST(request:Request){
   if(!['join','input','leave'].includes(input?.action))return json({error:'Unknown action.'},400);
   if(input.action==='join'&&(typeof input.name!=='string'||!input.name.trim()||input.name.length>20))return json({error:'Use a name between 1 and 20 characters.'},400);
   if(input.action==='input'){
-    if(!Array.isArray(input.commands)||input.commands.length>90)return json({error:'Reload this page to use the updated movement controls.'},400);
+    if(!Array.isArray(input.commands)||input.commands.length>MAX_PACKET_COMMANDS)return json({error:'Reload this page to use the updated movement controls.'},400);
     if(input.commands.some((c:Command)=>!Number.isSafeInteger(c.seq)||c.seq<1||!Number.isSafeInteger(c.life)||c.life<0||!Number.isFinite(c.dt)||c.dt<=0||c.dt>1/30||!Number.isFinite(c.x)||!Number.isFinite(c.y)||Math.abs(c.x)>1||Math.abs(c.y)>1))return json({error:'Invalid movement.'},400);
     if(input.commands.some((c:Command,i:number)=>i>0&&c.seq<=input.commands[i-1].seq))return json({error:'Movement packets must be ordered.'},400);
   }
@@ -47,10 +47,12 @@ export async function POST(request:Request){
   const hash=await digest(token),profileId=input.action==='leave'?'':await digest(input.profileToken),id=crypto.randomUUID();
   try{
     const db=await database();
-    if(!await read(db))await db.prepare("INSERT OR IGNORE INTO arena (id,revision,state) VALUES ('shared',0,?)").bind(JSON.stringify(createArena(Date.now()))).run();
+    let row=await read(db);
+    if(!row)await db.prepare("INSERT OR IGNORE INTO arena (id,revision,state) VALUES ('shared',0,?)").bind(JSON.stringify(createArena(Date.now()))).run();
     const saved=input.action==='join'?await loadScores(db,profileId):null;
     for(let attempt=0;attempt<5;attempt++){
-      const row=(await read(db))!,now=Date.now(),a:Arena=upgradeArena(JSON.parse(row.state),now),finished:FinishedRun[]=[];
+      if(!row||attempt>0)row=(await read(db))!;
+      const now=Date.now(),a:Arena=upgradeArena(JSON.parse(row.state),now),finished:FinishedRun[]=[];
       advance(a,now,finished);
       if(input.action==='join'){
         if(a.players.length>=12)return json({error:'The arena is full (12 players). Try again shortly.'},409);
@@ -70,7 +72,7 @@ export async function POST(request:Request){
       const statements=[db.prepare("UPDATE arena SET state=?,revision=revision+1 WHERE id='shared' AND revision=?").bind(JSON.stringify(a),row.revision),
         ...finished.map(run=>db.prepare("INSERT OR IGNORE INTO runs (id,profile_id,duration_ms,generation,bot,died_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM arena WHERE id='shared' AND json_extract(state,'$.commitId')=?)")
           .bind(run.id,run.profileId,run.durationMs,run.generation,run.bot,run.diedAt,commitId))];
-      const result=await db.batch(statements);
+      const result=statements.length===1?[await statements[0].run()]:await db.batch(statements);
       if(result[0].meta.changes===1)return json({...snapshot(a,hash),...(input.action==='join'?{session:{id,token}}:{})});
     }
     return json({error:'Arena busy. Reconnecting…'},503);

@@ -1,5 +1,5 @@
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
-import { SIZE, FIELD, clamp, inside, moveBody, movePlayer, type Motion, type Command, type Obstacle } from './physics';
+import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, movePlayer, type Motion, type Command, type Obstacle } from './physics';
 export { SIZE, FIELD }; export type { Obstacle };
 export const POPULATION=24, ROUND=45, MAX_PLAYERS=12;
 export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt:number};
@@ -63,7 +63,7 @@ function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[]) {
   b.fitness+=50;b.tags++;a.totalTags++;a.roundTags++;respawn(p,now);
 }
 export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,finished:FinishedRun[]) {
-  p.credit=Math.min(.5,p.credit+Math.max(0,(now-p.moveAt)/1000));p.moveAt=now;p.lastSeen=now;
+  p.credit=Math.min(MAX_MOVEMENT_CREDIT,p.credit+Math.max(0,(now-p.moveAt)/1000));p.moveAt=now;p.lastSeen=now;
   for(const c of commands){
     if(c.seq<=p.ack)continue;
     // Ack stale-life inputs as well so a delayed packet cannot walk a respawned player back into danger.
@@ -81,8 +81,8 @@ export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,fin
 }
 export function advance(a:Arena,now:number,finished:FinishedRun[]=[]) {
   a.players=a.players.filter(p=>now-p.lastSeen<15000);
-  let remaining=Math.min(.5,Math.max(0,(now-a.time)/1000));a.time=now;
-  while(remaining>1e-7){const dt=Math.min(1/60,remaining);remaining-=dt;step(a,dt,now,finished);}
+  let remaining=Math.min(MAX_MOVEMENT_CREDIT,Math.max(0,(now-a.time)/1000));a.time=now;
+  while(remaining>1e-7){const dt=Math.min(1/30,remaining);remaining-=dt;step(a,dt,now,finished);}
 }
 function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
   const active=a.players.filter(p=>p.phase==='arena');

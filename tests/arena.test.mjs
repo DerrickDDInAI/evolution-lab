@@ -5,14 +5,15 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction']){
+for(const name of ['physics','evolution','arena','prediction','net-motion']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
 const {inside,movePlayer}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
+const {trackRemote,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
 const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
 function runner(a,now=0){const p=join(a,'one','secret','Runner',now,'profile');p.phase='arena';p.x=3000;p.y=3000;p.runStartedAt=now;p.runId='run-one';return p;}
@@ -72,4 +73,40 @@ test('disconnected players expire and empty arenas stop training',()=>{
 test('topology mutation and breeding keep finite feed-forward networks',()=>{
  const a=createArena(0);let genomes=a.bots.map(b=>b.genome),grew=false;
  for(let i=0;i<40;i++){genomes.forEach((g,j)=>{g.fitness=j;mutate(g,a.evolution);if(g.nodes.length>2)grew=true;for(const gene of g.genes){const from=g.nodes.find(n=>n.id===gene.from)?.depth||0,to=g.nodes.find(n=>n.id===gene.to)?.depth;assert.ok(from<to);}assert.ok(activate(g,Array(11).fill(.5)).every(Number.isFinite));});genomes=breed(genomes,a.evolution).genomes;assert.equal(genomes.length,24);}assert.ok(grew);
+});
+
+test('750 ms network updates preserve all legitimate movement instead of pulling the player back',()=>{
+ const a=createArena(0),p=join(a,'one','secret','Runner',0);const start=p.x;
+ const commands=Array.from({length:45},(_,i)=>command(i+1,0,1,0));
+ const client=reconcile(structuredClone(p),commands,a.obstacles,750);
+ applyCommands(a,p,commands,750,[]);
+ assert.equal(p.x,client.x);assert.equal(p.x-start,255*.75);assert.equal(p.ack,45);
+ const x=p.x;applyCommands(a,p,commands,800,[]);assert.equal(p.x,x,'a retransmitted packet never moves twice');
+});
+test('a three second jitter budget remains bounded by elapsed server time',()=>{
+ const a=createArena(0),p=join(a,'one','secret','Runner',0),start=p.x;
+ applyCommands(a,p,Array.from({length:360},(_,i)=>command(i+1,0,1,0)),6000,[]);
+ assert.ok(p.x-start<=255*3+.001);assert.ok(p.x-start>255*2.9);
+});
+test('remote movement continues between 250 ms snapshots and corrections are continuous',()=>{
+ let track;const samples=[0,250,500,750];let previous=-Infinity,minStep=Infinity;
+ for(let t=0;t<1000;t+=10){const stamp=samples.filter(s=>s<=t).at(-1),sample={x:stamp*.1,y:100,vx:100,vy:0};track=trackRemote(track,sample,stamp,0,t,.1);if(Number.isFinite(previous)&&t%250!==0)minStep=Math.min(minStep,track.x-previous);assert.ok(track.x>=previous-.001);previous=track.x;}
+ assert.ok(minStep>.1,'remote entities should not freeze between normal network updates');
+ const teleported=trackRemote(track,{x:1000,y:2000,vx:0,vy:0},1001,1,1001,.1);assert.equal(teleported.x,1000);assert.equal(teleported.y,2000);
+ const stalled=trackRemote(undefined,{x:0,y:0,vx:100,vy:0},0,0,0,.1);trackRemote(stalled,stalled.sample,0,0,5000,.1);assert.ok(stalled.x<=45,'extrapolation must stop on a lost connection');
+});
+test('minor prediction errors ease out while deaths and large corrections snap',()=>{
+ const next={x:100,y:100,vx:0,vy:0},c=correctionFor({...next,x:120},next,true);assert.equal(c.x,20);decayCorrection(c,.08);assert.ok(c.x>7&&c.x<8);
+ assert.deepEqual(correctionFor({...next,x:120},next,false),{x:0,y:0});assert.deepEqual(correctionFor({...next,x:1000},next,true),{x:0,y:0});
+});
+test('cached neural activation matches the original calculation through topology mutations',()=>{
+ const a=createArena(0),g=a.bots[0].genome,inputs=Array.from({length:11},(_,i)=>Math.sin(i));
+ function reference(g,inputs){const v={};inputs.forEach((x,i)=>v[i]=x);for(const node of [...g.nodes].sort((a,b)=>a.depth-b.depth)){let sum=0;for(const c of g.genes)if(c.enabled&&c.to===node.id)sum+=(v[c.from]||0)*c.weight;v[node.id]=Math.tanh(sum);}return [v[11]||0,v[12]||0];}
+ for(let i=0;i<50;i++){assert.deepEqual(activate(g,inputs),reference(g,inputs));assert.deepEqual(activate(g,inputs),reference(g,inputs));mutate(g,a.evolution);}
+});
+
+test('remote movement stays continuous at the observed 750 ms round trip',()=>{
+ let track=trackRemote(undefined,{x:0,y:0,vx:100,vy:0},0,0,0,.375);
+ let previous=track.x;
+ for(let t=10;t<750;t+=10){track=trackRemote(track,track.sample,0,0,t,.375);assert.ok(track.x-previous>.5,'high latency must not exhaust extrapolation immediately');previous=track.x;}
 });

@@ -1,4 +1,9 @@
 export const SIZE = 6000;
+// Budget for network jitter, not a speed multiplier: credit is earned only by
+// elapsed server time, and each input sequence can still be consumed just once.
+export const MAX_MOVEMENT_CREDIT = 3;
+export const MAX_QUEUED_COMMANDS = 360;
+export const MAX_PACKET_COMMANDS = 180;
 export const FIELD = { min: 1200, max: 4800, middle: 3000, doorHalf: 125, wall: 24 };
 export type Obstacle = { x: number; y: number; r: number };
 export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number };

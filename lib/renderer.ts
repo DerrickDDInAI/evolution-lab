@@ -1,14 +1,28 @@
 import { FIELD, walls } from './physics';
+import {trackRemote,type Track} from './net-motion';
 import type { snapshot } from './arena';
 import type { PredictedPlayer } from './prediction';
 export type View=ReturnType<typeof snapshot>;
-export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,{x:number;y:number}>,zoom:number,time:number,predicted:PredictedPlayer|null=null){
-  const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);
+type CanvasSize={width:number;height:number;observer:ResizeObserver|null};
+const surfaces=new WeakMap<HTMLCanvasElement,CanvasSize>();
+function canvasSize(canvas:HTMLCanvasElement){
+  let size=surfaces.get(canvas);
+  if(!size){
+    const rect=canvas.getBoundingClientRect();size={width:rect.width,height:rect.height,observer:null};
+    if(typeof ResizeObserver!=='undefined'){
+      const surface=size;surface.observer=new ResizeObserver(entries=>{const rect=entries[0]?.contentRect;if(rect){surface.width=rect.width;surface.height=rect.height;}});surface.observer.observe(canvas);
+    }
+    surfaces.set(canvas,size);
+  }
+  return size;
+}
+export function releaseRenderer(canvas:HTMLCanvasElement|null){if(canvas){surfaces.get(canvas)?.observer?.disconnect();surfaces.delete(canvas);}}
+export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,oneWay=0){
+  const rect=canvasSize(canvas),dpr=Math.min(devicePixelRatio||1,1.5);
   if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);}
   const ctx=canvas.getContext('2d')!;ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=rect.height;
-  ctx.fillStyle='#0c171c';ctx.fillRect(0,0,w,h);
-  const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
-  for(const e of entities){const old=positions.get(e.key)||e;positions.set(e.key,e.key==='p'+self&&predicted?{x:predicted.x,y:predicted.y}:{x:old.x+(e.x-old.x)*.24,y:old.y+(e.y-old.y)*.24});}
+  const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
+  for(const e of entities){if(e.key==='p'+self&&predicted)continue;const track=trackRemote(positions.get(e.key),e,state?.serverTime||0,e.life,time,oneWay);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
   const me=state?.players.find(p=>p.id===self),camera=(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
   const sx=(x:number)=>(x-camera.x)*zoom+w/2,sy=(y:number)=>(y-camera.y)*zoom+h/2;
   ctx.fillStyle='#14261f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#0c171c';ctx.fillRect(sx(FIELD.min),sy(FIELD.min),(FIELD.max-FIELD.min)*zoom,(FIELD.max-FIELD.min)*zoom);
@@ -41,7 +55,7 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
     ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle='#f1ac69';ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.65,-r*.7);ctx.lineTo(-r*.4,0);ctx.lineTo(-r*.65,r*.7);ctx.closePath();ctx.fill();ctx.restore();
     ctx.font='9px monospace';ctx.textAlign='center';ctx.fillStyle='#ae865f';ctx.fillText('B'+String(b.id+1).padStart(2,'0'),x,y+r+17);
   }
-  for(const p of state?.players||[]){const pos=positions.get('p'+p.id)||p,x=sx(pos.x),y=sy(pos.y),r=15*zoom;ctx.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';
+  for(const p of state?.players||[]){const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p,x=sx(pos.x),y=sy(pos.y),r=15*zoom;ctx.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';
     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=16;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
     ctx.strokeStyle=p.id===self?'#b6f1b366':'#89bbdf55';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle='#10291c';ctx.beginPath();ctx.arc(x+4*zoom,y-3*zoom,3*zoom,0,Math.PI*2);ctx.fill();

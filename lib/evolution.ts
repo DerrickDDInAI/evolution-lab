@@ -11,17 +11,23 @@ const signed = (e: Evolution) => random(e) * 2 - 1;
 export function createGenome(e: Evolution): Genome {
   return { nodes: [{id:11,depth:1},{id:12,depth:1}], genes: Array.from({length:22},(_,i)=>({from:i%11,to:11+Math.floor(i/11),weight:signed(e),enabled:true})), fitness:0 };
 }
+type ActivationNode = { id: number; incoming: Gene[] };
+const plans = new WeakMap<Genome, ActivationNode[]>();
 export function activate(g: Genome, inputs: number[]): number[] {
-  const values: Record<number,number> = {};
-  inputs.forEach((v,i)=>values[i]=v);
-  for (const n of [...g.nodes].sort((a,b)=>a.depth-b.depth)) {
-    let sum=0;
-    for(const c of g.genes) if(c.enabled && c.to===n.id) sum+=(values[c.from]||0)*c.weight;
-    values[n.id]=Math.tanh(sum);
+  let plan=plans.get(g);
+  if(!plan){
+    const incoming=new Map<number,Gene[]>();
+    for(const gene of g.genes)if(gene.enabled){const list=incoming.get(gene.to)||[];list.push(gene);incoming.set(gene.to,list);}
+    plan=[...g.nodes].sort((a,b)=>a.depth-b.depth).map(n=>({id:n.id,incoming:incoming.get(n.id)||[]}));
+    plans.set(g,plan);
   }
+  const values:Record<number,number>={};
+  for(let i=0;i<inputs.length;i++)values[i]=inputs[i];
+  for(const node of plan){let sum=0;for(const gene of node.incoming)sum+=(values[gene.from]||0)*gene.weight;values[node.id]=Math.tanh(sum);}
   return [values[11]||0,values[12]||0];
 }
 export function mutate(g: Genome,e: Evolution) {
+  plans.delete(g);
   g.fitness=0;
   for(const c of g.genes) if(random(e)<.8) c.weight=Math.max(-5,Math.min(5,c.weight+signed(e)*.35));
   if(random(e)<.18 && g.nodes.length<14) {
