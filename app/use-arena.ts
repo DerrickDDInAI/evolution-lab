@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
 import {predictContact,contactResult,type LocalContact} from '../lib/contact-prediction';
+import type {ContactReply} from '../lib/contact-report';
 import type {CollisionEvent} from '../lib/collision-effects';
 import {renderArena,releaseRenderer,updatePositions,cancelCollision,type View} from '../lib/renderer';
 import {movePlayer,MAX_QUEUED_COMMANDS,MAX_PACKET_COMMANDS,type Command} from '../lib/physics';
@@ -9,7 +10,7 @@ import {reconcile,type PredictedPlayer} from '../lib/prediction';
 import {correctionFor,decayCorrection,type Correction} from '../lib/net-motion';
 import type {Scores,Run} from '../lib/arena';
 type Session={id:string;token:string};
-type ArenaResponse=View & {session?:Session;error?:string};
+type ArenaResponse=View & {session?:Session;error?:string;contactReply?:ContactReply};
 export function useArena(help:boolean,zoom:number){
   const [state,setState]=useState<View|null>(null),[session,setSession]=useState<Session|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[online,setOnline]=useState(false),[latency,setLatency]=useState(0),[clock,setClock]=useState(Date.now()),[scores,setScores]=useState<Scores>({bestMs:0,runs:[]});
   const canvas=useRef<HTMLCanvasElement>(null),mini=useRef<HTMLCanvasElement>(null),view=useRef<View|null>(null),sessionRef=useRef<Session|null>(null),zoomRef=useRef(zoom),keys=useRef(new Set<string>()),taps=useRef(new Set<string>()),stick=useRef({x:0,y:0,dash:false}),positions=useRef(new Map()),joining=useRef(false),profile=useRef(''),commands=useRef<Command[]>([]),sequence=useRef(0),predicted=useRef<PredictedPlayer|null>(null),offset=useRef(0),networkDelay=useRef(0),correction=useRef<Correction>({x:0,y:0}),wake=useRef(()=>{});
@@ -22,11 +23,12 @@ export function useArena(help:boolean,zoom:number){
   function update(data:ArenaResponse,rtt=0,sentContact:LocalContact|null=null){
     offset.current=data.serverTime+rtt/2-Date.now();networkDelay.current=rtt/2000;
     const auth=data.players.find(p=>p.id===sessionRef.current?.id);
+    if(auth&&predicted.current&&auth.life<predicted.current.life)return;
     if(auth){
       const hit=contact.current;
       if(hit){
-        const result=contactResult(hit,auth,sentContact);
-        if(result==='confirmed'){contact.current=null;blockedContact.current=null;}
+        const result=contactResult(hit,auth,sentContact,data.contactReply);
+        if(result==='confirmed'){localEvent.current={...hit.event,respawnX:auth.x,respawnY:auth.y};contact.current=null;blockedContact.current=null;}
         if(result==='rejected'){
           cancelCollision(canvas.current,hit.event);contact.current=null;localEvent.current=null;blockedContact.current=hit;showNotice(null);
         }
@@ -61,7 +63,7 @@ export function useArena(help:boolean,zoom:number){
       if(stopped)return;if(inFlight){urgent=true;return;}inFlight=true;clearTimeout(timer);
       const start=performance.now(),s=sessionRef.current,sentContact=contact.current;
       try{
-        const response=await fetch('/api/arena',s?{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'input',profileToken:profile.current,commands:commands.current.slice(0,MAX_PACKET_COMMANDS)}),signal:AbortSignal.timeout(6000)}:{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        const response=await fetch('/api/arena',s?{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'input',profileToken:profile.current,commands:commands.current.slice(0,MAX_PACKET_COMMANDS),...(sentContact?{contact:sentContact.report}:{})}),signal:AbortSignal.timeout(6000)}:{cache:'no-store',signal:AbortSignal.timeout(6000)});
         const data=await response.json() as ArenaResponse;
         if(stopped)return;
         if(s?.id!==sessionRef.current?.id)return;
@@ -74,7 +76,7 @@ export function useArena(help:boolean,zoom:number){
     void poll();return()=>{stopped=true;clearTimeout(timer);wake.current=()=>{};};
   },[]);
   useEffect(()=>{
-    const down=(e:KeyboardEvent)=>{if(!sessionRef.current||(e.target as HTMLElement).matches('input,textarea')||help)return;const key=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(key)){if(!keys.current.has(key))taps.current.add(key);keys.current.add(key);if(sessionRef.current)e.preventDefault();}};
+    const down=(e:KeyboardEvent)=>{if(!sessionRef.current||(e.target as HTMLElement).matches('input,textarea')||help)return;const key=e.key.toLowerCase();if(e.repeat&&!keys.current.has(key))return;if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(key)){if(!keys.current.has(key))taps.current.add(key);keys.current.add(key);if(sessionRef.current)e.preventDefault();}};
     const up=(e:KeyboardEvent)=>keys.current.delete(e.key.toLowerCase());
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clearInput);document.addEventListener('visibilitychange',clearInput);
     if(help)clearInput();
@@ -98,7 +100,7 @@ export function useArena(help:boolean,zoom:number){
       let display=predicted.current?{...predicted.current,x:predicted.current.x+correction.current.x,y:predicted.current.y+correction.current.y}:null;
       const world=view.current,self=sessionRef.current?.id||null;
       updatePositions(world,self,positions.current,time,networkDelay.current);
-      const touching=world?predictContact(display,world.bots,positions.current,world.generation,time,Date.now()+offset.current,sequence.current):null;
+      const touching=world?predictContact(display,world.bots,positions.current,world.generation,time,Date.now()+offset.current,sequence.current,world.personal?.contactFrame):null;
       const blocked=blockedContact.current,blockedBot=blocked?positions.current.get('b'+blocked.event.bot):null;
       if(blocked&&(!display||display.life!==blocked.life||display.phase!=='arena'||!blockedBot||Math.hypot(display.x-blockedBot.x,display.y-blockedBot.y)>60))blockedContact.current=null;
       if(touching&&!contact.current&&!blockedContact.current&&onlineRef.current){
@@ -108,9 +110,9 @@ export function useArena(help:boolean,zoom:number){
       }
       if(contact.current){
         display=contact.current.player;
-        if(time-contact.current.startedAt>6000){cancelCollision(canvas.current,contact.current.event);blockedContact.current=contact.current;contact.current=null;localEvent.current=null;showNotice(null);}
+        // A timeout is not a resurrection. Retry until the server resolves this life.
       }
-      if(canvas.current)renderArena(canvas.current,mini.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current);
+      if(canvas.current)renderArena(canvas.current,mini.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current);
       if(noticeRef.current&&time-noticeRef.current.shownAt>3500)showNotice(null);
       if(time-lastUi>80){setClock(Date.now()+offset.current);lastUi=time;}
       frame=requestAnimationFrame(draw);

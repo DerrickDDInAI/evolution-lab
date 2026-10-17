@@ -9,6 +9,8 @@ export function trackRemote(previous:Track|undefined,sample:Pose,stamp:number,li
   if(previous.stamp!==stamp){
     const age=Math.min(.15,Math.max(0,oneWay));
     previous.errorX=previous.x-(sample.x+sample.vx*age);previous.errorY=previous.y-(sample.y+sample.vy*age);
+    const error=Math.hypot(previous.errorX,previous.errorY);
+    if(error>100){previous.errorX*=100/error;previous.errorY*=100/error;}
     previous.sample={...sample};previous.stamp=stamp;previous.receivedAt=now;previous.oneWay=Math.max(0,oneWay);
   }
   const elapsed=Math.max(0,(now-previous.receivedAt)/1000),horizon=Math.min(1.25,Math.max(.35,previous.oneWay*2+.15)),age=Math.min(.15,previous.oneWay)+Math.min(horizon,elapsed),decay=Math.exp(-elapsed/.09);

@@ -5,12 +5,12 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
-const {createArena,join,advance,applyCommands,snapshot,upgradeArena,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
+const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
 const {inside,movePlayer}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
 const {createEffects,updateEffects,cancelEffect,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
@@ -138,9 +138,9 @@ test('visible contact produces an immediate impact and frozen run before a delay
  // The drawn bot reaches us while its last server position is still 80 units away.
  const track=trackRemote(undefined,{x:3080,y:3000,vx:-100,vy:0},1000,1,0,.375);
  trackRemote(track,track.sample,1000,1,600,.375);positions.set('b0',track);
- const hit=predictContact(p,[{id:0}],positions,7,600,1600,36);
+ const hit=predictContact(p,[{id:0}],positions,7,600,1600,36,'frame');
  assert.ok(hit);assert.equal(hit.run.durationMs,600);assert.equal(hit.run.generation,7);
- assert.equal(hit.event.x,p.x);assert.equal(hit.event.bx,track.x);assert.equal(hit.player.phase,'safe');assert.ok(!inside(hit.player.x,hit.player.y));
+ assert.equal(hit.event.x,p.x);assert.equal(hit.event.bx,track.x);assert.equal(hit.player.phase,'arena');assert.equal(hit.player.x,p.x,'no fake respawn before confirmation');
  assert.equal(p.phase,'arena','prediction must not mutate authoritative state');assert.equal(p.scores.runs.length,0);
  const effects=createEffects();updateEffects(effects,[],0,1000);updateEffects(effects,[hit.event],600,1600);
  assert.equal(effects.active[0].startedAt,600,'no network response or animation delay is required');
@@ -152,16 +152,58 @@ test('visible contact produces an immediate impact and frozen run before a delay
 });
 test('safe players, near misses and stale disconnected bot tracks cannot predict a death',()=>{
  const a=createArena(0),p=runner(a,0),positions=new Map([['b0',trackRemote(undefined,{x:3030,y:3000,vx:0,vy:0},0,1,0,0)]]);
- assert.equal(predictContact(p,[{id:0}],positions,1,10,10,1),null);
+ assert.equal(predictContact(p,[{id:0}],positions,1,10,10,1,'frame'),null);
  positions.get('b0').x=3028;
- assert.equal(predictContact({...p,phase:'safe'},[{id:0}],positions,1,10,10,1),null);
- assert.equal(predictContact(p,[{id:0}],positions,1,1501,1501,1),null);
+ assert.equal(predictContact({...p,phase:'safe'},[{id:0}],positions,1,10,10,1,'frame'),null);
+ assert.equal(predictContact(p,[{id:0}],positions,1,1501,1501,1,'frame'),null);
 });
 test('a rejected prediction removes its effect and leaves server scores untouched',()=>{
  const a=createArena(0),p=runner(a,0),positions=new Map([['b0',trackRemote(undefined,{x:3028,y:3000,vx:0,vy:0},0,1,0,0)]]);
- const hit=predictContact(p,[{id:0}],positions,1,10,10,1);assert.ok(hit);
- assert.equal(contactResult(hit,{...p,ack:1},hit),'rejected');
+ const hit=predictContact(p,[{id:0}],positions,1,10,10,1,'frame');assert.ok(hit);
+ assert.equal(contactResult(hit,{...p,ack:1},hit),'pending','movement acknowledgement alone cannot reject a contact');
+ assert.equal(contactResult(hit,{...p,ack:1},hit,{life:0,seq:1,status:'rejected'}),'rejected');
  const effects=createEffects();updateEffects(effects,[],0,0);updateEffects(effects,[hit.event],10,10);cancelEffect(effects,hit.event);
  assert.equal(effects.active.length,0);assert.equal(p.scores.runs.length,0);assert.equal(a.totalTags,0);
  updateEffects(effects,[{...hit.event,id:'later-real-death'}],100,100);assert.equal(effects.active.length,1,'a real later death remains visible');
+});
+
+
+test('a moving bot that has passed the visible contact still commits death and outside respawn',()=>{
+ const a=createArena(1000),p=runner(a,1000);parkBots(a);p.ack=36;a.bots[0].x=3080;a.bots[0].y=3000;a.bots[0].vx=-100;
+ const frameId=rememberContactFrame(a,p,1000),r={frameId,life:0,seq:36,bot:0,age:.6,x:3000,y:3000,bx:3020,by:3000};
+ a.bots[0].x=2800;const finished=[];
+ assert.equal(confirmContact(a,p,r,2000,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.ok(!inside(p.x,p.y));assert.equal(finished.length,1);assert.equal(a.totalTags,1);
+ assert.equal(confirmContact(a,p,r,2600,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(finished.length,1,'lost-response retries cannot score or respawn twice');
+ const outside={x:p.x,y:p.y};applyCommands(a,p,[command(37,0,0,-1)],4000,finished);assert.equal(p.x,outside.x);assert.equal(p.y,outside.y);assert.equal(p.runStartedAt,null);
+ const client=reconcile(p,[command(38,0,0,-1)],a.obstacles,4000);assert.equal(client.phase,'safe');assert.equal(client.runStartedAt,null,'old-life replay cannot restart the timer');
+});
+test('contact confirmation waits for all movement commands and rejects fabricated distant contacts',()=>{
+ const a=createArena(1000),p=runner(a,1000);parkBots(a);a.bots[0].x=3020;a.bots[0].y=3000;
+ const frameId=rememberContactFrame(a,p,1000),r={frameId,life:0,seq:36,bot:0,age:0,x:3000,y:3000,bx:3020,by:3000};
+ assert.equal(confirmContact(a,p,r,1500,[]).status,'pending');assert.equal(p.phase,'arena');p.ack=36;
+ for(const bad of [{...r,frameId:'fabricated'},{...r,x:1000,y:1000,bx:1000,by:1000},{...r,bx:3500},{...r,bot:23}])assert.equal(confirmContact(a,p,bad,1500,[]).status,'rejected');
+ assert.equal(p.life,0);assert.equal(p.scores.runs.length,0);
+ assert.equal(confirmContact(a,p,r,1500,[]).status,'confirmed');
+});
+test('contact frames remain private and preserve the killer generation across reproduction',()=>{
+ const a=createArena(1000),p=runner(a,1000);parkBots(a);p.ack=1;a.generation=8;a.bots[0].x=3020;a.bots[0].y=3000;
+ const frameId=rememberContactFrame(a,p,1000);assert.ok(!JSON.stringify(snapshot(a)).includes(frameId));assert.ok(!('contactFrames' in snapshot(a).players[0]));assert.equal(snapshot(a,'secret').personal.contactFrame,frameId);
+ a.generation=9;a.bots[0].x=1800;
+ assert.equal(confirmContact(a,p,{frameId,life:0,seq:1,bot:0,age:0,x:3000,y:3000,bx:3020,by:3000},1600,[]).status,'confirmed');
+ assert.equal(p.lastDeath.generation,8);assert.equal(a.bots[0].tags,0,'do not reward a newly bred bot for its predecessor');
+});
+test('repeated deaths leave the timer stopped outside until a fresh door entry',()=>{
+ const a=createArena(0),p=runner(a,0);parkBots(a);
+ for(let life=0;life<4;life++){
+  p.x=3000;p.y=4760;p.phase='arena';p.runStartedAt=life*4000;p.runId='run-'+life;p.ack=life+1;
+  a.bots[0].x=3010;a.bots[0].y=4760;
+  const now=life*4000+1000,frameId=rememberContactFrame(a,p,now);
+  confirmContact(a,p,{frameId,life,seq:p.ack,bot:0,age:0,x:3000,y:4760,bx:3010,by:4760},now+100,[]);
+  assert.equal(p.life,life+1);assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.equal(p.y,4950);assert.equal(p.scores.runs.length,life+1);
+  for(let n=0;n<100;n++)movePlayer(p,{x:0,y:0,dash:false},1/60,a.obstacles,now+2000);
+  assert.equal(p.runStartedAt,null);assert.equal(p.phase,'safe');
+ }
+ // After the latest respawn lock, a new trip through the door starts a new clock.
+ for(let n=0;n<50;n++)movePlayer(p,{x:0,y:-1,dash:false},1/60,a.obstacles,16000);
+ assert.equal(p.phase,'arena');assert.equal(p.runStartedAt,16000);
 });

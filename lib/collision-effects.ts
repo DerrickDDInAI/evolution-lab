@@ -12,7 +12,11 @@ export const createEffects=():EffectTimeline=>({ready:false,seen:new Set(),activ
 export function updateEffects(timeline:EffectTimeline,events:CollisionEvent[],now:number,serverTime:number){
   timeline.active=timeline.active.filter(e=>now-e.startedAt<EFFECT_LIFETIME_MS);
   for(const event of events){
-    if(timeline.seen.has(eventKey(event)))continue;
+    if(timeline.seen.has(eventKey(event))){
+      const active=timeline.active.find(e=>eventKey(e)===eventKey(event));
+      if(active){active.respawnX=event.respawnX;active.respawnY=event.respawnY;}
+      continue;
+    }
     timeline.seen.add(eventKey(event));
     if(timeline.ready&&serverTime-event.at<5000)timeline.active.push({...event,startedAt:now});
   }
