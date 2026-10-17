@@ -5,14 +5,15 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
 const {inside,movePlayer}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
+const {createEffects,updateEffects,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
 const {trackRemote,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
 const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
@@ -109,4 +110,23 @@ test('remote movement stays continuous at the observed 750 ms round trip',()=>{
  let track=trackRemote(undefined,{x:0,y:0,vx:100,vy:0},0,0,0,.375);
  let previous=track.x;
  for(let t=10;t<750;t+=10){track=trackRemote(track,track.sample,0,0,t,.375);assert.ok(track.x-previous>.5,'high latency must not exhaust extrapolation immediately');previous=track.x;}
+});
+
+test('a lethal contact records the actual impact point and safe respawn for every viewer',()=>{
+ const a=createArena(1000);parkBots(a);const p=runner(a,1000);a.bots[0].x=p.x;a.bots[0].y=p.y;
+ advance(a,1100);
+ assert.equal(a.collisions.length,1);const event=a.collisions[0];
+ assert.equal(event.playerId,p.id);assert.equal(event.bot,0);assert.equal(event.x,3000);assert.equal(event.y,3000);assert.equal(event.at,1100);
+ assert.equal(event.respawnX,p.x);assert.equal(event.respawnY,p.y);assert.ok(!inside(event.respawnX,event.respawnY));
+ assert.ok(!JSON.stringify(event).includes('secret'));assert.ok(!('profileId' in event));
+ advance(a,1200);assert.equal(a.collisions.length,1,'a dead player cannot emit repeated collision events');
+});
+test('collision effects play once, expire, and honor reduced motion without replaying old deaths',()=>{
+ const event={id:'hit',playerId:'one',bot:0,x:3000,y:3000,bx:2990,by:3000,respawnX:3000,respawnY:4950,at:1000};
+ const initial=createEffects();updateEffects(initial,[event],0,1000);assert.equal(initial.active.length,0,'page load must not replay an old death');
+ const effects=createEffects();updateEffects(effects,[],0,1000);updateEffects(effects,[event],10,1000);updateEffects(effects,[event],30,1020);assert.equal(effects.active.length,1);
+ assert.equal(impactCamera(effects,'one',200,false)?.id,'hit');assert.equal(impactCamera(effects,'one',200,true),null);
+ assert.equal(vanishing(effects,'one',200,false),true);assert.equal(vanishing(effects,'one',200,true),false);assert.equal(vanishing(effects,'one',600,false),false);
+ updateEffects(effects,[event],1400,2400);assert.equal(effects.active.length,0);assert.equal(effects.seen.size,1);
+ updateEffects(effects,[{...event,id:'too-old'}],1500,8000);assert.equal(effects.active.length,0,'late historical packets must not resurrect old animations');
 });

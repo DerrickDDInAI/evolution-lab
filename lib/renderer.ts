@@ -1,14 +1,15 @@
 import { FIELD, walls } from './physics';
+import {createEffects,updateEffects,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline} from './collision-effects';
 import {trackRemote,type Track} from './net-motion';
 import type { snapshot } from './arena';
 import type { PredictedPlayer } from './prediction';
 export type View=ReturnType<typeof snapshot>;
-type CanvasSize={width:number;height:number;observer:ResizeObserver|null};
+type CanvasSize={width:number;height:number;observer:ResizeObserver|null;effects:EffectTimeline;motion:MediaQueryList|null};
 const surfaces=new WeakMap<HTMLCanvasElement,CanvasSize>();
 function canvasSize(canvas:HTMLCanvasElement){
   let size=surfaces.get(canvas);
   if(!size){
-    const rect=canvas.getBoundingClientRect();size={width:rect.width,height:rect.height,observer:null};
+    const rect=canvas.getBoundingClientRect();size={width:rect.width,height:rect.height,observer:null,effects:createEffects(),motion:typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null};
     if(typeof ResizeObserver!=='undefined'){
       const surface=size;surface.observer=new ResizeObserver(entries=>{const rect=entries[0]?.contentRect;if(rect){surface.width=rect.width;surface.height=rect.height;}});surface.observer.observe(canvas);
     }
@@ -20,10 +21,13 @@ export function releaseRenderer(canvas:HTMLCanvasElement|null){if(canvas){surfac
 export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,oneWay=0){
   const rect=canvasSize(canvas),dpr=Math.min(devicePixelRatio||1,1.5);
   if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);}
+  const effects=rect.effects,reducedMotion=rect.motion?.matches||false;
+  if(state)updateEffects(effects,state.collisions||[],time,state.serverTime);
+  const heldImpact=impactCamera(effects,self,time,reducedMotion);
   const ctx=canvas.getContext('2d')!;ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=rect.height;
   const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
   for(const e of entities){if(e.key==='p'+self&&predicted)continue;const track=trackRemote(positions.get(e.key),e,state?.serverTime||0,e.life,time,oneWay);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
-  const me=state?.players.find(p=>p.id===self),camera=(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
+  const me=state?.players.find(p=>p.id===self),camera=heldImpact||(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
   const sx=(x:number)=>(x-camera.x)*zoom+w/2,sy=(y:number)=>(y-camera.y)*zoom+h/2;
   ctx.fillStyle='#14261f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#0c171c';ctx.fillRect(sx(FIELD.min),sy(FIELD.min),(FIELD.max-FIELD.min)*zoom,(FIELD.max-FIELD.min)*zoom);
   ctx.strokeStyle='#1b2a2e';ctx.lineWidth=.6;
@@ -43,7 +47,7 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
     ctx.strokeStyle=locked?'#e6a86a':'#b6f1b3';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-25*zoom,-16*zoom);ctx.lineTo(-9*zoom,0);ctx.lineTo(-25*zoom,16*zoom);ctx.stroke();ctx.restore();
     ctx.fillStyle=locked?'#d3a474':'#b6f1b3';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(gate.label+' DOOR',x,y-27*zoom);ctx.fillStyle='#8fae96';ctx.font='9px monospace';ctx.fillText(locked?'RUN ACTIVE · NO EXIT':'CROSS TO START YOUR RUN',x,y+43*zoom);
   }
-  if(me&&predicted?.phase==='safe'){ctx.font='11px monospace';ctx.textAlign='center';ctx.fillStyle='#aac9b0';ctx.fillText('SAFE ZONE · ENTER THROUGH A DOOR',w/2,h/2+90);}
+  if(me&&predicted?.phase==='safe'&&!heldImpact){ctx.font='11px monospace';ctx.textAlign='center';ctx.fillStyle='#aac9b0';ctx.fillText('SAFE ZONE · ENTER THROUGH A DOOR',w/2,h/2+90);}
   const obstacles=state?.obstacles||[];
   for(const o of obstacles){const x=sx(o.x),y=sy(o.y),r=o.r*zoom;if(x+r<0||y+r<0||x-r>w||y-r>h)continue;
     ctx.fillStyle='#172b2d';ctx.strokeStyle='#2c4647';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -55,12 +59,15 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
     ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle='#f1ac69';ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.65,-r*.7);ctx.lineTo(-r*.4,0);ctx.lineTo(-r*.65,r*.7);ctx.closePath();ctx.fill();ctx.restore();
     ctx.font='9px monospace';ctx.textAlign='center';ctx.fillStyle='#ae865f';ctx.fillText('B'+String(b.id+1).padStart(2,'0'),x,y+r+17);
   }
-  for(const p of state?.players||[]){const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p,x=sx(pos.x),y=sy(pos.y),r=15*zoom;ctx.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';
+  for(const p of state?.players||[]){if(vanishing(effects,p.id,time,reducedMotion))continue;const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p,x=sx(pos.x),y=sy(pos.y),r=15*zoom;ctx.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';
     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=16;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
     ctx.strokeStyle=p.id===self?'#b6f1b366':'#89bbdf55';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle='#10291c';ctx.beginPath();ctx.arc(x+4*zoom,y-3*zoom,3*zoom,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#d2e3da';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(p.id===self?'YOU · '+p.name:p.name,x,y-r-15);
   }
+  drawImpacts(ctx,effects,sx,sy,zoom,time,self,w,h,reducedMotion);
+  drawRespawns(ctx,effects,sx,sy,zoom,time,self,reducedMotion);
+  drawHitFlash(ctx,effects,time,self,w,h,reducedMotion);
   if(!me){ctx.strokeStyle='#b6f1b322';ctx.setLineDash([4,8]);ctx.beginPath();ctx.arc(w/2,h/2,70*zoom,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#b6f1b344';ctx.fillRect(w/2-5,h/2-1,10,2);ctx.fillRect(w/2-1,h/2-5,2,10);}
   if(mini){const c=mini.getContext('2d')!,mw=mini.width,mh=mini.height;c.fillStyle='#101e23';c.fillRect(0,0,mw,mh);c.strokeStyle='#718b75';c.lineWidth=2;c.strokeRect(FIELD.min/6000*mw,FIELD.min/6000*mh,(FIELD.max-FIELD.min)/6000*mw,(FIELD.max-FIELD.min)/6000*mh);c.fillStyle='#b6f1b3';for(const gate of [[3000,1200],[4800,3000],[3000,4800],[1200,3000]])c.fillRect(gate[0]/6000*mw-2,gate[1]/6000*mh-2,4,4);c.fillStyle='#2c4141';for(const o of obstacles){c.beginPath();c.arc(o.x/6000*mw,o.y/6000*mh,Math.max(1,o.r/6000*mw),0,7);c.fill();}
     c.fillStyle='#e5a568';for(const b of state?.bots||[])c.fillRect(b.x/6000*mw,b.y/6000*mh,2,2);

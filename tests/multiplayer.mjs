@@ -26,8 +26,10 @@ try{
   execFileSync(process.execPath,['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--config','dist/server/wrangler.json','--persist-to','.wrangler/state','--command',sql],{stdio:'pipe'});
   const dead=await post({action:'input',profileToken:profiles[0],commands:[]},sessions[0].token);assert.equal(dead.status,200);
   const respawned=dead.data.players.find(p=>p.id===sessions[0].id);assert.equal(respawned.phase,'safe');assert.equal(respawned.life,1);assert.equal(dead.data.personal.scores.runs[0].id,run);assert.ok(dead.data.personal.scores.bestMs>=8000);
+  const collision=dead.data.collisions.find(e=>e.playerId===sessions[0].id);assert.ok(collision);assert.equal(collision.x,3000);assert.equal(collision.y,3000);assert.equal(collision.respawnY,respawned.y);
+  const observed=await(await fetch(base+'/api/arena')).json();assert.ok(observed.collisions.some(e=>e.id===collision.id),'other clients must receive the same impact event');
   const stored=await(await fetch(base+'/api/arena?scores=1',{headers:{Authorization:'Bearer '+profiles[0]}})).json();assert.equal(stored.runs[0].id,run);
   await post({action:'leave'},sessions[0].token);const rejoined=await post({action:'join',name:'QA Returning',profileToken:profiles[0]});assert.equal(rejoined.status,200);sessions[0]=rejoined.data.session;assert.equal(rejoined.data.personal.scores.runs[0].id,run);assert.equal(rejoined.data.personal.scores.bestMs,stored.bestMs);
-  console.log('PASS: bot contact kills, outside respawn, durable personal scores and score restoration on rejoin.');
+  console.log('PASS: bot contact kills, outside respawn, durable scores, collision-event broadcasting and score restoration on rejoin.');
  }
 }finally{for(const s of sessions)await post({action:'leave'},s.token);}

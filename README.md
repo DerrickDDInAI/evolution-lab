@@ -60,3 +60,9 @@ Player movement credit accumulates from elapsed server time up to three seconds,
 Canvas bounds update through ResizeObserver instead of forcing a layout read each frame. Canvas pixel density is capped at 1.5 to reduce Retina fill cost. Network latency still depends on the hosting region and HTTP transport; these changes remove discarded-input rollbacks and reduce visible stutter rather than making network round trips instantaneous.
 
 Run `node tests/network-lag.mjs` against the local preview for four successive 750 ms delayed input packets. The simulation suite also checks the latency budget, correction smoothing, continuous remote movement at 750 ms latency, and cached neural output equivalence.
+
+## Collision animation
+
+Lethal player/bot contacts publish a small authoritative impact event containing the contact point, bot, player and respawn point. Events expire after five seconds and are capped at 24. Clients deduplicate them, skip old events on page load, and discard completed effects after 1.25 seconds. The effect uses 16 particles, expanding rings, a short hit flash and a fading avatar silhouette. The caught player's camera holds at the impact for 500 ms before returning to the outside spawn, where a green pulse marks the return. Existing death timing, score writes and movement validation stay authoritative.
+
+With reduced motion enabled, the camera stays with the player and moving particles and expanding rings are replaced by a brief static ring and gentle fade. Effects require no assets, dependencies, or additional network requests.

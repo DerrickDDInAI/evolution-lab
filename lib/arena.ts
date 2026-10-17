@@ -1,12 +1,13 @@
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
 import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, movePlayer, type Motion, type Command, type Obstacle } from './physics';
+import type {CollisionEvent} from './collision-effects';
 export { SIZE, FIELD }; export type { Obstacle };
 export const POPULATION=24, ROUND=45, MAX_PLAYERS=12;
 export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt:number};
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome};
-export type Arena={version:2;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:{generation:number;fitness:number;tags:number}[];champion:Genome|null;evolution:Evolution;roundTags:number;commitId?:string};
+export type Arena={version:2;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:{generation:number;fitness:number;tags:number}[];champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
   return Array.from({length:60},()=>({x:FIELD.min+180+random(e)*3240,y:FIELD.min+180+random(e)*3240,r:35+random(e)*60}))
@@ -14,13 +15,14 @@ function obstacles(e:Evolution):Obstacle[]{
 }
 export function createArena(now:number):Arena {
   const evolution={seed:42719,nextNode:13,splits:{}};
-  const a:Arena={version:2,time:now,generation:1,elapsed:0,totalTags:0,species:1,players:[],bots:[],obstacles:obstacles(evolution),history:[],champion:null,evolution,roundTags:0};
+  const a:Arena={version:2,time:now,generation:1,elapsed:0,totalTags:0,species:1,players:[],bots:[],obstacles:obstacles(evolution),history:[],champion:null,evolution,roundTags:0,collisions:[]};
   a.bots=Array.from({length:POPULATION},(_,id)=>({id,x:0,y:0,vx:0,vy:0,fitness:0,tags:0,genome:createGenome(evolution)}));
   for(const b of a.bots)spawnBot(a,b);
   return a;
 }
 // Upgrade an existing live world without discarding its trained genomes or generation history.
 export function upgradeArena(raw:any,now:number):Arena {
+  raw.collisions??=[];
   if(raw.version===2)return raw;
   raw.version=2;raw.time=now;raw.obstacles=obstacles(raw.evolution);
   raw.players=raw.players.map((old:any)=>{
@@ -57,10 +59,12 @@ export function join(a:Arena,id:string,token:string,name:string,now:number,profi
 }
 function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[]) {
   if(p.phase!=='arena'||p.runStartedAt===null)return;
+  const contact={x:p.x,y:p.y,bx:b.x,by:b.y};
   const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(now-p.runStartedAt)),generation:a.generation,bot:b.id,diedAt:now};
   p.scores={bestMs:Math.max(p.scores.bestMs,run.durationMs),runs:[run,...p.scores.runs].slice(0,10)};p.lastDeath=run;p.tags++;
   if(p.profileId)finished.push({...run,profileId:p.profileId});
   b.fitness+=50;b.tags++;a.totalTags++;a.roundTags++;respawn(p,now);
+  a.collisions=[...(a.collisions||[]).filter(e=>now-e.at<5000),{id:crypto.randomUUID(),playerId:p.id,bot:b.id,...contact,respawnX:p.x,respawnY:p.y,at:now}].slice(-24);
 }
 export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,finished:FinishedRun[]) {
   p.credit=Math.min(MAX_MOVEMENT_CREDIT,p.credit+Math.max(0,(now-p.moveAt)/1000));p.moveAt=now;p.lastSeen=now;
@@ -116,6 +120,7 @@ export function snapshot(a:Arena,selfToken?:string) {
   return {version:2,serverTime:Date.now(),field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,
     players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,...p})=>p),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath}:null,
+    collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),
     bots:a.bots.map(({genome,...b})=>({...b,nodes:genome.nodes.length+11,connections:genome.genes.filter(c=>c.enabled).length})),obstacles:a.obstacles,
     bestFitness:Math.max(0,...a.bots.map(b=>b.fitness)),championAvailable:!!a.champion};
 }
