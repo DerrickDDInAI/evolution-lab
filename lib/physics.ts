@@ -25,10 +25,47 @@ export function collideWalls(p: {x:number;y:number}, radius=16) {
     if(d < radius && d>0){p.x=x+dx/d*radius;p.y=y+dy/d*radius;}
   }
 }
+export const BOT_RADIUS=13;
+export function bodyClear(p:{x:number;y:number},radius:number,obstacles:Obstacle[]){
+  return obstacles.every(o=>{const dx=p.x-o.x,dy=p.y-o.y,r=o.r+radius-1e-6;return dx*dx+dy*dy>=r*r;});
+}
+// Repair legacy/spawn overlaps before sweeping. Repeated projection handles
+// overlapping rocks; a bounded radial search covers an enclosed intersection.
+function resolveBody(p:{x:number;y:number},radius:number,obstacles:Obstacle[]){
+  if(bodyClear(p,radius,obstacles))return false;
+  const origin={x:p.x,y:p.y};
+  for(let pass=0;pass<16;pass++){
+    for(const o of obstacles){const dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy),r=o.r+radius+.001;
+      if(d<r){p.x=o.x+(d?dx/d:1)*r;p.y=o.y+(d?dy/d:0)*r;}
+    }
+    if(bodyClear(p,radius,obstacles))return true;
+  }
+  for(let distance=radius;distance<=600;distance+=radius)for(let i=0;i<32;i++){
+    const angle=i*Math.PI/16,candidate={x:clamp(origin.x+Math.cos(angle)*distance,radius,SIZE-radius),y:clamp(origin.y+Math.sin(angle)*distance,radius,SIZE-radius)};
+    if(bodyClear(candidate,radius,obstacles)){Object.assign(p,candidate);return true;}
+  }
+  return true;
+}
 export function moveBody(p:{x:number;y:number;vx:number;vy:number},radius:number,dt:number,obstacles:Obstacle[]) {
-  p.x=clamp(p.x+p.vx*dt,radius,SIZE-radius);p.y=clamp(p.y+p.vy*dt,radius,SIZE-radius);
-  let hit=false;
-  for(const o of obstacles){const dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy),r=o.r+radius;if(d<r){p.x=o.x+(d?dx/d:1)*r;p.y=o.y+(d?dy/d:0)*r;hit=true;}}
+  let hit=resolveBody(p,radius,obstacles);
+  let dx=clamp(p.x+p.vx*dt,radius,SIZE-radius)-p.x,dy=clamp(p.y+p.vy*dt,radius,SIZE-radius)-p.y;
+  // Sweep the whole segment: neither a long frame nor a correction can jump
+  // through a rock. Consume the remaining movement along the collision tangent.
+  for(let pass=0;pass<8;pass++){
+    const length2=dx*dx+dy*dy;if(length2<1e-12)break;
+    let earliest=1,rock:Obstacle|undefined;
+    for(const o of obstacles){
+      const ox=p.x-o.x,oy=p.y-o.y,r=o.r+radius,b=ox*dx+oy*dy;
+      if(b>=0)continue;
+      const c=ox*ox+oy*oy-r*r,discriminant=b*b-length2*c;if(discriminant<0)continue;
+      const t=(-b-Math.sqrt(discriminant))/length2;
+      if(t>=-1e-8&&t<=earliest){earliest=Math.max(0,t);rock=o;}
+    }
+    if(!rock){p.x+=dx;p.y+=dy;break;}
+    hit=true;const travel=Math.max(0,earliest-.0001/Math.sqrt(length2));p.x+=dx*travel;p.y+=dy*travel;
+    const nx=p.x-rock.x,ny=p.y-rock.y,n=Math.hypot(nx,ny),ux=nx/n,uy=ny/n;
+    dx*=1-earliest;dy*=1-earliest;const into=Math.min(0,dx*ux+dy*uy);dx-=into*ux;dy-=into*uy;
+  }
   return hit;
 }
 // The same movement function runs immediately in the browser and authoritatively on the server.

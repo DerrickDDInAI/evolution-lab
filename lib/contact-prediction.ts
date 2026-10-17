@@ -1,6 +1,6 @@
 import type {ContactReport,ContactReply} from './contact-report';
 import type {PredictedPlayer} from './prediction';
-import type {Track} from './net-motion';
+import {remoteAge,type Track} from './net-motion';
 import type {CollisionEvent} from './collision-effects';
 import type {Run} from './arena';
 export type LocalContact={event:CollisionEvent;player:PredictedPlayer;run:Run;life:number;seq:number;startedAt:number;report:ContactReport};
@@ -11,7 +11,7 @@ export function predictContact(player:PredictedPlayer|null,bots:{id:number}[],po
   if(!bot)return null;
   const b=positions.get('b'+bot.id)!;
   const id=`local:${player.id}:${player.life}`;
-  const elapsed=Math.max(0,(now-b.receivedAt)/1000),age=Math.min(.15,b.oneWay)+Math.min(Math.min(1.25,Math.max(.35,b.oneWay*2+.15)),elapsed);
+  const age=remoteAge(b,now);
   return {life:player.life,seq,startedAt:now,
     report:{frameId,life:player.life,seq,bot:bot.id,age,x:player.x,y:player.y,bx:b.x,by:b.y},
     event:{id,playerId:player.id,life:player.life,bot:bot.id,x:player.x,y:player.y,bx:b.x,by:b.y,respawnX:player.x,respawnY:player.y,at:serverNow},

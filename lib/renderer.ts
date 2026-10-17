@@ -21,7 +21,7 @@ export function releaseRenderer(canvas:HTMLCanvasElement|null){if(canvas){surfac
 export function cancelCollision(canvas:HTMLCanvasElement|null,event:CollisionEvent){if(canvas){const surface=surfaces.get(canvas);if(surface)cancelEffect(surface.effects,event);}}
 export function updatePositions(state:View|null,self:string|null,positions:Map<string,Track>,time:number,oneWay:number){
   const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
-  for(const e of entities){if(e.key==='p'+self)continue;const track=trackRemote(positions.get(e.key),e,state?.serverTime||0,e.life,time,oneWay);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
+  for(const e of entities){if(e.key==='p'+self)continue;const track=trackRemote(positions.get(e.key),e,state?.simulationTime??state?.serverTime??0,e.life,time,oneWay,e.key[0]==='b'?state?.obstacles:undefined);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
 }
 export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null,pendingContact=false){
   const rect=canvasSize(canvas),dpr=Math.min(devicePixelRatio||1,1.5);
@@ -59,7 +59,7 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
   for(const b of state?.bots||[]){const p=positions.get('b'+b.id)||b,x=sx(p.x),y=sy(p.y),r=12*zoom;
     if(x< -30||y< -30||x>w+30||y>h+30)continue;
     ctx.strokeStyle='#d68f4933';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,r+7,0,Math.PI*2);ctx.stroke();
-    ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle='#f1ac69';ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.65,-r*.7);ctx.lineTo(-r*.4,0);ctx.lineTo(-r*.65,r*.7);ctx.closePath();ctx.fill();ctx.restore();
+    ctx.save();ctx.translate(x,y);ctx.rotate('angle' in p?p.angle:Math.atan2(b.vy,b.vx));ctx.fillStyle='#f1ac69';ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.65,-r*.7);ctx.lineTo(-r*.4,0);ctx.lineTo(-r*.65,r*.7);ctx.closePath();ctx.fill();ctx.restore();
     ctx.font='9px monospace';ctx.textAlign='center';ctx.fillStyle='#ae865f';ctx.fillText('B'+String(b.id+1).padStart(2,'0'),x,y+r+17);
   }
   for(const p of state?.players||[]){if((pendingContact&&p.id===self)||vanishing(effects,p.id,time,reducedMotion))continue;const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p,x=sx(pos.x),y=sy(pos.y),r=15*zoom;ctx.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';
@@ -73,7 +73,7 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
   drawHitFlash(ctx,effects,time,self,w,h,reducedMotion);
   if(!me){ctx.strokeStyle='#b6f1b322';ctx.setLineDash([4,8]);ctx.beginPath();ctx.arc(w/2,h/2,70*zoom,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#b6f1b344';ctx.fillRect(w/2-5,h/2-1,10,2);ctx.fillRect(w/2-1,h/2-5,2,10);}
   if(mini){const c=mini.getContext('2d')!,mw=mini.width,mh=mini.height;c.fillStyle='#101e23';c.fillRect(0,0,mw,mh);c.strokeStyle='#718b75';c.lineWidth=2;c.strokeRect(FIELD.min/6000*mw,FIELD.min/6000*mh,(FIELD.max-FIELD.min)/6000*mw,(FIELD.max-FIELD.min)/6000*mh);c.fillStyle='#b6f1b3';for(const gate of [[3000,1200],[4800,3000],[3000,4800],[1200,3000]])c.fillRect(gate[0]/6000*mw-2,gate[1]/6000*mh-2,4,4);c.fillStyle='#2c4141';for(const o of obstacles){c.beginPath();c.arc(o.x/6000*mw,o.y/6000*mh,Math.max(1,o.r/6000*mw),0,7);c.fill();}
-    c.fillStyle='#e5a568';for(const b of state?.bots||[])c.fillRect(b.x/6000*mw,b.y/6000*mh,2,2);
+    c.fillStyle='#e5a568';for(const b of state?.bots||[]){const pos=positions.get('b'+b.id)||b;c.fillRect(pos.x/6000*mw,pos.y/6000*mh,2,2);}
     for(const p of state?.players||[]){c.fillStyle=p.id===self?'#b6f1b3':'#89bbdf';c.beginPath();c.arc(p.x/6000*mw,p.y/6000*mh,3,0,7);c.fill();}
     c.strokeStyle='#b6f1b388';c.lineWidth=1;c.strokeRect((camera.x-w/2/zoom)/6000*mw,(camera.y-h/2/zoom)/6000*mh,w/zoom/6000*mw,h/zoom/6000*mh);
   }

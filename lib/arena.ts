@@ -41,7 +41,7 @@ export function spawnBot(a:Arena,b:Bot) {
     b.x=clamp(p.x+Math.cos(angle)*d,FIELD.min+70,FIELD.max-70);b.y=clamp(p.y+Math.sin(angle)*d,FIELD.min+70,FIELD.max-70);
     if(safe(a,b.x,b.y,13)&&active.every(p=>Math.hypot(p.x-b.x,p.y-b.y)>180))break;
   }
-  b.vx=0;b.vy=0;
+  b.vx=0;b.vy=0;moveBody(b,13,0,a.obstacles);
 }
 export function respawn(p:Player,now:number,dead=true) {
   // Return to the nearest door's outside staging area; first joins use the south door.
@@ -80,7 +80,7 @@ export function confirmContact(a:Arena,p:Player,r:ContactReport,now:number,finis
   if(p.life!==r.life)return reply('rejected');
   if(p.ack<r.seq)return reply('pending'); // A long movement queue can span packets.
   const frame=p.contactFrames?.find(f=>f.id===r.frameId),bot=a.bots.find(b=>b.id===r.bot);
-  if(p.phase!=='arena'||p.runStartedAt===null||!frame||!bot||!matchesContact(frame,r,p,now))return reply('rejected');
+  if(p.phase!=='arena'||p.runStartedAt===null||!frame||!bot||!matchesContact(frame,r,p,now,a.obstacles))return reply('rejected');
   kill(a,p,bot,now,finished,{generation:frame.generation,x:r.x,y:r.y,bx:r.bx,by:r.by});
   return reply('confirmed');
 }
@@ -119,12 +119,17 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
     const od=Math.max(1,Math.hypot(obstacle.x-b.x,obstacle.y-b.y));
     const inputs=[clamp(dx/800,-1,1),clamp(dy/800,-1,1),target.vx/430,target.vy/430,b.vx/290,b.vy/290,(obstacle.x-b.x)/od,(obstacle.y-b.y)/od,clamp((od-obstacle.r)/300,0,1),dist/Math.max(dist,800),1];
     const [ox,oy]=activate(b.genome,inputs),length=Math.max(1,Math.hypot(ox,oy));b.vx=ox/length*290;b.vy=oy/length*290;
-    const hit=moveBody(b,13,dt,a.obstacles),beforeX=b.x,beforeY=b.y;
+    const startX=b.x,startY=b.y,hit=moveBody(b,13,dt,a.obstacles),beforeX=b.x,beforeY=b.y;
     b.x=clamp(b.x,FIELD.min+25,FIELD.max-25);b.y=clamp(b.y,FIELD.min+25,FIELD.max-25);
+    // Publish the actual displacement, including wall/rock blocking, rather
+    // than a desired velocity that would predict the bot through the obstacle.
+    b.vx=(b.x-startX)/dt;b.vy=(b.y-startY)/dt;
+    const actualSpeed=Math.hypot(b.vx,b.vy);if(actualSpeed>290){b.vx*=290/actualSpeed;b.vy*=290/actualSpeed;}
     const after=Math.hypot(target.x-b.x,target.y-b.y);
     b.fitness+=(dist-after)*.04+dt*(1-after/SIZE)*.1-((hit||beforeX!==b.x||beforeY!==b.y)?dt*3:0);
     if(after<=29)kill(a,target,b,now,finished);
   }
+  if(!a.players.some(p=>p.phase==='arena'))for(const b of a.bots){b.vx=0;b.vy=0;}
   if(a.elapsed>=ROUND){
     for(const b of a.bots)b.genome.fitness=b.fitness;
     const result=breed(a.bots.map(b=>b.genome),a.evolution);
@@ -135,7 +140,7 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
 }
 export function snapshot(a:Arena,selfToken?:string) {
   const me=a.players.find(p=>p.token===selfToken);
-  return {version:2,serverTime:Date.now(),field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,
+  return {version:2,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,
     players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactFrames,...p})=>p),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),

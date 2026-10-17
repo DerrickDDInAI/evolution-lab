@@ -11,10 +11,10 @@ for(const name of ['physics','evolution','arena','prediction','net-motion','coll
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
-const {inside,movePlayer}=await import(pathToFileURL(`${out}/physics.mjs`));
+const {inside,movePlayer,moveBody,bodyClear}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
 const {createEffects,updateEffects,cancelEffect,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
-const {trackRemote,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
+const {trackRemote,projectBot,remoteAge,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
 const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`));
 const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-prediction.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
@@ -206,4 +206,57 @@ test('repeated deaths leave the timer stopped outside until a fresh door entry',
  // After the latest respawn lock, a new trip through the door starts a new clock.
  for(let n=0;n<50;n++)movePlayer(p,{x:0,y:-1,dash:false},1/60,a.obstacles,16000);
  assert.equal(p.phase,'arena');assert.equal(p.runStartedAt,16000);
+});
+
+
+test('swept movement cannot tunnel through a rock even in a long delayed frame',()=>{
+ const rocks=[{x:3000,y:3000,r:80}],p={x:2800,y:3000,vx:290,vy:0};
+ assert.equal(moveBody(p,13,1.5,rocks),true);assert.ok(p.x<=2907.001);assert.ok(bodyClear(p,13,rocks));
+ const diagonal={x:2800,y:2920,vx:290,vy:120};moveBody(diagonal,13,1.5,rocks);assert.ok(bodyClear(diagonal,13,rocks));assert.ok(diagonal.y<2920||diagonal.x<3100,'slide along the near side instead of crossing the rock');
+});
+test('server motion and legacy overlap repair stay outside intersecting obstacles',()=>{
+ const rocks=[{x:3000,y:3000,r:80},{x:3100,y:3000,r:80},{x:3050,y:2930,r:65}];
+ const embedded={x:3050,y:3000,vx:0,vy:0};moveBody(embedded,13,0,rocks);assert.ok(bodyClear(embedded,13,rocks));
+ const p={x:2800,y:2850,vx:0,vy:0};
+ for(let i=0;i<3000;i++){p.vx=Math.sin(i*.17)*290;p.vy=Math.cos(i*.11)*290;moveBody(p,13,1/30,rocks);assert.ok(bodyClear(p,13,rocks),`penetration at step ${i}`);}
+});
+test('every predicted bot frame respects rocks at 750 ms and 1200 ms round trips',()=>{
+ const rocks=[{x:3000,y:3000,r:80}];
+ for(const latency of [.375,.6]){
+  let track=trackRemote(undefined,{x:2800,y:3000,vx:290,vy:0},1000,1,0,latency,rocks);
+  for(let t=16;t<=1600;t+=16){track=trackRemote(track,track.sample,1000,1,t,latency,rocks);assert.ok(bodyClear(track,13,rocks),`visible penetration at ${t} ms`);assert.ok(track.x<=2907.001);}
+ }
+});
+test('network corrections cannot cut through a rock between valid sample positions',()=>{
+ const rocks=[{x:3000,y:3000,r:80}];let track=trackRemote(undefined,{x:2890,y:3000,vx:0,vy:0},1,1,0,0,rocks);
+ const otherSide={x:3110,y:3000,vx:0,vy:0};
+ for(let t=16;t<1000;t+=16){track=trackRemote(track,otherSide,2,1,t,0,rocks);assert.ok(bodyClear(track,13,rocks));assert.ok(track.x<=2907.001,'correction must not cross the obstacle');}
+ // Reproduction is an intentional teleport, so a new generation may reset to a valid spawn.
+ track=trackRemote(track,otherSide,3,2,1000,0,rocks);assert.equal(track.x,3110);
+});
+test('blocked server bots publish actual zero velocity instead of pointing through the rock',()=>{
+ const a=createArena(0),p=runner(a,0);parkBots(a);p.x=3500;p.y=3000;a.obstacles=[{x:3000,y:3000,r:80}];
+ const b=a.bots[0];b.x=2907;b.y=3000;b.genome.genes=[{from:10,to:11,weight:10,enabled:true}];
+ advance(a,500);assert.ok(bodyClear(b,13,a.obstacles));assert.ok(b.x<=2907.001);assert.ok(Math.abs(b.vx)<.01);assert.ok(Math.abs(b.vy)<.01);
+});
+test('latency compensation follows constant motion without the old 150 ms lead cap',()=>{
+ let track;
+ const oneWay=.375,speed=200;
+ for(let t=0;t<3000;t+=16){
+  const sampleAt=Math.floor(t/750)*750,sample={x:2000+sampleAt/1000*speed,y:2500,vx:speed,vy:0};
+  track=trackRemote(track,sample,sampleAt,1,t,oneWay,[]);
+  const expected=2000+(t/1000+oneWay)*speed;
+  assert.ok(Math.abs(track.x-expected)<10,`bot lag ${expected-track.x} at ${t} ms`);
+ }
+});
+test('contact validation shares obstacle-aware prediction and rejects through-rock reports',()=>{
+ const a=createArena(1000),p=runner(a,1000);parkBots(a);a.obstacles=[{x:3000,y:3000,r:80}];p.x=2880;p.y=3000;p.ack=1;
+ const b=a.bots[0];b.x=2800;b.y=3000;b.vx=290;
+ const frameId=rememberContactFrame(a,p,1000),pose=projectBot(b,.75,a.obstacles);
+ assert.equal(confirmContact(a,p,{frameId,life:0,seq:1,bot:0,age:.75,x:3000,y:3000,bx:3000,by:3000},1500,[]).status,'rejected');
+ assert.equal(confirmContact(a,p,{frameId,life:0,seq:1,bot:0,age:.75,x:p.x,y:p.y,bx:pose.x,by:pose.y},1500,[]).status,'confirmed');assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);
+});
+test('snapshot simulation timestamps do not advance just because a spectator reads the world',()=>{
+ const a=createArena(1234);assert.equal(snapshot(a).simulationTime,1234);assert.equal(snapshot(a).simulationTime,1234);
+ advance(a,1300);assert.equal(snapshot(a).simulationTime,1300);
 });
