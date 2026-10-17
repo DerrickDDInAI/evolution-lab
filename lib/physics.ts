@@ -68,17 +68,28 @@ export function moveBody(p:{x:number;y:number;vx:number;vy:number},radius:number
   }
   return hit;
 }
+// Shared collision, wall, boundary and realized-velocity rules for every actor.
+// Radius is the physical size of the actor, not a different collision algorithm.
+export function moveActor(p:{x:number;y:number;vx:number;vy:number},radius:number,dt:number,obstacles:Obstacle[],phase:'safe'|'arena'='arena') {
+  const x=p.x,y=p.y,speed=Math.hypot(p.vx,p.vy);let hit=false;
+  const steps=phase==='safe'?Math.max(1,Math.ceil(dt*60)):1;
+  for(let i=0;i<steps;i++){
+    hit=moveBody(p,radius,dt/steps,obstacles)||hit;
+    if(phase==='arena'){
+      const inset=FIELD.wall/2+radius,bx=p.x,by=p.y;
+      p.x=clamp(p.x,FIELD.min+inset,FIELD.max-inset);p.y=clamp(p.y,FIELD.min+inset,FIELD.max-inset);
+      hit=hit||bx!==p.x||by!==p.y;
+    }else collideWalls(p,radius);
+  }
+  if(dt>0){p.vx=(p.x-x)/dt;p.vy=(p.y-y)/dt;const actual=Math.hypot(p.vx,p.vy);if(actual>speed){p.vx*=speed/actual;p.vy*=speed/actual;}}
+  return hit;
+}
 // The same movement function runs immediately in the browser and authoritatively on the server.
 export function movePlayer(p:Motion,c:Pick<Command,'x'|'y'|'dash'>,dt:number,obstacles:Obstacle[],now:number) {
   if(now<p.respawnUntil){p.vx=0;p.vy=0;return;}
   const len=Math.max(1,Math.hypot(c.x,c.y)),boost=c.dash&&p.energy>.08&&(c.x!==0||c.y!==0);
   p.energy=clamp(p.energy+(boost?-.65:.22)*dt,0,1);
   p.vx=c.x/len*(boost?430:255);p.vy=c.y/len*(boost?430:255);
-  moveBody(p,16,dt,obstacles);
-  if(p.phase==='arena'){
-    p.x=clamp(p.x,FIELD.min+28,FIELD.max-28);p.y=clamp(p.y,FIELD.min+28,FIELD.max-28);
-  }else{
-    collideWalls(p);
-    if(inside(p.x,p.y,29)){p.phase='arena';p.runStartedAt=now;}
-  }
+  moveActor(p,16,dt,obstacles,p.phase);
+  if(p.phase==='safe'&&inside(p.x,p.y,29)){p.phase='arena';p.runStartedAt=now;}
 }

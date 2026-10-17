@@ -5,9 +5,9 @@ import type {CollisionEvent} from './collision-effects';
 import type {Run} from './arena';
 export type LocalContact={event:CollisionEvent;player:PredictedPlayer;run:Run;life:number;seq:number;startedAt:number;report:ContactReport};
 // Test the exact positions painted this frame, not the older network snapshot.
-export function predictContact(player:PredictedPlayer|null,bots:{id:number}[],positions:Map<string,Track>,generation:number,now:number,serverNow:number,seq:number,frameId=''):LocalContact|null {
+export function predictContact(player:PredictedPlayer|null,bots:{id:number;spawnWait?:number}[],positions:Map<string,Track>,generation:number,now:number,serverNow:number,seq:number,frameId=''):LocalContact|null {
   if(!frameId||!player||player.phase!=='arena'||player.runStartedAt===null)return null;
-  const bot=bots.find(b=>{const p=positions.get('b'+b.id);return p&&now-p.receivedAt<1500&&Math.hypot(player.x-p.x,player.y-p.y)<=29;});
+  const bot=bots.find(b=>{const p=positions.get('b'+b.id);return (b.spawnWait??0)<=0&&p&&(p.contactError??0)<=100&&now-p.receivedAt<1500&&Math.hypot(player.x-p.x,player.y-p.y)<=29;});
   if(!bot)return null;
   const b=positions.get('b'+bot.id)!;
   const id=`local:${player.id}:${player.life}`;

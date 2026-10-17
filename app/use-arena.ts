@@ -5,7 +5,7 @@ import {predictContact,contactResult,type LocalContact} from '../lib/contact-pre
 import type {ContactReply} from '../lib/contact-report';
 import type {CollisionEvent} from '../lib/collision-effects';
 import {renderArena,releaseRenderer,updatePositions,cancelCollision,type View} from '../lib/renderer';
-import {movePlayer,MAX_QUEUED_COMMANDS,MAX_PACKET_COMMANDS,type Command} from '../lib/physics';
+import {moveActor,movePlayer,MAX_QUEUED_COMMANDS,MAX_PACKET_COMMANDS,type Command} from '../lib/physics';
 import {reconcile,type PredictedPlayer} from '../lib/prediction';
 import {correctionFor,decayCorrection,type Correction} from '../lib/net-motion';
 import type {Scores,Run} from '../lib/arena';
@@ -97,8 +97,12 @@ export function useArena(help:boolean,zoom:number){
         }
       }
       decayCorrection(correction.current,dt);
-      let display=predicted.current?{...predicted.current,x:predicted.current.x+correction.current.x,y:predicted.current.y+correction.current.y}:null;
       const world=view.current,self=sessionRef.current?.id||null;
+      let display=predicted.current?{...predicted.current}:null;
+      if(display&&world){
+        const visual={...display,vx:correction.current.x*60,vy:correction.current.y*60};
+        moveActor(visual,16,1/60,world.obstacles,display.phase);display.x=visual.x;display.y=visual.y;
+      }
       updatePositions(world,self,positions.current,time,networkDelay.current);
       const touching=world?predictContact(display,world.bots,positions.current,world.generation,time,Date.now()+offset.current,sequence.current,world.personal?.contactFrame):null;
       const blocked=blockedContact.current,blockedBot=blocked?positions.current.get('b'+blocked.event.bot):null;

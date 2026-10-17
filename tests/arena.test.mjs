@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -19,7 +19,7 @@ const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`)
 const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-prediction.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
 function runner(a,now=0){const p=join(a,'one','secret','Runner',now,'profile');p.phase='arena';p.x=3000;p.y=3000;p.runStartedAt=now;p.runId='run-one';return p;}
-function parkBots(a){for(const b of a.bots){b.x=1800;b.y=1800;for(const g of b.genome.genes)g.weight=0;}}
+function parkBots(a){for(const b of a.bots){b.spawnWait=0;b.x=1800;b.y=1800;for(const g of b.genome.genes)g.weight=0;}}
 test('new players spawn outside, safe contact does not kill, and training waits for entry',()=>{
  const a=createArena(0),p=join(a,'one','secret','Runner',0,'profile');assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.ok(!inside(p.x,p.y));
  a.bots[0].x=p.x;a.bots[0].y=p.y;advance(a,200);assert.equal(p.tags,0);assert.equal(a.elapsed,0);assert.equal(p.scores.runs.length,0);
@@ -259,4 +259,91 @@ test('contact validation shares obstacle-aware prediction and rejects through-ro
 test('snapshot simulation timestamps do not advance just because a spectator reads the world',()=>{
  const a=createArena(1234);assert.equal(snapshot(a).simulationTime,1234);assert.equal(snapshot(a).simulationTime,1234);
  advance(a,1300);assert.equal(snapshot(a).simulationTime,1300);
+});
+
+test('same-generation corrections never teleport, even after a large position error',()=>{
+ let track=trackRemote(undefined,{x:2500,y:3000,vx:290,vy:0},0,-1,0,.375,[]),last={x:track.x,y:track.y};
+ for(let frame=1;frame<=360;frame++){
+  const now=frame*1000/60,stamp=Math.floor(frame/45),reverse=stamp%2===1;
+  const sample={x:reverse?3500:2400,y:3000,vx:reverse?-290:290,vy:0};
+  track=trackRemote(track,sample,stamp,-1,now,.375,[]);
+  assert.ok(Math.hypot(track.x-last.x,track.y-last.y)<=435/60+.001,'a late packet must not jump the bot');
+  assert.ok(Number.isFinite(track.x)&&Number.isFinite(track.y));last={x:track.x,y:track.y};
+ }
+ const x=track.x,y=track.y;trackRemote(track,{x:4100,y:3000,vx:0,vy:0},99,-1,track.frameAt,.375,[]);
+ assert.equal(track.x,x);assert.equal(track.y,y,'receiving a packet alone cannot move an entity');
+});
+
+test('a stalled browser resumes with a bounded movement step and no new entity life',()=>{
+ const track=trackRemote(undefined,{x:2800,y:3000,vx:290,vy:0},0,-4,0,0,[]),x=track.x;
+ trackRemote(track,{x:4000,y:3000,vx:290,vy:0},4000,-4,4000,0,[]);
+ assert.ok(Math.abs(track.x-x)<=435*.05+.001);assert.equal(track.life,-4);
+});
+
+test('players, bots and remote prediction use the same collision and arena boundary rules',async()=>{
+ const {moveActor}=await import(pathToFileURL(`${out}/physics.mjs`));
+ const rocks=[{x:3200,y:3000,r:80}];
+ const player={x:3000,y:3000,vx:0,vy:0,energy:1,phase:'arena',runStartedAt:0,respawnUntil:0};
+ const bot={x:player.x,y:player.y,vx:0,vy:0};
+ for(let i=0;i<500;i++){
+  const input={x:1,y:i<150?0:.2,dash:false},length=Math.max(1,Math.hypot(input.x,input.y));
+  movePlayer(player,input,1/60,rocks,i*1000/60);bot.vx=input.x/length*255;bot.vy=input.y/length*255;
+  moveActor(bot,16,1/60,rocks);
+  assert.equal(bot.x,player.x);assert.equal(bot.y,player.y);assert.equal(bot.vx,player.vx);assert.equal(bot.vy,player.vy);
+  assert.ok(bodyClear(bot,16,rocks));
+ }
+ for(const radius of [13,16]){
+  const body={x:3000,y:4770,vx:0,vy:255};moveActor(body,radius,1,[]);
+  assert.equal(body.y,FIELD.max-FIELD.wall/2-radius);
+ }
+ const remote=trackRemote(undefined,{x:3000,y:4770,vx:0,vy:255},1,0,0,.5,[],16,'arena');
+ assert.equal(remote.y,4772);
+ const outside=trackRemote(undefined,{x:2400,y:1150,vx:0,vy:255},1,0,0,.5,[],16,'safe');
+ assert.ok(outside.y<=1172,'a remote player must not pass through a solid wall');
+});
+
+test('every new generation returns every bot to its own fixed, clear starting point',()=>{
+ const a=createArena(0),homes=a.bots.map(b=>({x:b.x,y:b.y}));const p=runner(a);p.x=3000;p.y=4300;
+ assert.equal(new Set(homes.map(h=>`${h.x},${h.y}`)).size,24);
+ for(let gen=1;gen<=4;gen++){
+  for(const b of a.bots){b.x=2000;b.y=2000;b.spawnWait=0;b.genome.genes=[];}
+  a.elapsed=ROUND-.001;p.lastSeen=gen*20;advance(a,gen*20);
+  assert.equal(a.generation,gen+1);
+  a.bots.forEach((b,i)=>{assert.equal(b.x,homes[i].x);assert.equal(b.y,homes[i].y);assert.ok(bodyClear(b,13,a.obstacles));assert.ok(b.spawnWait>2.9);assert.equal(b.vx,0);assert.equal(b.vy,0);});
+  assert.equal(p.life,0);assert.equal(p.runStartedAt,0);
+ }
+});
+
+test('generation warm-up stays harmless when a player occupies a bot home',()=>{
+ const a=createArena(0),p=runner(a),b=a.bots[0];p.x=b.x;p.y=b.y;
+ for(const bot of a.bots)bot.genome.genes=[];
+ for(let t=100;t<=6000;t+=100){p.lastSeen=t;advance(a,t);applyCommands(a,p,[command(t,0,0,0)],t,[]);}
+ assert.equal(p.life,0);assert.equal(p.phase,'arena');assert.equal(p.runStartedAt,0);assert.ok(b.spawnWait>0);assert.equal(b.x,b.homeX);assert.equal(b.y,b.homeY);
+ const frameId=rememberContactFrame(a,p,6000),track=trackRemote(undefined,b,6000,-1,0,0,a.obstacles);
+ assert.equal(predictContact(p,a.bots,new Map([['b0',track]]),1,0,6000,p.ack,frameId),null);
+ assert.equal(confirmContact(a,p,{frameId,life:0,seq:p.ack,bot:0,age:0,x:p.x,y:p.y,bx:b.x,by:b.y},6000,[]).status,'rejected');
+ p.x=3000;p.y=4300;p.lastSeen=6100;advance(a,6100);assert.equal(b.spawnWait,0);
+ p.x=b.x;p.y=b.y;applyCommands(a,p,[command(7000,0,0,0)],6200,[]);assert.equal(p.life,1,'a released bot remains lethal');
+});
+
+test('newly spawned bots cannot move or kill during their full three second warm-up',()=>{
+ const a=createArena(0),p=runner(a);p.x=3000;p.y=4300;const homes=a.bots.map(b=>[b.x,b.y]);
+ advance(a,2900);a.bots.forEach((b,i)=>{assert.ok(b.spawnWait>0);assert.deepEqual([b.x,b.y],homes[i]);});
+ p.lastSeen=3100;advance(a,3100);assert.ok(a.bots.every(b=>b.spawnWait===0));assert.equal(p.life,0);
+});
+
+test('upgrading the live world assigns homes without moving current bots or changing genomes',()=>{
+ const a=createArena(0);for(const b of a.bots){delete b.homeX;delete b.homeY;delete b.spawnWait;b.x=2000;b.y=2400;}
+ const before=structuredClone(a.bots.map(b=>b.genome));a.generation=44;
+ upgradeArena(a,1000);assert.equal(a.generation,44);
+ a.bots.forEach((b,i)=>{assert.equal(b.x,2000);assert.equal(b.y,2400);assert.ok(Number.isFinite(b.homeX));assert.deepEqual(b.genome,before[i]);assert.equal(b.spawnWait,undefined);});
+});
+
+test('the prominent countdown advances smoothly and pauses when the arena is empty',async()=>{
+ const {generationClock}=await import(pathToFileURL(`${out}/generation-clock.mjs`));
+ const state={round:45,elapsed:40,simulationTime:1000,players:[{phase:'arena'}],bots:[]};
+ assert.equal(generationClock(state,2250).remaining,4);assert.equal(generationClock(state,9000).remaining,0);
+ state.players=[];assert.equal(generationClock(state,9000).remaining,5);assert.equal(generationClock(state,9000).running,false);
+ state.bots=[{spawnWait:3}];assert.equal(generationClock(state,9000).warmup,3);
+ state.players=[{phase:'arena'}];assert.equal(generationClock(state,2250).warmup,2);
 });

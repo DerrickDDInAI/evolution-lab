@@ -10,7 +10,7 @@ try{
  // Local-only setup for a moving bot with a deterministic velocity.
  const world=await(await fetch(base+'/api/arena')).json(),i=world.players.findIndex(p=>p.id===session.id),p=`$.players[${i}]`,now=Date.now();
  const genes=JSON.stringify([{from:10,to:11,weight:Math.atanh(-100/290),enabled:true}]);
- sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.x',3000,'${p}.y',3000,'${p}.phase','arena','${p}.runStartedAt',${now-8000},'${p}.runId','${crypto.randomUUID()}','${p}.lastSeen',${now},'$.time',${now+5000},'$.bots[0].vx',-100,'$.bots[0].vy',0,'$.bots[0].x',3080,'$.bots[0].y',3000,'$.bots[0].genome.genes',json('${genes}')) WHERE id='shared'`);
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.x',3000,'${p}.y',3000,'${p}.phase','arena','${p}.runStartedAt',${now-8000},'${p}.runId','${crypto.randomUUID()}','${p}.lastSeen',${now},'$.time',${now+5000},'$.bots[0].spawnWait',0,'$.bots[0].vx',-100,'$.bots[0].vy',0,'$.bots[0].x',3080,'$.bots[0].y',3000,'$.bots[0].genome.genes',json('${genes}')) WHERE id='shared'`);
  const observed=await post({action:'input',commands:[]});assert.equal(observed.status,200);
  const player=observed.data.players.find(p=>p.id===session.id),bot=observed.data.bots[0];assert.equal(player.phase,'arena');
  // Report a valid visual overlap, then move the real bot away before delivery.

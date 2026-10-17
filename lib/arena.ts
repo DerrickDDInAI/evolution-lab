@@ -1,13 +1,13 @@
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
-import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, movePlayer, type Motion, type Command, type Obstacle } from './physics';
+import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, type Motion, type Command, type Obstacle } from './physics';
 import {matchesContact,type ContactFrame,type ContactReport,type ContactReply} from './contact-report';
 import type {CollisionEvent} from './collision-effects';
 export { SIZE, FIELD }; export type { Obstacle };
-export const POPULATION=24, ROUND=45, MAX_PLAYERS=12;
+export const POPULATION=24, ROUND=45, MAX_PLAYERS=12, SPAWN_WARMUP=3;
 export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt:number};
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;contactFrames?:ContactFrame[]};
-export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome};
+export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
 export type Arena={version:2;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:{generation:number;fitness:number;tags:number}[];champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
@@ -24,6 +24,7 @@ export function createArena(now:number):Arena {
 // Upgrade an existing live world without discarding its trained genomes or generation history.
 export function upgradeArena(raw:any,now:number):Arena {
   raw.collisions??=[];
+  for(const b of raw.bots)ensureHome(raw,b);
   if(raw.version===2)return raw;
   raw.version=2;raw.time=now;raw.obstacles=obstacles(raw.evolution);
   raw.players=raw.players.map((old:any)=>{
@@ -33,16 +34,18 @@ export function upgradeArena(raw:any,now:number):Arena {
   for(const b of raw.bots)spawnBot(raw,b);
   return raw;
 }
-function safe(a:Arena,x:number,y:number,r:number){return a.obstacles.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+r+5);}
-export function spawnBot(a:Arena,b:Bot) {
-  const active=a.players.filter(p=>p.phase==='arena');const p=active[b.id%Math.max(active.length,1)]||{x:3000,y:3000};
-  for(let i=0;i<40;i++){
-    const angle=random(a.evolution)*Math.PI*2,d=260+random(a.evolution)*600;
-    b.x=clamp(p.x+Math.cos(angle)*d,FIELD.min+70,FIELD.max-70);b.y=clamp(p.y+Math.sin(angle)*d,FIELD.min+70,FIELD.max-70);
-    if(safe(a,b.x,b.y,13)&&active.every(p=>Math.hypot(p.x-b.x,p.y-b.y)>180))break;
-  }
-  b.vx=0;b.vy=0;moveBody(b,13,0,a.obstacles);
+function ensureHome(a:Arena,b:Bot){
+  if(Number.isFinite(b.homeX)&&Number.isFinite(b.homeY))return;
+  // The central clearing is free of generated obstacles. Stable bot IDs retain
+  // these homes across breeding, reconnects and upgrades of the live world.
+  const angle=b.id/POPULATION*Math.PI*2;
+  const home={x:FIELD.middle+Math.cos(angle)*140,y:FIELD.middle+Math.sin(angle)*140,vx:0,vy:0};
+  moveBody(home,13,0,a.obstacles);b.homeX=home.x;b.homeY=home.y;
 }
+export function spawnBot(a:Arena,b:Bot) {
+  ensureHome(a,b);b.x=b.homeX!;b.y=b.homeY!;b.vx=0;b.vy=0;b.spawnWait=SPAWN_WARMUP;
+}
+export const botReady=(b:Pick<Bot,'spawnWait'>)=>(b.spawnWait??0)<=0;
 export function respawn(p:Player,now:number,dead=true) {
   // Return to the nearest door's outside staging area; first joins use the south door.
   const distances=[Math.abs(p.y-FIELD.min),Math.abs(p.x-FIELD.max),Math.abs(p.y-FIELD.max),Math.abs(p.x-FIELD.min)];
@@ -70,7 +73,7 @@ function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?
 }
 // Keep a bounded, private history of frames issued to each player for contact validation.
 export function rememberContactFrame(a:Arena,p:Player,now:number){
-  const frame:ContactFrame={id:crypto.randomUUID(),at:now,life:p.life,generation:a.generation,bots:a.bots.map(({id,x,y,vx,vy})=>({id,x,y,vx,vy}))};
+  const frame:ContactFrame={id:crypto.randomUUID(),at:now,life:p.life,generation:a.generation,bots:a.bots.filter(botReady).map(({id,x,y,vx,vy})=>({id,x,y,vx,vy}))};
   p.contactFrames=[...(p.contactFrames||[]).filter(f=>now-f.at<8000),frame].slice(-8);
   return frame.id;
 }
@@ -95,7 +98,7 @@ export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,fin
     const wasSafe=p.phase==='safe';movePlayer(p,c,c.dt,a.obstacles,now);
     if(wasSafe&&p.phase==='arena')p.runId=crypto.randomUUID();
     if(p.phase==='arena'){
-      const bot=a.bots.find(b=>Math.hypot(p.x-b.x,p.y-b.y)<=29);
+      const bot=a.bots.find(b=>botReady(b)&&Math.hypot(p.x-b.x,p.y-b.y)<=29);
       if(bot)kill(a,p,bot,now,finished);
     }
   }
@@ -113,20 +116,22 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
   for(const p of active)if(now-p.lastSeen>750){p.vx=0;p.vy=0;}
   for(const b of a.bots){
     const alive=active.filter(p=>p.phase==='arena');if(!alive.length)break;
+    if(!botReady(b)){
+      b.vx=0;b.vy=0;b.spawnWait=Math.max(.001,(b.spawnWait??SPAWN_WARMUP)-dt);
+      // Stay harmless and stationary if a player occupies this starting area,
+      // even after the warm-up expires. Never activate underneath a runner.
+      if(b.spawnWait<=.001&&alive.every(p=>Math.hypot(p.x-b.x,p.y-b.y)>120))b.spawnWait=0;
+      continue;
+    }
     const target=alive.reduce((best,p)=>Math.hypot(p.x-b.x,p.y-b.y)<Math.hypot(best.x-b.x,best.y-b.y)?p:best,alive[0]);
     const dx=target.x-b.x,dy=target.y-b.y,dist=Math.hypot(dx,dy);
-    const obstacle=a.obstacles.reduce((best,o)=>Math.hypot(o.x-b.x,o.y-b.y)-o.r<Math.hypot(best.x-b.x,best.y-b.y)-best.r?o:best,a.obstacles[0]);
+    const obstacle=a.obstacles.length?a.obstacles.reduce((best,o)=>Math.hypot(o.x-b.x,o.y-b.y)-o.r<Math.hypot(best.x-b.x,best.y-b.y)-best.r?o:best,a.obstacles[0]):{x:b.x+1000,y:b.y,r:0};
     const od=Math.max(1,Math.hypot(obstacle.x-b.x,obstacle.y-b.y));
     const inputs=[clamp(dx/800,-1,1),clamp(dy/800,-1,1),target.vx/430,target.vy/430,b.vx/290,b.vy/290,(obstacle.x-b.x)/od,(obstacle.y-b.y)/od,clamp((od-obstacle.r)/300,0,1),dist/Math.max(dist,800),1];
     const [ox,oy]=activate(b.genome,inputs),length=Math.max(1,Math.hypot(ox,oy));b.vx=ox/length*290;b.vy=oy/length*290;
-    const startX=b.x,startY=b.y,hit=moveBody(b,13,dt,a.obstacles),beforeX=b.x,beforeY=b.y;
-    b.x=clamp(b.x,FIELD.min+25,FIELD.max-25);b.y=clamp(b.y,FIELD.min+25,FIELD.max-25);
-    // Publish the actual displacement, including wall/rock blocking, rather
-    // than a desired velocity that would predict the bot through the obstacle.
-    b.vx=(b.x-startX)/dt;b.vy=(b.y-startY)/dt;
-    const actualSpeed=Math.hypot(b.vx,b.vy);if(actualSpeed>290){b.vx*=290/actualSpeed;b.vy*=290/actualSpeed;}
+    const hit=moveActor(b,13,dt,a.obstacles);
     const after=Math.hypot(target.x-b.x,target.y-b.y);
-    b.fitness+=(dist-after)*.04+dt*(1-after/SIZE)*.1-((hit||beforeX!==b.x||beforeY!==b.y)?dt*3:0);
+    b.fitness+=(dist-after)*.04+dt*(1-after/SIZE)*.1-(hit?dt*3:0);
     if(after<=29)kill(a,target,b,now,finished);
   }
   if(!a.players.some(p=>p.phase==='arena'))for(const b of a.bots){b.vx=0;b.vy=0;}

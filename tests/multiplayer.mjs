@@ -22,7 +22,7 @@ try{
  if(process.env.ARENA_TEST_DEATH==='1'){
   assert.ok(['127.0.0.1','localhost'].includes(new URL(base).hostname),'death fixture is local only');
   const me=after.players.findIndex(p=>p.id===sessions[0].id),run=crypto.randomUUID(),now=Date.now(),j=`$.players[${me}]`;
-  const sql=`UPDATE arena SET revision=revision+1,state=json_set(state,'${j}.x',3000,'${j}.y',3000,'${j}.phase','arena','${j}.runStartedAt',${now-8000},'${j}.runId','${run}','${j}.lastSeen',${now},'$.bots[0].x',3000,'$.bots[0].y',3000) WHERE id='shared' AND json_extract(state,'${j}.id')='${sessions[0].id}'`;
+  const sql=`UPDATE arena SET revision=revision+1,state=json_set(state,'${j}.x',3000,'${j}.y',3000,'${j}.phase','arena','${j}.runStartedAt',${now-8000},'${j}.runId','${run}','${j}.lastSeen',${now},'$.bots[0].spawnWait',0,'$.bots[0].x',3000,'$.bots[0].y',3000) WHERE id='shared' AND json_extract(state,'${j}.id')='${sessions[0].id}'`;
   execFileSync(process.execPath,['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--config','dist/server/wrangler.json','--persist-to','.wrangler/state','--command',sql],{stdio:'pipe'});
   const dead=await post({action:'input',profileToken:profiles[0],commands:[]},sessions[0].token);assert.equal(dead.status,200);
   const respawned=dead.data.players.find(p=>p.id===sessions[0].id);assert.equal(respawned.phase,'safe');assert.equal(respawned.life,1);assert.equal(dead.data.personal.scores.runs[0].id,run);assert.ok(dead.data.personal.scores.bestMs>=8000);
