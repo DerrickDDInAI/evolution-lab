@@ -1,17 +1,19 @@
 export type CollisionEvent = {
-  id:string;playerId:string;bot:number;x:number;y:number;bx:number;by:number;
+  id:string;playerId:string;life?:number;bot:number;x:number;y:number;bx:number;by:number;
   respawnX:number;respawnY:number;at:number;
 };
 export type CollisionEffect = CollisionEvent & {startedAt:number};
 export type EffectTimeline = {ready:boolean;seen:Set<string>;active:CollisionEffect[]};
 export const IMPACT_HOLD_MS=500, EFFECT_LIFETIME_MS=1250;
+const eventKey=(e:CollisionEvent)=>e.life===undefined?e.id:`${e.playerId}:${e.life}`;
+export function cancelEffect(timeline:EffectTimeline,event:CollisionEvent){timeline.active=timeline.active.filter(e=>eventKey(e)!==eventKey(event));timeline.seen.delete(eventKey(event));}
 export const createEffects=():EffectTimeline=>({ready:false,seen:new Set(),active:[]});
 // Receive each authoritative collision once. Do not replay old deaths on page load.
 export function updateEffects(timeline:EffectTimeline,events:CollisionEvent[],now:number,serverTime:number){
   timeline.active=timeline.active.filter(e=>now-e.startedAt<EFFECT_LIFETIME_MS);
   for(const event of events){
-    if(timeline.seen.has(event.id))continue;
-    timeline.seen.add(event.id);
+    if(timeline.seen.has(eventKey(event)))continue;
+    timeline.seen.add(eventKey(event));
     if(timeline.ready&&serverTime-event.at<5000)timeline.active.push({...event,startedAt:now});
   }
   timeline.ready=true;

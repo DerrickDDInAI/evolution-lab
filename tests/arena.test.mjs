@@ -5,17 +5,18 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
 const {inside,movePlayer}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
-const {createEffects,updateEffects,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
+const {createEffects,updateEffects,cancelEffect,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
 const {trackRemote,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
 const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`));
+const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-prediction.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
 function runner(a,now=0){const p=join(a,'one','secret','Runner',now,'profile');p.phase='arena';p.x=3000;p.y=3000;p.runStartedAt=now;p.runId='run-one';return p;}
 function parkBots(a){for(const b of a.bots){b.x=1800;b.y=1800;for(const g of b.genome.genes)g.weight=0;}}
@@ -129,4 +130,38 @@ test('collision effects play once, expire, and honor reduced motion without repl
  assert.equal(vanishing(effects,'one',200,false),true);assert.equal(vanishing(effects,'one',200,true),false);assert.equal(vanishing(effects,'one',600,false),false);
  updateEffects(effects,[event],1400,2400);assert.equal(effects.active.length,0);assert.equal(effects.seen.size,1);
  updateEffects(effects,[{...event,id:'too-old'}],1500,8000);assert.equal(effects.active.length,0,'late historical packets must not resurrect old animations');
+});
+
+
+test('visible contact produces an immediate impact and frozen run before a delayed server reply',()=>{
+ const a=createArena(0),p=runner(a,1000),positions=new Map();
+ // The drawn bot reaches us while its last server position is still 80 units away.
+ const track=trackRemote(undefined,{x:3080,y:3000,vx:-100,vy:0},1000,1,0,.375);
+ trackRemote(track,track.sample,1000,1,600,.375);positions.set('b0',track);
+ const hit=predictContact(p,[{id:0}],positions,7,600,1600,36);
+ assert.ok(hit);assert.equal(hit.run.durationMs,600);assert.equal(hit.run.generation,7);
+ assert.equal(hit.event.x,p.x);assert.equal(hit.event.bx,track.x);assert.equal(hit.player.phase,'safe');assert.ok(!inside(hit.player.x,hit.player.y));
+ assert.equal(p.phase,'arena','prediction must not mutate authoritative state');assert.equal(p.scores.runs.length,0);
+ const effects=createEffects();updateEffects(effects,[],0,1000);updateEffects(effects,[hit.event],600,1600);
+ assert.equal(effects.active[0].startedAt,600,'no network response or animation delay is required');
+ assert.equal(contactResult(hit,{...p,ack:36},null),'pending','a pre-contact request cannot reject the hit');
+ assert.equal(contactResult(hit,{...p,ack:35},hit),'pending','all contact inputs must be acknowledged first');
+ assert.equal(contactResult(hit,{...p,ack:36,life:1},hit),'confirmed');
+ const confirmed={...hit.event,id:'server-event',at:2000};updateEffects(effects,[hit.event,confirmed],1000,2000);
+ assert.equal(effects.active.length,1);assert.equal(effects.active[0].startedAt,600,'confirmation cannot restart the effect');
+});
+test('safe players, near misses and stale disconnected bot tracks cannot predict a death',()=>{
+ const a=createArena(0),p=runner(a,0),positions=new Map([['b0',trackRemote(undefined,{x:3030,y:3000,vx:0,vy:0},0,1,0,0)]]);
+ assert.equal(predictContact(p,[{id:0}],positions,1,10,10,1),null);
+ positions.get('b0').x=3028;
+ assert.equal(predictContact({...p,phase:'safe'},[{id:0}],positions,1,10,10,1),null);
+ assert.equal(predictContact(p,[{id:0}],positions,1,1501,1501,1),null);
+});
+test('a rejected prediction removes its effect and leaves server scores untouched',()=>{
+ const a=createArena(0),p=runner(a,0),positions=new Map([['b0',trackRemote(undefined,{x:3028,y:3000,vx:0,vy:0},0,1,0,0)]]);
+ const hit=predictContact(p,[{id:0}],positions,1,10,10,1);assert.ok(hit);
+ assert.equal(contactResult(hit,{...p,ack:1},hit),'rejected');
+ const effects=createEffects();updateEffects(effects,[],0,0);updateEffects(effects,[hit.event],10,10);cancelEffect(effects,hit.event);
+ assert.equal(effects.active.length,0);assert.equal(p.scores.runs.length,0);assert.equal(a.totalTags,0);
+ updateEffects(effects,[{...hit.event,id:'later-real-death'}],100,100);assert.equal(effects.active.length,1,'a real later death remains visible');
 });

@@ -1,5 +1,5 @@
 import { FIELD, walls } from './physics';
-import {createEffects,updateEffects,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline} from './collision-effects';
+import {createEffects,updateEffects,cancelEffect,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline,type CollisionEvent} from './collision-effects';
 import {trackRemote,type Track} from './net-motion';
 import type { snapshot } from './arena';
 import type { PredictedPlayer } from './prediction';
@@ -18,15 +18,18 @@ function canvasSize(canvas:HTMLCanvasElement){
   return size;
 }
 export function releaseRenderer(canvas:HTMLCanvasElement|null){if(canvas){surfaces.get(canvas)?.observer?.disconnect();surfaces.delete(canvas);}}
-export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,oneWay=0){
+export function cancelCollision(canvas:HTMLCanvasElement|null,event:CollisionEvent){if(canvas){const surface=surfaces.get(canvas);if(surface)cancelEffect(surface.effects,event);}}
+export function updatePositions(state:View|null,self:string|null,positions:Map<string,Track>,time:number,oneWay:number){
+  const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
+  for(const e of entities){if(e.key==='p'+self)continue;const track=trackRemote(positions.get(e.key),e,state?.serverTime||0,e.life,time,oneWay);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
+}
+export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null){
   const rect=canvasSize(canvas),dpr=Math.min(devicePixelRatio||1,1.5);
   if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);}
   const effects=rect.effects,reducedMotion=rect.motion?.matches||false;
-  if(state)updateEffects(effects,state.collisions||[],time,state.serverTime);
+  if(state)updateEffects(effects,[...(localEvent?[localEvent]:[]),...(state.collisions||[])],time,Math.max(state.serverTime,localEvent?.at||0));
   const heldImpact=impactCamera(effects,self,time,reducedMotion);
   const ctx=canvas.getContext('2d')!;ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=rect.height;
-  const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
-  for(const e of entities){if(e.key==='p'+self&&predicted)continue;const track=trackRemote(positions.get(e.key),e,state?.serverTime||0,e.life,time,oneWay);if(e.key[0]==='b'||('phase' in e&&e.phase==='arena')){track.x=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.x));track.y=Math.max(FIELD.min+25,Math.min(FIELD.max-25,track.y));}positions.set(e.key,track);}
   const me=state?.players.find(p=>p.id===self),camera=heldImpact||(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
   const sx=(x:number)=>(x-camera.x)*zoom+w/2,sy=(y:number)=>(y-camera.y)*zoom+h/2;
   ctx.fillStyle='#14261f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#0c171c';ctx.fillRect(sx(FIELD.min),sy(FIELD.min),(FIELD.max-FIELD.min)*zoom,(FIELD.max-FIELD.min)*zoom);

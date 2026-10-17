@@ -59,7 +59,7 @@ export function join(a:Arena,id:string,token:string,name:string,now:number,profi
 }
 function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[]) {
   if(p.phase!=='arena'||p.runStartedAt===null)return;
-  const contact={x:p.x,y:p.y,bx:b.x,by:b.y};
+  const contact={life:p.life,x:p.x,y:p.y,bx:b.x,by:b.y};
   const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(now-p.runStartedAt)),generation:a.generation,bot:b.id,diedAt:now};
   p.scores={bestMs:Math.max(p.scores.bestMs,run.durationMs),runs:[run,...p.scores.runs].slice(0,10)};p.lastDeath=run;p.tags++;
   if(p.profileId)finished.push({...run,profileId:p.profileId});
