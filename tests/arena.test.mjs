@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -159,7 +159,7 @@ test('safe players, near misses and stale disconnected bot tracks cannot predict
 });
 test('a rejected prediction removes its effect and leaves server scores untouched',()=>{
  const a=createArena(0),p=runner(a,0),positions=new Map([['b0',trackRemote(undefined,{x:3028,y:3000,vx:0,vy:0},0,1,0,0)]]);
- const hit=predictContact(p,[{id:0}],positions,1,10,10,1,'frame');assert.ok(hit);
+ const hit=predictContact(p,[{id:0}],positions,1,300,300,1,'frame');assert.ok(hit);
  assert.equal(contactResult(hit,{...p,ack:1},hit),'pending','movement acknowledgement alone cannot reject a contact');
  assert.equal(contactResult(hit,{...p,ack:1},hit,{life:0,seq:1,status:'rejected'}),'rejected');
  const effects=createEffects();updateEffects(effects,[],0,0);updateEffects(effects,[hit.event],10,10);cancelEffect(effects,hit.event);
@@ -172,7 +172,7 @@ test('a moving bot that has passed the visible contact still commits death and o
  const a=createArena(1000),p=runner(a,1000);parkBots(a);p.ack=36;a.bots[0].x=3080;a.bots[0].y=3000;a.bots[0].vx=-100;
  const frameId=rememberContactFrame(a,p,1000),r={frameId,life:0,seq:36,bot:0,age:.6,x:3000,y:3000,bx:3020,by:3000};
  a.bots[0].x=2800;const finished=[];
- assert.equal(confirmContact(a,p,r,2000,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.ok(!inside(p.x,p.y));assert.equal(finished.length,1);assert.equal(a.totalTags,1);
+ assert.equal(confirmContact(a,p,r,2000,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.ok(!inside(p.x,p.y));assert.equal(finished.length,1);assert.equal(a.totalTags,1);assert.equal(p.lastDeath.durationMs,600,'network confirmation delay must not inflate the score');
  assert.equal(confirmContact(a,p,r,2600,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(finished.length,1,'lost-response retries cannot score or respawn twice');
  const outside={x:p.x,y:p.y};applyCommands(a,p,[command(37,0,0,-1)],4000,finished);assert.equal(p.x,outside.x);assert.equal(p.y,outside.y);assert.equal(p.runStartedAt,null);
  const client=reconcile(p,[command(38,0,0,-1)],a.obstacles,4000);assert.equal(client.phase,'safe');assert.equal(client.runStartedAt,null,'old-life replay cannot restart the timer');
@@ -346,4 +346,49 @@ test('the prominent countdown advances smoothly and pauses when the arena is emp
  state.players=[];assert.equal(generationClock(state,9000).remaining,5);assert.equal(generationClock(state,9000).running,false);
  state.bots=[{spawnWait:3}];assert.equal(generationClock(state,9000).warmup,3);
  state.players=[{phase:'arena'}];assert.equal(generationClock(state,2250).warmup,2);
+});
+
+test('an unseen server collision cannot kill a visible-contact player before delayed movement arrives',()=>{
+ const a=createArena(0);parkBots(a);const p=runner(a);p.contactMode='visible-v1';
+ const b=a.bots[0];b.x=p.x;b.y=p.y;const finished=[];
+ advance(a,750,finished);
+ assert.equal(p.life,0);assert.equal(p.phase,'arena');assert.equal(p.lastDeath,null);assert.equal(finished.length,0);
+ applyCommands(a,p,Array.from({length:45},(_,i)=>command(i+1,0,1,0)),750,finished);
+ assert.equal(p.x,3000+255*.75);assert.equal(p.life,0);assert.equal(p.scores.runs.length,0);
+ assert.equal(a.totalTags,0,'unseen overlaps must not train a successful touch');
+});
+
+test('visible contacts still commit one authoritative death, score and outside respawn',()=>{
+ const a=createArena(0);parkBots(a);const p=runner(a);p.contactMode='visible-v1';p.ack=3;
+ const b=a.bots[0];b.x=p.x+20;b.y=p.y;b.vx=0;b.vy=0;
+ const frameId=rememberContactFrame(a,p,400),report={frameId,life:0,seq:3,bot:0,age:0,x:p.x,y:p.y,bx:b.x,by:b.y},finished=[];
+ // Another participant's update can move the bot while this report travels.
+ b.x=3600;advance(a,750,finished);assert.equal(p.life,0);
+ assert.equal(confirmContact(a,p,report,800,finished).status,'confirmed');
+ assert.equal(p.life,1);assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.equal(finished.length,1);
+ assert.equal(confirmContact(a,p,report,900,finished).status,'confirmed');assert.equal(p.life,1);assert.equal(finished.length,1);
+});
+
+test('a new bot track cannot cause a first-frame death, but an established visible touch can',()=>{
+ const a=createArena(0),p=runner(a);const track=trackRemote(undefined,{x:3020,y:3000,vx:0,vy:0},10,-2,1000,0,[]),positions=new Map([['b0',track]]);
+ assert.equal(predictContact(p,[{id:0}],positions,2,1000,1000,1,'frame'),null);
+ assert.equal(predictContact(p,[{id:0}],positions,2,1249,1249,1,'frame'),null);
+ assert.ok(predictContact(p,[{id:0}],positions,2,1250,1250,1,'frame'));
+});
+
+test('visible contact mode and issued frame history are never exposed to other players',()=>{
+ const a=createArena(0),p=runner(a);p.contactMode='visible-v1';rememberContactFrame(a,p,0);
+ const view=JSON.stringify(snapshot(a));assert.ok(!view.includes('visible-v1'));assert.ok(!view.includes('contactFrames'));assert.ok(!view.includes(p.contactFrames[0].id));
+});
+
+test('a delayed new-generation snapshot starts at the fixed home and approaches its sample continuously',async()=>{
+ const {updatePositions}=await import(pathToFileURL(`${out}/renderer.mjs`));
+ const a=createArena(0),b=a.bots[0];b.spawnWait=0;b.x=4000;b.y=3000;
+ const positions=new Map();updatePositions(snapshot(a),null,positions,0,.375);
+ const old=positions.get('b0');assert.ok(old.x>=4000);
+ a.generation++;a.time=1000;b.x=3500;b.y=3000;b.vx=290;
+ updatePositions(snapshot(a),null,positions,1000,.375);
+ assert.equal(positions.get('b0').x,b.homeX);assert.equal(positions.get('b0').y,b.homeY);
+ let previous=positions.get('b0').x;
+ for(let time=1016;time<=2000;time+=16){updatePositions(snapshot(a),null,positions,time,.375);const t=positions.get('b0');assert.ok(Math.abs(t.x-previous)<=435*.016+.001);previous=t.x;}
 });

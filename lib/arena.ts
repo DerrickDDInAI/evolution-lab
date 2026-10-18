@@ -6,7 +6,7 @@ export { SIZE, FIELD }; export type { Obstacle };
 export const POPULATION=24, ROUND=45, MAX_PLAYERS=12, SPAWN_WARMUP=3;
 export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt:number};
 export type Scores={bestMs:number;runs:Run[]};
-export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;contactFrames?:ContactFrame[]};
+export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;contactMode?:'visible-v1';contactFrames?:ContactFrame[]};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
 export type Arena={version:2;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:{generation:number;fitness:number;tags:number}[];champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string};
 export type FinishedRun=Run & {profileId:string};
@@ -61,10 +61,15 @@ export function join(a:Arena,id:string,token:string,name:string,now:number,profi
   p.x+=a.players.filter(p=>p.phase==='safe').length%5*34-68;
   a.players.push(p);return p;
 }
-function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?:{generation:number;x:number;y:number;bx:number;by:number}) {
+function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?:{generation:number;x:number;y:number;bx:number;by:number;at?:number}) {
   if(p.phase!=='arena'||p.runStartedAt===null)return;
+  // HTTP snapshots and local prediction are different timelines. A current
+  // server overlap is not evidence that this player has seen a collision.
+  // Modern clients commit only a validated contact against an issued frame.
+  if(p.contactMode==='visible-v1'&&!observed)return;
   const contact={life:p.life,x:observed?.x??p.x,y:observed?.y??p.y,bx:observed?.bx??b.x,by:observed?.by??b.y};
-  const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(now-p.runStartedAt)),generation:observed?.generation??a.generation,bot:b.id,diedAt:now};
+  const endedAt=observed?.at??now;
+  const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(endedAt-p.runStartedAt)),generation:observed?.generation??a.generation,bot:b.id,diedAt:endedAt};
   p.scores={bestMs:Math.max(p.scores.bestMs,run.durationMs),runs:[run,...p.scores.runs].slice(0,10)};p.lastDeath=run;p.tags++;
   if(p.profileId)finished.push({...run,profileId:p.profileId});
   if(!observed||observed.generation===a.generation){b.fitness+=50;b.tags++;a.roundTags++;}
@@ -84,7 +89,7 @@ export function confirmContact(a:Arena,p:Player,r:ContactReport,now:number,finis
   if(p.ack<r.seq)return reply('pending'); // A long movement queue can span packets.
   const frame=p.contactFrames?.find(f=>f.id===r.frameId),bot=a.bots.find(b=>b.id===r.bot);
   if(p.phase!=='arena'||p.runStartedAt===null||!frame||!bot||!matchesContact(frame,r,p,now,a.obstacles))return reply('rejected');
-  kill(a,p,bot,now,finished,{generation:frame.generation,x:r.x,y:r.y,bx:r.bx,by:r.by});
+  kill(a,p,bot,now,finished,{generation:frame.generation,x:r.x,y:r.y,bx:r.bx,by:r.by,at:Math.max(p.runStartedAt,Math.min(now,frame.at+r.age*1000))});
   return reply('confirmed');
 }
 export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,finished:FinishedRun[]) {
@@ -146,7 +151,7 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
 export function snapshot(a:Arena,selfToken?:string) {
   const me=a.players.find(p=>p.token===selfToken);
   return {version:2,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,
-    players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactFrames,...p})=>p),
+    players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactMode,contactFrames,...p})=>p),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),
     bots:a.bots.map(({genome,...b})=>({...b,nodes:genome.nodes.length+11,connections:genome.genes.filter(c=>c.enabled).length})),obstacles:a.obstacles,

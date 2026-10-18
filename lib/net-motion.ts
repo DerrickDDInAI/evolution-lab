@@ -6,14 +6,14 @@ export function remoteAge(track:Track,now:number){return leadTime(track.oneWay)+
 export function projectBot(sample:Pose,age:number,obstacles:Obstacle[]):Pose {
   const p={...sample};moveActor(p,BOT_RADIUS,age,obstacles);return p;
 }
-export type Track={sample:Pose;stamp:number;receivedAt:number;frameAt:number;life:number;x:number;y:number;errorX:number;errorY:number;oneWay:number;angle:number;contactError?:number};
+export type Track={sample:Pose;stamp:number;receivedAt:number;frameAt:number;life:number;x:number;y:number;errorX:number;errorY:number;oneWay:number;angle:number;contactError?:number;visibleSince?:number};
 // Predict remote motion between packets and decay corrections in time, rather than
 // easing to a stale position and stopping until the next network response.
 export function trackRemote(previous:Track|undefined,sample:Pose,stamp:number,life:number,now:number,oneWay=0,obstacles?:Obstacle[],radius=BOT_RADIUS,phase:'safe'|'arena'='arena'):Track {
   const project=(p:Pose,age:number)=>{if(!obstacles)return {...p,x:p.x+p.vx*age,y:p.y+p.vy*age};const next={...p};moveActor(next,radius,age,obstacles,phase);return next;};
   if(!previous||previous.life!==life){
     const pose=project(sample,leadTime(oneWay));
-    return {sample:{...sample},stamp,receivedAt:now,frameAt:now,life,x:pose.x,y:pose.y,errorX:0,errorY:0,oneWay,angle:Math.atan2(sample.vy,sample.vx)};
+    return {visibleSince:now,sample:{...sample},stamp,receivedAt:now,frameAt:now,life,x:pose.x,y:pose.y,errorX:0,errorY:0,oneWay,angle:Math.atan2(sample.vy,sample.vx)};
   }
   if(previous.stamp!==stamp){
     const pose=project(sample,leadTime(oneWay));

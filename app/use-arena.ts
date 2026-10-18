@@ -21,7 +21,7 @@ export function useArena(help:boolean,zoom:number){
   const clearInput=()=>{keys.current.clear();taps.current.clear();stick.current={x:0,y:0,dash:false};};
   const clearSession=()=>{contact.current=null;localEvent.current=null;blockedContact.current=null;showNotice(null);setSession(null);sessionRef.current=null;commands.current=[];predicted.current=null;correction.current={x:0,y:0};clearInput();try{sessionStorage.removeItem('pursuit-session');}catch{}};
   function update(data:ArenaResponse,rtt=0,sentContact:LocalContact|null=null){
-    offset.current=data.serverTime+rtt/2-Date.now();networkDelay.current=rtt/2000;
+    offset.current=data.serverTime+rtt/2-Date.now();networkDelay.current=networkDelay.current?networkDelay.current*.8+rtt/2000*.2:rtt/2000;
     const auth=data.players.find(p=>p.id===sessionRef.current?.id);
     if(auth&&predicted.current&&auth.life<predicted.current.life)return;
     if(auth){
@@ -63,7 +63,7 @@ export function useArena(help:boolean,zoom:number){
       if(stopped)return;if(inFlight){urgent=true;return;}inFlight=true;clearTimeout(timer);
       const start=performance.now(),s=sessionRef.current,sentContact=contact.current;
       try{
-        const response=await fetch('/api/arena',s?{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'input',profileToken:profile.current,commands:commands.current.slice(0,MAX_PACKET_COMMANDS),...(sentContact?{contact:sentContact.report}:{})}),signal:AbortSignal.timeout(6000)}:{cache:'no-store',signal:AbortSignal.timeout(6000)});
+        const response=await fetch('/api/arena',s?{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'input',contactMode:'visible-v1',profileToken:profile.current,commands:commands.current.slice(0,MAX_PACKET_COMMANDS),...(sentContact?{contact:sentContact.report}:{})}),signal:AbortSignal.timeout(6000)}:{cache:'no-store',signal:AbortSignal.timeout(6000)});
         const data=await response.json() as ArenaResponse;
         if(stopped)return;
         if(s?.id!==sessionRef.current?.id)return;
@@ -126,7 +126,7 @@ export function useArena(help:boolean,zoom:number){
   async function enter(e:React.FormEvent){
     e.preventDefault();if(joining.current)return;joining.current=true;setBusy(true);setError('');
     try{
-      const start=performance.now(),r=await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',name:name.trim()||'Runner',profileToken:profile.current}),signal:AbortSignal.timeout(10000)}),data=await r.json() as ArenaResponse;
+      const start=performance.now(),r=await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',contactMode:'visible-v1',name:name.trim()||'Runner',profileToken:profile.current}),signal:AbortSignal.timeout(10000)}),data=await r.json() as ArenaResponse;
       if(!r.ok||!data.session)throw new Error(data.error||'Could not join. Please retry.');
       clearInput();contact.current=null;localEvent.current=null;blockedContact.current=null;showNotice(null);commands.current=[];sequence.current=0;predicted.current=null;setSession(data.session);sessionRef.current=data.session;update(data,performance.now()-start);
       try{sessionStorage.setItem('pursuit-session',JSON.stringify(data.session));localStorage.setItem('pursuit-name',name);}catch{}

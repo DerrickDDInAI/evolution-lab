@@ -36,6 +36,7 @@ export async function POST(request:Request){
   let input:any;try{input=JSON.parse(raw);}catch{return json({error:'Invalid request.'},400);}
   if(!['join','input','leave'].includes(input?.action))return json({error:'Unknown action.'},400);
   if(input.action==='join'&&(typeof input.name!=='string'||!input.name.trim()||input.name.length>20))return json({error:'Use a name between 1 and 20 characters.'},400);
+  if(input.contactMode!==undefined&&input.contactMode!=='visible-v1')return json({error:'Unsupported contact protocol. Reload the game.'},400);
   if(input.action==='input'){
     if(input.contact!==undefined&&!validContactReport(input.contact))return json({error:'Invalid contact report.'},400);
     if(!Array.isArray(input.commands)||input.commands.length>MAX_PACKET_COMMANDS)return json({error:'Reload this page to use the updated movement controls.'},400);
@@ -56,10 +57,15 @@ export async function POST(request:Request){
       if(!row||attempt>0)row=(await read(db))!;
       const now=Date.now(),a:Arena=upgradeArena(JSON.parse(row.state),now),finished:FinishedRun[]=[];
       let contactReply:ContactReply|undefined;
+      // Negotiate before simulation: an existing tab must not be killed by an
+      // unseen server overlap while its first updated input packet is applied.
+      const existing=a.players.find(p=>p.token===hash);
+      if(existing&&input.contactMode==='visible-v1')existing.contactMode='visible-v1';
       advance(a,now,finished);
       if(input.action==='join'){
         if(a.players.length>=12)return json({error:'The arena is full (12 players). Try again shortly.'},409);
-        join(a,id,hash,input.name.trim().replace(/[\u0000-\u001f]/g,''),now,profileId,saved!);
+        const joined=join(a,id,hash,input.name.trim().replace(/[\u0000-\u001f]/g,''),now,profileId,saved!);
+        if(input.contactMode==='visible-v1')joined.contactMode='visible-v1';
       }else{
         const p=a.players.find(p=>p.token===hash);if(!p)return json({error:'Your session expired. Rejoin to keep playing.'},401);
         if(input.action==='leave')a.players=a.players.filter(other=>other.id!==p.id);

@@ -1,85 +1,79 @@
 # Pursuit Lab
 
-A public multiplayer website inspired by `../../run_game.py`, focused on its second objective: AI bots chase and touch humans. The Pygame application is unchanged.
+A standalone multiplayer survival game inspired by Enter the Pygame. Up to 12 human players share a 6,000 × 6,000 world with 24 evolving bots. This repository has its own Git history and does not depend on the Python project.
+
+Live game: https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site/
 
 ## Play
 
-Enter a callsign and join the shared arena. Use WASD or arrow keys to move, hold Shift to sprint, or use the touch controls. Zoom buttons reveal more of the 6,000 × 6,000 world. One bot touch kills an active runner, records the survival time and killer generation, and respawns the runner outside. Players start in the safe zone at the south door. Crossing any of the four doors starts the timer; active runs stay inside until death. Share the site URL to play with friends; up to 12 players share 24 bots.
+Choose a name and press Play. Move with WASD or arrows; hold Shift to sprint. Phones have a movement pad and Sprint button. Players join outside the arena. Crossing a door starts a survival timer, and a validated bot touch ends the run and returns the player outside. Best and recent times, including the killer generation, are saved for the browser's anonymous identity.
 
-## Training
+Every 45 seconds of active simulation, a new generation returns to the same central starting points. Bots are gray and harmless for at least three seconds. A spawn stays harmless while a player is within 120 world units. Training pauses when nobody is inside.
 
-Every bot runs its own feed-forward neural network. The server supplies signed target offsets, human and bot velocities, nearest-obstacle direction and clearance, target distance, and a bias. Network outputs control both movement axes. There is no scripted pursuit steering.
-
-Fitness rewards distance closed by the bot (+0.04 per world unit) and human contact (+50), gives a small proximity reward, and penalizes obstacle contact (−3 per second). A dead runner respawns outside with a 1.2-second movement pause and a visible death notice. Bots stay inside the arena and cannot kill waiting players. The server records the exact killer generation before reproduction. Bots respawn near active humans at generation boundaries.
-
-Every 45 seconds of simulated active play, the best two genomes survive. Compatibility groups share selection pressure. Children inherit matching connection weights from two parents and mutate weights, connections, and hidden nodes. Historical node split IDs align topology between descendants. This is a compact **NEAT-inspired TypeScript implementation**, not neat-python, and exported JSON is not compatible with neat-python checkpoints. It omits full NEAT stagnation management and recurrent networks. Training outcomes vary; fitness across changing human opponents is not a controlled benchmark.
-
-The original project also contains evade and football objectives. This website implements chase & touch only.
-
-## Shared world
-
-The server owns movement, collisions, rewards, and evolution. Cloudflare D1 persists one arena row. Compare-and-swap revisions serialize concurrent updates across workers. Browsers immediately predict their own movement at 60 Hz using the same collision and movement code as the server. Sequenced input commands are acknowledged by the server, and only unacknowledged commands replay during reconciliation. Brief key taps are latched for one simulation step. Other players and bots extrapolate bounded movement between updates and blend corrections over time. Respawns and generation changes snap immediately. A server-time movement budget limits input spam; life counters discard delayed inputs after death. Authentication uses a random per-session token stored only in that tab; the server persists its SHA-256 hash and never sends hashes in world snapshots. Players expire after 15 seconds without a heartbeat; movement advances only through validated input commands. Training pauses without active runners inside the arena. Time since the previous update is capped at three seconds, so offline time is never replayed as training.
-
-This is a small-session prototype using HTTP polling (one request at a time, a 60 ms delay between updates, shortened when input changes, plus network latency), not a WebSocket game server. The 12-player cap is enforced; maximum-load performance has not been established. For larger populations or latency-sensitive competitive play, move the same simulation module to a persistent authoritative room service with WebSockets.
+The arena takes priority in the interface. Training metrics, fitness history, and champion export are available from **Training details**. The small top-center timer shows the current generation and time to the next one.
 
 ## Development
 
-Requires Node >=22.13.
+Requires Node.js 22.13 or later. The local preview uses Cloudflare D1; no Python installation is required.
 
-1. Install with the Sites dependency helper or `npm run install:ci`.
-2. Run `npm run build` to create local Worker configuration.
-3. Apply each new migration once: `node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_<generated-name>.sql`.
-4. Run `npm run dev` and open the printed loopback URL.
-5. Run `node --test tests/arena.test.mjs` for simulation/evolution checks and `npx tsc --noEmit` for type checks.
+```sh
+npm run install:ci
+npm run build
+```
 
-Hosted migrations are applied by Sites when publishing. Do not reset the production database to run tests.
+Apply the SQL files in `drizzle/` in order once for a fresh local database:
+
+```sh
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_high_carnage.sql
+```
+
+Then apply `drizzle/0001_messy_tombstone.sql` with the same command. Start the preview with `npm run dev -- --port 5173 --hostname 127.0.0.1`.
+
+```sh
+npm test
+npm run typecheck
+```
+
+With the local preview running, run these integration tests **sequentially** because they stage controlled fixtures in the same local database:
+
+```sh
+node tests/visible-contact.mjs
+node tests/contact-respawn.mjs
+ARENA_TEST_DEATH=1 node tests/multiplayer.mjs
+node tests/network-lag.mjs
+```
+
+Fixture scripts refuse non-loopback URLs. Never reset production data for testing. `.wrangler/`, `.sites-runtime/`, dependencies, credentials, and preview screenshots are ignored. The hosting identity in `.openai/hosting.json` belongs to the existing public Site; preserve it when publishing updates.
+
+## Movement and collision timing
+
+`lib/physics.ts` supplies the same swept-circle collision, sliding, wall, and boundary rules to players, bots, remote prediction, and display corrections. Body radius and desired speed are actor parameters. The solver checks the whole movement segment, so a long frame cannot skip through a rock. Snapshots publish actual post-collision velocities.
+
+Players predict their own movement at 60 Hz. The server replays sequenced commands with a time budget capped at three seconds; acknowledgements prevent duplicate movement and life counters reject inputs sent before a death. Bots simulate at 30 Hz. Remote actors extrapolate bounded movement and ease corrections without teleporting on ordinary packets. A generation transition starts each displayed bot at its fixed home, including when a late snapshot already places it farther away.
+
+New clients negotiate `visible-v1` contact handling. A server overlap with an older player position is **not** a death: that was the source of unseen kills during delayed updates. The browser detects overlap using the exact positions drawn, then submits the contact to the server. Newly introduced bot tracks have 250 ms of visual exposure before contact is eligible. The server validates the issued frame, life, acknowledged input, obstacle clearance, bounded projection/correction and overlap. It then commits the death, score and outside respawn atomically. Reports are private, expire, and are idempotent. The recorded time ends at the validated contact rather than including network confirmation delay. Older tabs retain the previous collision protocol until refreshed or upgraded.
+
+This is a casual training experiment, not a cheat-resistant competitive server. Visible-contact detection relies on the browser reporting contacts; modified clients could withhold reports. The server still validates submitted contacts and movement, owns bot evolution and durable scores, and keeps player identities private. A competitive version needs a persistent room server, synchronized input history and stronger replay verification.
+
+Transport is serialized HTTP polling with a 60 ms interval plus network latency. It is not a WebSocket room. Smoothing removes position snaps, but cannot eliminate delayed information or connection outages. The 12-player cap is enforced; maximum-load performance is not established.
+
+## Learning
+
+Each bot runs a feed-forward network using target offsets, actor velocities, nearest-obstacle direction and clearance, distance, and bias. Outputs choose movement; pursuit is not scripted. Fitness rewards closing distance (+0.04/unit), contact (+50), and proximity, and penalizes obstacle contact (−3/second).
+
+The best two genomes survive each generation. Compatibility groups share selection pressure; children inherit weights and mutate weights, connections, and hidden nodes. Historical split IDs align descendant topology. This TypeScript implementation is **NEAT-inspired**, not neat-python, and exported champions are not compatible with Python checkpoints. It omits full NEAT stagnation management and recurrent networks. Changing human opponents make fitness an uncontrolled training signal.
 
 ## Modules
 
-- `lib/evolution.ts`: network activation, topology mutation, compatibility groups, crossover.
-- `lib/arena.ts`: deterministic world state, movement, collisions, rewards, and generations.
-- `app/api/arena/route.ts`: durable shared arena, session validation, atomic updates, champion export.
-- `lib/renderer.ts`: canvas world, camera and minimap.
-- `app/page.tsx`: lobby, input, networking and live training dashboard.
-- `db/schema.ts`: persistent arena schema.
+- `lib/arena.ts`: world simulation, generations, private frame history, deaths and spawns.
+- `lib/physics.ts`: shared movement and collision solver.
+- `lib/evolution.ts`: neural activation, topology mutation, compatibility and breeding.
+- `lib/net-motion.ts`: remote movement and bounded visual corrections.
+- `lib/contact-report.ts`, `lib/contact-prediction.ts`: visible contact detection and server validation.
+- `lib/renderer.ts`, `lib/collision-effects.ts`: arena, minimap and deduplicated impact animation; reduced-motion support.
+- `app/use-arena.ts`: input, networking, prediction, reconciliation and score state.
+- `app/page.tsx`, `app/globals.css`: game interface and responsive controls.
+- `app/api/arena/route.ts`: sessions, D1 transactions, conflict retries and champion export.
+- `db/schema.ts`, `drizzle/`: persistent arena and personal run records.
 
-## Survival records
-
-A random anonymous identity secret stays in this browser's local storage. The server hashes it and stores completed runs in the indexed `runs` table. Best time and the ten latest runs are restored when joining again; the page displays the five latest (three on small screens). Records belong to that browser identity, with no account required. Clearing browser storage creates a new identity. Personal records and profile hashes are excluded from public arena snapshots.
-
-Deaths and score inserts commit in one D1 transaction. A unique world commit marker guards each score insert, preventing scores from failed optimistic updates. Existing version-one worlds upgrade their geometry and player states while preserving learned bot genomes, generation number and training history.
-
-Additional modules: `lib/physics.ts` shares movement and arena walls between browser and server; `lib/prediction.ts` replays unacknowledged movement; `app/use-arena.ts` handles frame updates, input buffering, networking and personal scores.
-
-For the full local multiplayer/death persistence check, run `ARENA_TEST_DEATH=1 node tests/multiplayer.mjs`. Its controlled-contact fixture is restricted to the loopback preview and never targets production data.
-
-## Lag handling
-
-Player movement credit accumulates from elapsed server time up to three seconds, so an ordinary 600–800 ms production update does not discard valid movement. Clients keep up to six seconds of unacknowledged commands, sending at most three seconds per packet; sequence acknowledgements prevent duplicate movement. Minor display corrections ease out over 80 ms. The server simulates bots at 30 Hz and caches sorted neural activation plans during each request. Each normal update reads the shared world once, then commits its revision; concurrent writes retry from a fresh read.
-
-Canvas bounds update through ResizeObserver instead of forcing a layout read each frame. Canvas pixel density is capped at 1.5 to reduce Retina fill cost. Network latency still depends on the hosting region and HTTP transport; these changes remove discarded-input rollbacks and reduce visible stutter rather than making network round trips instantaneous.
-
-Run `node tests/network-lag.mjs` against the local preview for four successive 750 ms delayed input packets. The simulation suite also checks the latency budget, correction smoothing, continuous remote movement at 750 ms latency, and cached neural output equivalence.
-
-## Collision animation
-
-Lethal player/bot contacts publish a small authoritative impact event containing the contact point, bot, player and respawn point. Events expire after five seconds and are capped at 24. Clients deduplicate them, skip old events on page load, and discard completed effects after 1.25 seconds. The effect uses 16 particles, expanding rings, a short hit flash and a fading avatar silhouette. The caught player's camera holds at the impact for 500 ms before returning to the outside spawn, where a green pulse marks the return. Existing death timing, score writes and movement validation stay authoritative.
-
-With reduced motion enabled, the camera stays with the player and moving particles and expanding rings are replaced by a brief static ring and gentle fade. Effects require no assets, dependencies, or additional network requests.
-
-
-Local contact feedback is detected from the exact player and bot positions drawn each frame (`lib/contact-prediction.ts`). The impact and frozen timer appear immediately with a pending contact notice. The client sends that contact alongside its sequenced movement, retaining the stopped state across retries. It does not announce death or invent an outside respawn before server confirmation.
-
-The server keeps up to eight recent private bot frames per player, expiring after eight seconds (`lib/contact-report.ts`). Reports must reference an issued frame, the current life, acknowledged movement, and an actual overlap consistent with bounded extrapolation and correction. This accepts a visible contact even when the bot has moved past it before the request arrives. Validated contact uses the same atomic death, score and outside-respawn transaction as server-detected contact. Retrying a report from an ended life cannot cause another death or score. Generation-boundary reports retain the observed killer generation without rewarding its replacement. Frame histories and identifiers are excluded from public snapshots.
-
-Only a confirmed newer life resets the client to the outside spawn, discards old-life inputs and sets the chrono to zero. The chrono starts again only on a new door entry. A movement acknowledgement alone or a request timeout cannot resurrect a player. Invalid contact reports are explicitly rejected; they never display a confirmed death. Impact effects remain deduplicated by player/life. Held-key repeats after input clearing do not automatically restart movement.
-
-Run `node tests/contact-respawn.mjs` against the local preview for the moving-bot regression, atomic score persistence, report retries and stale-life input checks. The simulation suite covers repeated deaths, fresh door entry, safe zones, invalid reports and generation changes. Browser QA with 750 ms delayed API replies verifies that a completed nonzero run respawns outside and the timer remains at zero after the death notice disappears.
-
-## Bot movement and obstacle consistency
-
-Bot prediction, position correction and server movement use the same swept circle collision solver. It checks the entire travel segment and slides along obstacle boundaries, preventing long frames or corrections from cutting through a rock. Existing overlaps are repaired and bot spawns are checked. Bot velocity in snapshots reflects actual displacement after collisions; blocked bots publish zero motion. Contact validation projects the same obstacle-aware path and rejects reported bot positions inside rocks.
-
-Remote movement uses the world simulation timestamp rather than the time of a spectator's read. Latency lead tracks the measured one-way estimate up to 500 ms, followed by bounded extrapolation; position corrections decay over 180 ms and heading turns smoothly. The minimap uses the displayed bot positions. This reduces visible delay and rubber-banding, but HTTP latency and sudden network interruptions still limit how quickly new server decisions arrive.
-
-Regression coverage includes delayed frames, overlapping rocks, correction paths across obstacles, stopped-bot velocities, contact validation, and continuous movement under 750–1200 ms round trips. A local benchmark of 24 bots and 51 rocks across 625 frames recorded no penetrations and averaged about 0.064 ms per frame for movement prediction on the development machine (not a whole-browser frame-rate measurement). Browser QA with a 750 ms response delay verified bots stopped at the same obstacle boundary from two directions. Contact, respawn, persistence and delayed-input integration checks remain part of validation.
+D1 compare-and-swap revisions serialize world updates. A unique commit marker guards score inserts in the same transaction, so failed retries cannot create duplicate scores. Session tokens stay in session storage and anonymous score identities in local storage; only hashes are persisted server-side. Clearing browser storage creates a new identity. Frame histories, identity hashes and private records are excluded from public world snapshots.
