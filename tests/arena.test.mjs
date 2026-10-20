@@ -424,3 +424,39 @@ test('depth ordering interleaves actors and plants without changing input and fa
  assert.equal(overlaps({x:0,y:0,width:100,height:100},{x:40,y:90,width:20,height:50}),true,'fade even when feet are below the canopy');
  assert.equal(overlaps({x:0,y:0,width:100,height:100},{x:101,y:90,width:20,height:50}),false);
 });
+
+test('actor facing covers eight world headings and holds still near a sector boundary',async()=>{
+ const {facingDirection}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ for(let direction=0;direction<8;direction++){
+  const angle=direction*Math.PI/4;
+  assert.equal(facingDirection(-Math.sin(angle)*200,Math.cos(angle)*200),direction);
+  assert.equal(facingDirection(0,0,direction),direction);
+  assert.equal(facingDirection(NaN,4,direction),direction);
+ }
+ const angle=25*Math.PI/180;
+ assert.equal(facingDirection(-Math.sin(angle)*200,Math.cos(angle)*200,0),0);
+ assert.equal(facingDirection(-Math.sin(angle)*200,Math.cos(angle)*200,1),1);
+ assert.equal(facingDirection(-100,100,0),1);
+});
+test('facing and gait follow visible travel, stop at rest and reset on new lives',async()=>{
+ const {actorPose}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ const actor={x:100,y:100,vx:200,vy:0,life:1};
+ const initial=actorPose(undefined,actor,0);
+ const moved=actorPose(initial,{...actor,x:104},20);
+ assert.equal(moved.facing,6);assert.equal(moved.moving,true);assert.equal(moved.travel,4);
+ const idle=actorPose(moved,{...actor,x:104},40);
+ assert.equal(idle.moving,false);assert.equal(idle.facing,6);assert.equal(idle.travel,4);
+ const newborn=actorPose(idle,{...actor,life:2,vx:0},60);
+ assert.equal(newborn.travel,0);assert.equal(newborn.facing,0);assert.equal(newborn.moving,false);
+ const teleport=actorPose(moved,{...actor,x:900},40);
+ assert.equal(teleport.travel,0);assert.equal(teleport.moving,false);
+});
+test('directional art uses valid frame mappings and leaves a missing sheet to fallback',async()=>{
+ const {directionalFrame,directionalSprite}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ for(const human of [true,false])for(let direction=0;direction<8;direction++){
+  const frame=directionalFrame(human,direction);
+  assert.ok(frame.cell>=(human?0:8)&&frame.cell<(human?8:16));
+  assert.equal(frame.flip,direction>=1&&direction<=3);
+ }
+ assert.equal(directionalSprite({}, {complete:false,naturalWidth:0},true,0,0,0,60),false);
+});

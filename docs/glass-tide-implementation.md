@@ -38,10 +38,18 @@ Environment: macOS, Node.js 22.22.3, npm 10.9.8, existing dependencies. Producti
 
 The first attempted test rerun in the source checkout was blocked by sandbox write permissions for generated test modules; the same final sources passed in the disposable checkout.
 
-Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. Sprites use static poses with gentle movement, not directional animation sheets. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
+Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. The initial sprites used static poses; the directional follow-up below replaces moving actors with eight-way facing. Full multi-frame limb animation remains future work. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
 
 ## Local use
 
 Use the repository's documented setup and `npm run dev` with its prepared local database. The temporary QA preview can be restarted from its directory with `npm run start -- --port 5174`; it contains disposable fixture scores and training state.
 
 Next review is the user's visual assessment, followed by physical touch/reduced-motion and multi-player readability checks if this direction proceeds toward release.
+
+## Directional movement follow-up
+
+Accepted 2026-10-20: add eight facing poses to survivors and active seed sentinels, using the existing art as reference. Keep facing at rest, suppress boundary jitter, preserve dormant seeds and world-space collision rules. Builder owns this focused follow-up review; no additional delegation. Acceptance: all eight movement headings select the matching pose, idle retains facing, respawns reset visual state, missing artwork falls back safely, and normal/reduced-motion rendering keeps contact rings anchored. Verify with focused regression tests, type checking/build and browser movement checks.
+
+Directional follow-up verification: 54/54 tests and TypeScript passed; production build passed in the existing disposable preview. Focused renderer/helper lint passed. Browser checks verified front, rear, profile and diagonal survivor views, retained idle facing, moving sentinels and unchanged ground anchors. The three added tests cover all eight headings, boundary hysteresis/idle retention, distance-based gait/reset behavior and missing-sheet fallback. Existing integration results above are from the original tilted implementation; no networking/domain changes were made in this follow-up, so those fixtures were not repeated. Physical touch and OS reduced-motion visual testing remain unverified.
+
+The directional sheet uses five inspected views per actor plus mirrored counterparts for eight headings; per-row sampling and feet/tail anchors account for uneven generated atlas spacing. Movement bob uses actual travelled distance and stops while stationary; reduced-motion mode suppresses bob while retaining directional cues. Pose state is scoped to the canvas and discarded for missing actors/new lives.

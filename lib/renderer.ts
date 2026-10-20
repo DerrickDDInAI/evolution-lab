@@ -1,16 +1,16 @@
-import {GROUND_TILT,visibleGround,glassArt,ready,sprite,groundEllipse,depthOrder,overlaps} from './glass-tide';
+import {GROUND_TILT,visibleGround,glassArt,ready,sprite,groundEllipse,depthOrder,overlaps,actorPose,directionalSprite,type ActorPose} from './glass-tide';
 import { FIELD, walls } from './physics';
 import {createEffects,updateEffects,cancelEffect,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline,type CollisionEvent} from './collision-effects';
 import {trackRemote,type Track} from './net-motion';
 import type { snapshot } from './arena';
 import type { PredictedPlayer } from './prediction';
 export type View=ReturnType<typeof snapshot>;
-type CanvasSize={width:number;height:number;observer:ResizeObserver|null;effects:EffectTimeline;motion:MediaQueryList|null};
+type CanvasSize={width:number;height:number;observer:ResizeObserver|null;effects:EffectTimeline;motion:MediaQueryList|null;poses:Map<string,ActorPose>};
 const surfaces=new WeakMap<HTMLCanvasElement,CanvasSize>();
 function canvasSize(canvas:HTMLCanvasElement){
   let size=surfaces.get(canvas);
   if(!size){
-    const rect=canvas.getBoundingClientRect();size={width:rect.width,height:rect.height,observer:null,effects:createEffects(),motion:typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null};
+    const rect=canvas.getBoundingClientRect();size={width:rect.width,height:rect.height,observer:null,effects:createEffects(),poses:new Map(),motion:typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null};
     if(typeof ResizeObserver!=='undefined'){
       const surface=size;surface.observer=new ResizeObserver(entries=>{const rect=entries[0]?.contentRect;if(rect){surface.width=rect.width;surface.height=rect.height;}});surface.observer.observe(canvas);
     }
@@ -60,14 +60,16 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,h);ctx.rect(sx(FIELD.min),sy(FIELD.min),(FIELD.max-FIELD.min)*zoom,(FIELD.max-FIELD.min)*zoom*GROUND_TILT);ctx.clip('evenodd');
   ctx.fillStyle='#e9ddc790';ctx.fillRect(0,0,w,h);ctx.restore();
 
-  type Actor={x:number;y:number;kind:'human'|'bot';id:string;name:string;own:boolean;warming:boolean;vx:number;vy:number};
+  type Actor={x:number;y:number;kind:'human'|'bot';id:string;name:string;own:boolean;warming:boolean;life:number;vx:number;vy:number};
   const actors:Actor[]=[];
-  for(const b of state?.bots||[]){const p=positions.get('b'+b.id)||b;if(visible(p.x,p.y,80))actors.push({x:p.x,y:p.y,kind:'bot',id:String(b.id),name:'',own:false,warming:(b.spawnWait??0)>0,vx:b.vx,vy:b.vy});}
+  for(const b of state?.bots||[]){const p=positions.get('b'+b.id)||b;if(visible(p.x,p.y,80))actors.push({x:p.x,y:p.y,kind:'bot',id:String(b.id),name:'',own:false,warming:(b.spawnWait??0)>0,life:-(state?.generation||1),vx:b.vx,vy:b.vy});}
   for(const p of state?.players||[]){
     if((pendingContact&&p.id===self)||vanishing(effects,p.id,time,reducedMotion))continue;
     const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p;
-    if(visible(pos.x,pos.y,80))actors.push({x:pos.x,y:pos.y,kind:'human',id:p.id,name:p.name,own:p.id===self,warming:false,vx:'vx' in pos?pos.vx:p.vx,vy:'vy' in pos?pos.vy:p.vy});
+    if(visible(pos.x,pos.y,80))actors.push({x:pos.x,y:pos.y,kind:'human',id:p.id,name:p.name,own:p.id===self,warming:false,life:p.life,vx:'vx' in pos?pos.vx:p.vx,vy:'vy' in pos?pos.vy:p.vy});
   }
+  const liveKeys=new Set(actors.map(a=>a.kind+':'+a.id));
+  for(const key of rect.poses.keys())if(!liveKeys.has(key))rect.poses.delete(key);
   const actorBoxes=actors.map(a=>({actor:a,box:{x:sx(a.x)-24*zoom,y:sy(a.y)-51*zoom,width:48*zoom,height:60*zoom}}));
   const objects:{y:number;order:number;draw:()=>void}[]=[];
   const plant=(x:number,y:number,r:number,cell:number,order:number)=>{
@@ -131,11 +133,14 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
     if(!reducedMotion&&Math.hypot(actor.vx,actor.vy)>10){
       const ripple=(time%1300)/1300;ctx.globalAlpha=.28*(1-ripple);groundEllipse(ctx,x,y,(radius+8+20*ripple)*zoom);ctx.strokeStyle='#f5f3dc';ctx.stroke();ctx.globalAlpha=1;
     }
+    const key=actor.kind+':'+actor.id,pose=actorPose(rect.poses.get(key),actor,time);
+    rect.poses.set(key,pose);
     objects.push({y:actor.y,order:2,draw:()=>{
-      const moving=Math.hypot(actor.vx,actor.vy)>10;
-      const sway=reducedMotion?0:Math.sin(time/(actor.kind==='human'?90:300)+actor.x)*(moving?1.5:.5)*zoom;
+      const moving=pose.moving;
+      const sway=reducedMotion?0:actor.kind==='human'?(moving?-Math.abs(Math.sin(pose.travel/9))*1.8*zoom:0):Math.sin(time/300+actor.x)*.7*zoom;
       const human=actor.kind==='human',size=(human?59:actor.warming?39:47)*zoom;
-      if(!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,actor.vx<0)){
+      const drawn=!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size);
+      if(!drawn&&!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,pose.facing>=1&&pose.facing<=3)){
         groundEllipse(ctx,x,y,radius*zoom);ctx.fillStyle=human?'#f5e9b3':actor.warming?'#e0e7dc':'#d78542';ctx.fill();
       }
     }});
