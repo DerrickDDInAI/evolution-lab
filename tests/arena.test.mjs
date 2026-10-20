@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','renderer']){
+for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -391,4 +391,36 @@ test('a delayed new-generation snapshot starts at the fixed home and approaches 
  assert.equal(positions.get('b0').x,b.homeX);assert.equal(positions.get('b0').y,b.homeY);
  let previous=positions.get('b0').x;
  for(let time=1016;time<=2000;time+=16){updatePositions(snapshot(a),null,positions,time,.375);const t=positions.get('b0');assert.ok(Math.abs(t.x-previous)<=435*.016+.001);previous=t.x;}
+});
+
+test('tilted camera keeps contact footprints faithful in every direction and zoom',async()=>{
+ const {projectGround,GROUND_TILT}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ const camera={x:3000,y:4800},p={x:3042,y:4700};
+ for(const zoom of [.35,1,1.5])for(const distance of [28.99,29,29.01])for(let i=0;i<16;i++){
+  const angle=i*Math.PI/8,b={x:p.x+Math.cos(angle)*distance,y:p.y+Math.sin(angle)*distance};
+  const a=projectGround(p,camera,zoom,1280,720),s=projectGround(b,camera,zoom,1280,720);
+  const normalized=Math.hypot((s.x-a.x)/zoom,(s.y-a.y)/zoom/GROUND_TILT);
+  assert.ok(Math.abs(normalized-distance)<1e-9);
+  assert.equal(normalized<=29+1e-9,distance<=29,'projected ground ellipses must not imply a different contact distance');
+ }
+});
+test('tilted minimap viewport includes the full visible depth and round-trips to world coordinates',async()=>{
+ const {projectGround,unprojectGround,visibleGround}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ for(const [width,height] of [[1440,800],[390,600]])for(const zoom of [.35,1,1.5]){
+  const camera={x:3050,y:4850},bounds=visibleGround(camera,zoom,width,height);
+  for(const screen of [{x:0,y:0},{x:width,y:height},{x:width/2,y:height/2}]){
+   const world=unprojectGround(screen,camera,zoom,width,height),back=projectGround(world,camera,zoom,width,height);
+   assert.ok(Math.abs(back.x-screen.x)<1e-9&&Math.abs(back.y-screen.y)<1e-9);
+   assert.ok(world.x>=bounds.left-1e-9&&world.x<=bounds.right+1e-9&&world.y>=bounds.top-1e-9&&world.y<=bounds.bottom+1e-9);
+  }
+  assert.ok(bounds.bottom-bounds.top>height/zoom,'depth compression must increase visible world height');
+ }
+});
+test('depth ordering interleaves actors and plants without changing input and fades head-only overlaps',async()=>{
+ const {depthOrder,overlaps}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ const items=[{name:'front player',y:50,order:2},{name:'plant',y:40,order:1},{name:'rear player',y:30,order:2},{name:'same-depth player',y:40,order:2}];
+ assert.deepEqual(depthOrder(items).map(x=>x.name),['rear player','plant','same-depth player','front player']);
+ assert.equal(items[0].name,'front player');
+ assert.equal(overlaps({x:0,y:0,width:100,height:100},{x:40,y:90,width:20,height:50}),true,'fade even when feet are below the canopy');
+ assert.equal(overlaps({x:0,y:0,width:100,height:100},{x:101,y:90,width:20,height:50}),false);
 });
