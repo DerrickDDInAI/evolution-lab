@@ -16,3 +16,48 @@
 @media(max-width:700px){.app{padding:0 10px;min-height:640px}.topbar{height:66px;gap:12px}.brand{font-size:23px;gap:7px}.brand small{font-size:8px;letter-spacing:2px}.brand-seed{width:23px}.topbar nav{gap:0}.topbar nav button{min-height:40px;font-size:11px;padding:6px 9px}.connection{display:none}.arena-shell{border-radius:20px 8px 20px 8px}.arena-status{top:12px;left:10px;font-size:8px;letter-spacing:.5px;padding:6px 8px}.generation-clock{top:10px;left:auto;right:10px;transform:none;font-size:9px;padding:6px 12px;gap:5px}.generation-clock strong{font-size:11px}.spawn-status{top:52px;font-size:9px}.join-card{left:50%;transform:translate(-50%,-50%);width:min(285px,calc(100% - 32px));padding:24px}.join-card h1{font-size:32px}.eyebrow{margin-bottom:14px}.map-panel{width:94px;right:10px;bottom:62px;padding:7px}.map-panel canvas{height:62px}.map-panel>span{font-size:7px;letter-spacing:1px}.view-controls{right:10px;bottom:12px}.view-controls button{height:38px;min-height:38px;width:32px}.player-hud{left:10px;bottom:12px;width:163px;padding:13px 15px}.player-hud>span{font-size:8px;letter-spacing:1px}.player-hud>strong{font-size:22px}.stamina{gap:8px}.breath-organ{gap:2px;padding:4px 5px;height:23px}.controls-bar{gap:8px;min-height:42px}.key-guide{font-size:9px;gap:3px}.key-guide>span{margin-right:5px}.legend,.latency{display:none}.controls-bar>button{font-size:10px;padding:5px}.score-best{min-width:112px}.score-best strong{font-size:19px}.scores-panel{padding:12px 0;gap:12px;min-height:76px}.score-best>span,.recent-runs>span{font-size:8px;letter-spacing:.4px}.recent-runs small{display:none}.recent-runs ol{gap:14px}.recent-runs strong{font-size:13px}.recent-runs li:nth-child(n+3){display:none}.recent-runs p{font-size:11px}.training-panel{width:min(320px,100%)}.expanded{padding:0}.death-notice{top:82px}.death-notice span{font-size:10px}.invite-full{display:none}.invite-short{display:inline}}
 @media(pointer:coarse){button{min-height:44px}.key-guide{display:none}.touch-guide{display:inline;font-size:10px}.touch-controls{position:absolute;left:16px;right:16px;bottom:140px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}.joystick{pointer-events:auto;touch-action:none;width:88px;height:88px;border:1px solid #b7c9ac;border-radius:50%;background:#e6eed875;display:grid;place-items:center;box-shadow:inset 0 0 0 6px #e9eedb33}.joystick span{width:34px;height:34px;border-radius:50%;background:#8fae9699;border:1px solid #d8e5c8}.dash-touch{pointer-events:auto;touch-action:none;border-radius:50% 50% 40% 40%;width:62px;height:62px;border:1px solid #b2c19d;background:#e8ecdce8;font-size:11px;color:#34574c}.arena-shell:has(.touch-controls) .map-panel{bottom:240px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.mission-hud{position:absolute;top:66px;left:50%;transform:translateX(-50%);max-width:430px;width:calc(100% - 300px);padding:10px 16px;background:#153f3ded;color:#f6edcc;border:1px solid #c6c78c70;border-radius:15px 22px;pointer-events:none;text-align:center;display:grid;gap:4px}.mission-hud strong{font-size:13px}.mission-hud span{font-size:11px}.mission-hud small{font-size:10px;color:#ceddc6}
+
+@media(max-width:650px){.mission-hud{top:60px;width:calc(100% - 24px);padding:7px 10px}.mission-hud span{font-size:10px}.mission-hud small{display:none}}
+.arena-shell:has(.spawn-status) .mission-hud{top:92px}
+@media(max-width:650px){.arena-shell:has(.spawn-status) .mission-hud{top:82px}}
+
+/* Expedition Nursery: an uncropped art plate with live text, actor and pad overlays. */
+.app.choosing{padding:0;min-height:0;background:#244e4d}
+.choosing .arena-shell{border:0;border-radius:0;min-height:0;box-shadow:none}
+.choosing .topbar{position:absolute;right:20px;top:16px;height:auto;z-index:14}
+.choosing .topbar .brand,.choosing .connection,.choosing .topbar nav button:first-child{display:none}
+.choosing .topbar nav button{background:#fff5dce6;border:1px solid #e4cfac;color:#244b48;box-shadow:0 2px 12px #163c3c25}
+.choosing .world,.choosing .arena-status,.choosing .generation-clock,.choosing .map-panel,.choosing .view-controls{visibility:hidden}
+.mode-menu{position:absolute;z-index:12;inset:0;display:grid;place-items:center;overflow:hidden;background:#2c5754}
+.mode-menu::before{content:'';position:absolute;inset:-20px;background:url('/glass-tide/nursery-menu.png') center/cover;filter:blur(14px) brightness(.65)}
+.nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/glass-tide/nursery-menu.png') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
+.nursery-scene:focus-visible::after{content:'';position:absolute;inset:5px;border:1px solid #fff2c96b;pointer-events:none}
+.nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;text-shadow:0 1px 4px #fff8e8}
+.nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8}
+.nursery-label{position:absolute;z-index:4;top:21.8%;width:20%;height:9.7%;min-height:0;padding:0;gap:.6cqw;display:flex;flex-direction:column;border:0;border-radius:45%;font-family:Georgia,serif;color:#143f42;text-shadow:0 1px 3px #fff7e5;transition:filter .15s}
+.nursery-label.survival{left:23%;transform:rotate(-5deg)}.nursery-label.motion{left:57%;transform:rotate(4deg)}
+.nursery-label strong{font-size:1.9cqw;font-weight:400;letter-spacing:.08cqw;text-transform:uppercase;white-space:nowrap}
+.nursery-label span{font-size:1.08cqw;color:#302d22;white-space:nowrap}
+.nursery-label:hover,.nursery-label.selected{background:transparent;border:0;filter:drop-shadow(0 0 6px #fff3bb)}
+.nursery-label:focus-visible{outline:2px solid #b47e36;outline-offset:4px;background:#fff1ce66}
+.nursery-pad{position:absolute;z-index:1;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
+.pad-halo{fill:#f7c45700;stroke:#ffedb700;stroke-width:3}.pad-veins{fill:none;stroke:#ffe3a0;stroke-width:1.8;opacity:0;stroke-linecap:round;stroke-linejoin:round}.pad-progress{fill:none;stroke:#fff0b3;stroke-width:7;transform:rotate(-90deg);transform-origin:center;filter:drop-shadow(0 0 4px #ff9900)}
+.nursery-pad.selected .pad-halo{fill:#ffc34224;stroke:#ffd68a;filter:drop-shadow(0 0 7px #ffb73b)}.nursery-pad.selected .pad-veins{opacity:1;filter:drop-shadow(0 0 3px #ff9c22)}
+.nursery-survivor{position:absolute;left:50%;top:68.5%;z-index:3;width:10.75%;height:auto;transform:translate(-50%,-89.47%);pointer-events:none;filter:drop-shadow(-8px 9px 5px #193c3b33)}
+.nursery-instructions{position:absolute;left:28%;top:91.3%;width:44%;margin:0;text-align:center;color:#332e20;font-size:1.03cqw;letter-spacing:.025cqw;white-space:nowrap}.nursery-instructions span{padding:0 .25cqw}
+.nursery-touch-hint{position:absolute;left:0;right:0;bottom:1.2%;margin:0;text-align:center;font:10px system-ui;color:#fff8e3;text-shadow:0 1px 4px #143d3c;opacity:0}.nursery-scene:focus-visible .nursery-touch-hint{opacity:1}
+@media(max-aspect-ratio:1/1){
+ .nursery-scene{width:100vw;margin-top:-90px}
+ .nursery-scene h1{top:7%;left:15%;width:70%;font-size:5cqw;letter-spacing:1cqw}
+ .nursery-ornament{top:16%;left:37.5%;width:25%}
+ .nursery-label{top:104%;height:75px;width:43%;border:1px solid #e2d0ad;background:linear-gradient(140deg,#fff4dff5,#dfe7d8f5);border-radius:28px 10px;gap:7px;box-shadow:0 5px 20px #183e3c33;text-shadow:none}
+ .nursery-label.survival{left:4%;transform:none}.nursery-label.motion{left:53%;transform:none}
+ .nursery-label strong{font-size:4cqw;letter-spacing:.1cqw}.nursery-label span{font-size:2.6cqw}
+ .nursery-label:hover,.nursery-label.selected{border:1px solid #ffd591;background:#fff0d1;box-shadow:0 0 20px #ffc15b55;filter:none}
+ .nursery-instructions{top:calc(104% + 97px);left:0;width:100%;font-size:3.1cqw;color:#fff5db;text-shadow:0 1px 4px #173c3b}
+ .nursery-touch-hint,.nursery-scene:focus-visible .nursery-touch-hint{top:calc(104% + 124px);bottom:auto;font-size:2.8cqw;opacity:1}
+ .nursery-survivor{width:13%}.choosing .topbar{top:12px;right:12px}
+}
+@media(prefers-reduced-motion:reduce){.nursery-label{transition:none}}

@@ -1,5 +1,5 @@
 import { movePlayer,type Command,type Motion,type Obstacle } from './physics';
-export type PredictedPlayer = Motion & {id:string;life:number;ack:number;name:string};
+export type PredictedPlayer = Motion & {carrying?:boolean;id:string;life:number;ack:number;name:string};
 // Replay only commands the server has not acknowledged. Other entities are interpolated.
 export function reconcile(authoritative:PredictedPlayer,commands:Command[],obstacles:Obstacle[],now:number):PredictedPlayer {
   const p={...authoritative};

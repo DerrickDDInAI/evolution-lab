@@ -1,12 +1,14 @@
 # Current project state
 
-Source baseline: `main` at `93a20c9`, inspected 2026-10-19 when the checkout was clean. Updated 2026-10-20 for the tilted Glass Tide implementation on `codex/glass-tide-tilted`; earlier uncommitted workflow/design work and the proposed gameplay mode were preserved. Recheck status and source before relying on this snapshot.
+Current implementation baseline: `main` at `18b65bc`, inspected 2026-10-20 with a clean checkout before this task. Motion Hunt/menu changes are prepared for the user-authorized publication. The prior Glass Tide work is preserved. Recheck status and source before relying on this snapshot.
 
 ## Purpose and current outcome
 
 **Observed product:** a standalone browser multiplayer survival game and NEAT-inspired learning experiment. The [README](../README.md) owns gameplay and technical details. Casual players and people exploring evolving bot behavior are the inferred audience; no participant research or formally accepted product roadmap was found.
 
-**Current outcome (2026-10-20):** the user selected tilted Glass Tide and requested implementation on a new branch. The [playable implementation](glass-tide-implementation.md) adds an oblique camera, original flora/ruin/survivor/seed artwork and an organic interface. The existing survival mechanics remain intact. Workflow setup and earlier [art proposals](visual-directions.md) are preserved locally.
+**Current outcome (2026-10-20):** implemented the user-requested two-mode survivor menu and [Motion Hunt extraction mode](motion-hunt.md). Hold a clearing for 850 ms or press Enter; collect a life-support seed and reach any gate. Survival remains available with its existing data. The user authorized publication of this implementation on 2026-10-20; deployment outcome is recorded below.
+
+**Menu design follow-up (2026-10-20):** three [Glass Tide menu concepts](motion-hunt.md#menu-art-proposals--2026-10-20) are saved: Tidal Clearings, Living Gateways and Expedition Nursery. The user selected Expedition Nursery, now implemented with live survivor movement and floor-pad selection.
 
 Source inspection confirms the join → safe staging → arena entry → contact/death → outside respawn → saved-score flow in `app/page.tsx`, `app/use-arena.ts`, `lib/arena.ts` and `app/api/arena/route.ts`. The implementation has a 12-player cap, 24 bots, fixed generation homes with warm-up, sequenced movement, visible-contact negotiation, private frame history, and revision/commit-marker guarded D1 writes. This is implementation evidence, not a fresh live-game observation.
 
@@ -24,27 +26,13 @@ Source inspection confirms the join → safe staging → arena entry → contact
 | Accepted implementation | Tilted Glass Tide on a new branch, preserving current gameplay; one additional agent for bounded rendering/contact review, no further delegation. | User requests/reply, 2026-10-20 |
 | Proposal | Prioritize validating the complete casual-play journey under latency before adding features. | Setup agent recommendation, 2026-10-19; requires user selection |
 
-## Proposed mode: motion-sensitive hunters
+## Motion Hunt — implemented locally
 
-**User idea, recorded 2026-10-20:** AIBots should learn to detect and chase humans only when they move. Scope is to record and explain the concept; implementation and deployment are not requested. Working name: Motion Hunt. This remains a proposal, not an implemented feature or selected milestone.
+**Accepted user request, 2026-10-20:** implement the motion-sensitive collect/extract mode plus a two-mode menu navigated by moving the survivor, with a subsecond hold or immediate Enter confirmation.
 
-**User-defined objective, clarified 2026-10-20:** the player must first collect something valuable and essential to humanity’s survival on this planet, then exit with it. The core loop is enter → locate and collect the resource → carry it to the exit → successful extraction. Standing still may avoid detection but cannot complete the mission. The resource’s identity, quantity, collection interaction and consequences of capture remain unspecified. This establishes the proposed mode’s objective; it does not authorize implementation.
+**Implemented defaults:** 850 ms menu dwell; one personal life-support seed; extraction at any gate threshold; capture loses the seed; stillness removes the target signal with no target memory, but physical contact remains lethal. Detection uses realized velocity; the existing NEAT-inspired controller evolves pursuit. Populations, champions and records are isolated per mode, preserving legacy Survival. See [mechanics, decisions, files and checks](motion-hunt.md).
 
-**Design recommendation:** make successful extraction with the required resource the primary victory condition. Use stop/start movement to create decisions about when to advance, hide and resume the journey. Train and evaluate bots against resource-seeking humans that must return to an exit, varying resource and exit placement to reduce memorization. Keep hidden player positions and inventory out of bot senses unless a later explicit rule makes them perceptible. Track human extraction success alongside bot capture metrics; longer survival alone is no longer mission success.
-
-**Observed baseline:** `lib/arena.ts` selects the nearest arena player regardless of motion, supplies their position/velocity, and rewards distance reduction, proximity and contact. `lib/evolution.ts` evolves feed-forward networks with 11 inputs and two movement outputs. It has no recurrent memory. These observations were checked against the local source on 2026-10-20.
-
-**Recommended first experiment:** make motion-only visibility an explicit sensory rule; evolve pursuit within that rule. Use server-validated, post-collision displacement over simulation time, with a small configurable speed threshold and start/stop hysteresis. Do not infer motion from key presses, camera-relative movement or packet arrival timing. Optional range and obstacle occlusion further constrain visibility. Select targets only among detectable humans, and provide an explicit detection flag with masked target position, velocity and distance when no target is detected. Stationary hidden humans must not affect target selection or proximity rewards. Network inputs require a versioned mode-specific layout because existing output IDs immediately follow the 11 inputs.
-
-**Evolution:** evaluate every genome over the same varied episodes containing moving, stationary and stop/start humans, with randomized positions and obstacles. Reward progress toward the same detected target and valid moving-target captures; penalize collisions and unnecessary movement when no signal exists. Reset distance baselines when targets change or visibility is lost. Avoid positive rewards for simply waiting, and avoid allowing easy progress rewards to dominate captures. Retain successful genomes, breed/mutate descendants, and evaluate on unseen episodes. Keep this mode's population, champions and scores separate so existing learning is preserved. The existing NEAT-inspired loop is reusable; reliable improvement is an experimental result, not a guarantee.
-
-**Important distinction:** masking stationary humans implements motion detection as a sensor capability; the evolved skill is responding to that signal. For detection itself to evolve, later supply unlabeled temporal observations (for example, occupancy samples now and previously), account for the bot's own movement, and evolve a detection output alongside movement. Giving true speed or a moving/not-moving flag already supplies detection. A hard gameplay guarantee that bots never pursue stationary humans still needs an explicit rule; fitness alone cannot guarantee it.
-
-**Open choices:** does stopping immediately cancel pursuit, or may a bot inspect the last detected position briefly? Never update remembered coordinates from a hidden human. Does incidental contact with a stationary human kill? Invisibility does not itself provide immunity. The collect-then-exit objective now supplies the reason to move; resource identity, collection rules and capture consequences remain open. Suggested first version: immediate signal loss, no target memory, and explicit contact rules before implementation.
-
-**Acceptance evidence for a future implementation:** no hidden stationary-player data in bot observations or target selection; matching detectable observations yield matching controller behavior regardless of hidden-player placement; no false motion from walls or network timing; pursuit response on moving targets and signal loss on stopping; stationary-contact behavior matches the chosen rule; held-out moving-target captures improve over initial random genomes across repeated training seeds without increased false pursuit. Report detection/reaction, captures, collisions and false-pursuit metrics separately.
-
-**Next handoff:** retain the user-defined collect-then-exit objective; choose the resource, collection/capture and stop/contact rules, then prototype isolated observations and deterministic training episodes before connecting this mode to multiplayer. No gameplay code, stored genomes or deployment changed for this note.
+**Deferred experiments:** temporal observations for evolved detection itself, repeated seeded training trials, randomized objective layouts, and measured improvement on unseen opponents. This release does not claim those research outcomes.
 
 ## Verification evidence
 
@@ -67,15 +55,23 @@ The 2026-10-20 implementation passed 51 domain tests, TypeScript and the product
 
 ## Gaps and next handoff
 
-The selected visual implementation is ready for user review. New ecological gameplay, competitive cheat resistance and deployment remain outside this task.
+Motion Hunt and the expedition menu are verified locally and prepared for the requested online release. Competitive cheat resistance remains outside this task.
 
 1. Review tilted Glass Tide's appearance and scale in the playable branch.
 2. Before release, check physical touch controls, reduced-motion visuals and multiple players for readability and performance.
 3. Triage existing lint debt separately; decide whether lint can become a required gate.
-4. Choose a repository host/CI provider if remote collaboration is wanted. The motion-sensitive collect/extract proposal above still needs its own mechanic decisions.
+4. Choose a repository host/CI provider if remote collaboration is wanted. Evaluate Motion Hunt balance and learning quality through controlled trials before claiming improvement.
 
-**Current handoff:** tilted Glass Tide implementation is on `codex/glass-tide-tilted`, based on `93a20c9`. Initial implementation commit: `42b0b67`. The directional follow-up adds eight-way survivor/sentinel views, idle heading retention and travel-based gait; 54 tests, type checking, build, focused lint and browser facing checks pass. See the implementation record for limits. The preexisting workflow/design documents and scripts remain uncommitted and separate. Nothing pushed or deployed. Entry points: [implementation](glass-tide-implementation.md), [renderer](../lib/renderer.ts), [camera/art helpers](../lib/glass-tide.ts), [UI](../app/page.tsx), [assets](../public/glass-tide/README.md) and [AGENTS.md](../AGENTS.md). Local screenshots are in ignored `outputs/`. The disposable QA database is separate from project data.
+**Current handoff:** local, uncommitted changes on `main` based on `18b65bc`. [Motion Hunt](motion-hunt.md) records the outcome and verification. 69 domain tests, TypeScript, production build and all five sequential HTTP/D1 fixtures pass. Browser review covers both selection methods, pointer selection, mission pickup/extraction, capture/respawn, saved extraction on rejoin, help focus and a 390 CSS-pixel layout. New files pass lint; touched existing files retain their existing lint findings. No existing project database was reset, no changes were pushed or deployed. Disposable QA lives in `/private/tmp/pursuit-motion-qa-20261020`; screenshots are in ignored `outputs/`. Physical touch, reduced-motion OS testing and measured evolutionary improvement remain unverified.
 
 **Sprint follow-up:** survivor sprint frames now animate across eight headings with distance-based timing, idle/walk suppression and reduced-motion fallback. 56 tests, TypeScript, build and focused renderer/helper lint pass; live Shift movement was visually checked. The same disposable preview folder was rebuilt. No new gameplay mechanics or deployment.
 
 **Walking follow-up:** separate walking sprite cycle implemented across eight headings, alongside the existing sprint animation. 58 tests, TypeScript, build and focused lint pass; normal movement and Shift transition were checked in the rebuilt local preview. No gameplay changes or deployment.
+
+
+**Expedition Nursery follow-up — 2026-10-20:** user selected the Nursery reference and requested implementation. The full-screen menu now uses its clean scenery with live text, animated survivor and amber floor-circle confirmation. Portrait layouts preserve the scene and show readable labels below it. Movement, 850 ms dwell, Enter, pointer travel, cancel-on-exit, focus/Help pause, joining and returning were checked in-browser. 70 domain tests, TypeScript, production build and focused menu/domain lint pass. Prior gameplay HTTP/D1 evidence remains applicable; no persistence or bot changes in this follow-up. [Details](motion-hunt.md#accepted-nursery-implementation--2026-10-20). Final screenshot in ignored `outputs/nursery-menu-final.png`. Local changes remain uncommitted and undeployed. Physical touch and OS reduced-motion visuals remain unverified.
+
+
+## Publication — 2026-10-20
+
+The user explicitly requested deployment of the current menu and Motion Hunt version. Release preparation preserves Site `appgprj_6ad2976be9588191b0d83a413395dc2c`, its public audience and D1 binding. No schema changes or production data fixtures are required. The source helper packages and pushes the current source, then Sites publishes the matching saved version. Release validation reuses the successful 70-test/TypeScript and browser evidence above and builds the exact release source. Deployment status is pending at this source snapshot.

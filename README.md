@@ -1,16 +1,20 @@
 # Pursuit Lab
 
-A standalone multiplayer survival game inspired by Enter the Pygame. Up to 12 human players share a 6,000 × 6,000 world with 24 evolving bots. This repository has its own Git history and does not depend on the Python project.
+A standalone multiplayer survival game inspired by Enter the Pygame. Each mode supports up to 12 human players sharing a 6,000 × 6,000 world with 24 evolving bots. This repository has its own Git history and does not depend on the Python project.
 
 Live game: https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site/
 
 ## Play
 
-Choose a name and press Play. Move with WASD or arrows; hold Shift to sprint. Phones have a movement pad and Sprint button. Players join outside the arena. Crossing a door starts a survival timer, and a validated bot touch ends the run and returns the player outside. Best and recent times, including the killer generation, are saved for the browser's anonymous identity.
+Choose **Survival** or **Motion Hunt** by moving the survivor into a glass floor circle in the Expedition Nursery with WASD/arrows. Stay in it for **850 ms**, or press **Enter** immediately. Click/touch a clearing to walk there; keyboard users can also focus its button and press Enter. Then choose a name and enter the shallows. Use **Change mode** to leave and return to the menu.
 
-Every 45 seconds of active simulation, a new generation returns to the same central starting points. Bots are gray and harmless for at least three seconds. A spawn stays harmless while a player is within 120 world units. Training pauses when nobody is inside.
+**Survival:** survive as long as possible. Move with WASD or arrows; hold Shift to sprint. Phones have a movement pad and Sprint button. Players join outside the arena. Crossing a door starts a survival timer, and a validated bot touch ends the run and returns the player outside. Best and recent times, including the killer generation, are saved for the browser's anonymous identity.
 
-The arena takes priority in the interface. Training metrics, fitness history, and champion export are available from **Training details**. The small top-center timer shows the current generation and time to the next one.
+**Motion Hunt:** collect the life-support seed marked by a gold diamond at the central corridor, then reach any passage to extract. Each player collects their own seed. Standing still removes your target signal; bots halt if nobody moves. Physical contact remains lethal, including incidental contact. Capture loses the seed; extraction and capture return you outside. Records show successful/failed missions and the fastest successful extraction. Survival and Motion Hunt have separate arenas, populations, champions and scores.
+
+Every 45 seconds of active simulation, a new generation returns to the same central starting points. Bots are closed pearl seeds and harmless for at least three seconds. A spawn stays harmless while a player is within 120 world units. Training pauses when nobody is inside.
+
+The arena takes priority in the interface. Training metrics, fitness history, and champion export are available from **Field notes**. The small top-center timer shows the current generation and time to the next one.
 
 ## Development
 
@@ -57,12 +61,15 @@ Transport is serialized HTTP polling with a 60 ms interval plus network latency.
 
 ## Learning
 
-Each bot runs a feed-forward network using target offsets, actor velocities, nearest-obstacle direction and clearance, distance, and bias. Outputs choose movement; pursuit is not scripted. Fitness rewards closing distance (+0.04/unit), contact (+50), and proximity, and penalizes obstacle contact (−3/second).
+Each bot runs a feed-forward network using target offsets, actor velocities, nearest-obstacle direction and clearance, distance, and bias. Outputs choose movement; pursuit is not scripted. Motion Hunt filters target selection by actual post-collision speed (above 8 world units/second); the network is not called when nobody is detectable. Hidden humans contribute no proximity fitness. Detection is an explicit sensory rule; pursuit is evolved. Its capture reward uses private observed motion so delayed contact reports do not erase moving-target rewards. No controlled training improvement is claimed.
+
+Fitness rewards closing distance (+0.04/unit), contact (+50), and proximity, and penalizes obstacle contact (−3/second).
 
 The best two genomes survive each generation. Compatibility groups share selection pressure; children inherit weights and mutate weights, connections, and hidden nodes. Historical split IDs align descendant topology. This TypeScript implementation is **NEAT-inspired**, not neat-python, and exported champions are not compatible with Python checkpoints. It omits full NEAT stagnation management and recurrent networks. Changing human opponents make fitness an uncontrolled training signal.
 
 ## Modules
 
+- `lib/game-mode.ts`, `app/mode-menu.tsx`: mode identity, objective constants and survivor-controlled selection.
 - `lib/arena.ts`: world simulation, generations, private frame history, deaths and spawns.
 - `lib/physics.ts`: shared movement and collision solver.
 - `lib/evolution.ts`: neural activation, topology mutation, compatibility and breeding.
@@ -75,3 +82,5 @@ The best two genomes survive each generation. Compatibility groups share selecti
 - `db/schema.ts`, `drizzle/`: persistent arena and personal run records.
 
 D1 compare-and-swap revisions serialize world updates. A unique commit marker guards score inserts in the same transaction, so failed retries cannot create duplicate scores. Session tokens stay in session storage and anonymous score identities in local storage; only hashes are persisted server-side. Clearing browser storage creates a new identity. Frame histories, identity hashes and private records are excluded from public world snapshots.
+
+Motion Hunt uses the `motion` arena row; Survival retains `shared`. Mode-specific anonymous profile hashes separate records without a schema migration; `bot = -1` represents an extraction, and only successful extractions contribute to its fastest time. World transitions and run inserts share the existing atomic commit guard. See [Motion Hunt implementation and verification](docs/motion-hunt.md).

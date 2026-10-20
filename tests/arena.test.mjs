@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer']){
+for(const name of ['game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','glass-tide','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -510,4 +510,90 @@ test('walking atlas preserves draw origins, valid source bounds and loading fall
   const [,x,y,w,h]=draws.at(-1);assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
   assert.deepEqual(translations.at(-1),[10,20]);
  }
+});
+
+const {RESOURCE,MENU_HOLD_MS,advanceMenu,menuZone,arenaKey,modeProfile}=await import(pathToFileURL(`${out}/game-mode.mjs`));
+const {missionProgress}=await import(pathToFileURL(`${out}/arena.mjs`));
+test('mode menu requires continuous 850 ms occupancy and resets outside or across choices',()=>{
+ let s={mode:null,elapsed:0};
+ for(let i=0;i<16;i++)s=advanceMenu(s,{x:34,y:63},50);
+ assert.equal(s.confirmed,null);assert.equal(s.elapsed,800);
+ s=advanceMenu(s,{x:50,y:48},16);assert.equal(s.elapsed,0);
+ for(let i=0;i<17;i++)s=advanceMenu(s,{x:66,y:63},50);
+ assert.equal(s.elapsed,MENU_HOLD_MS);assert.equal(s.confirmed,'motion');
+ s=advanceMenu(s,{x:34,y:63},16);assert.equal(s.confirmed,null);assert.equal(s.elapsed,16);
+ assert.equal(advanceMenu(s,{x:34,y:63},0,true).confirmed,'survival');
+ assert.equal(advanceMenu(s,{x:50,y:48},0,true).confirmed,null);
+ assert.equal(advanceMenu({mode:null,elapsed:0},{x:66,y:63},10000).confirmed,null,'tab suspension must not instantly confirm');
+});
+test('mode storage keeps legacy survival identity and isolates motion learning and records',()=>{
+ assert.equal(arenaKey('survival'),'shared');assert.equal(modeProfile('token','survival'),'token');
+ assert.notEqual(arenaKey('motion'),arenaKey('survival'));assert.notEqual(modeProfile('token','motion'),modeProfile('token','survival'));
+ const original=createArena(0),hunt=createArena(0,'motion');hunt.bots[0].genome.genes[0].weight=999;
+ assert.notEqual(original.bots[0].genome.genes[0].weight,999);assert.equal(snapshot(hunt).mode,'motion');assert.deepEqual(snapshot(hunt).resource,RESOURCE);assert.equal(snapshot(original).resource,null);
+});
+test('motion bots halt and earn no proximity fitness from stationary humans',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=3600;p.y=3000;
+ for(const b of a.bots){b.spawnWait=0;b.vx=100;b.vy=100;}
+ const before=a.bots.map(b=>({x:b.x,y:b.y,fitness:b.fitness}));advance(a,100);
+ for(const [i,b] of a.bots.entries()){assert.deepEqual({x:b.x,y:b.y,fitness:b.fitness},before[i]);assert.equal(b.vx,0);assert.equal(b.vy,0);}
+});
+test('motion pursuit ignores nearer stationary humans and stops when the signal disappears',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=3800;p.y=3000;p.vx=255;
+ for(const b of a.bots)b.spawnWait=0;
+ const other=join(a,'hidden','secret2','Hidden',0);other.phase='arena';other.x=3400;other.y=3000;other.runStartedAt=0;
+ const alternative=structuredClone(a);alternative.players[1].x=1600;alternative.players[1].y=2000;
+ advance(a,100);advance(alternative,100);
+ assert.deepEqual(a.bots,alternative.bots,'hidden coordinates must not alter pursuit or fitness');
+ assert.ok(a.bots.some(b=>Math.hypot(b.vx,b.vy)>0));
+ p.vx=0;p.vy=0;advance(a,150);assert.ok(a.bots.every(b=>b.vx===0&&b.vy===0));
+});
+test('motion senses realized velocity: pushing a wall does not create movement',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=FIELD.max-28;p.y=3000;
+ applyCommands(a,p,[command(1,0,1,0)],100,[]);assert.equal(p.vx,0);assert.equal(p.vy,0);
+ advance(a,110);assert.ok(a.bots.every(b=>b.vx===0&&b.vy===0));
+});
+test('motion collection is personal and cannot complete a mission without reaching an exit',()=>{
+ const a=createArena(0,'motion'),p=runner(a),q=join(a,'two','secret2','Other',0);parkBots(a);
+ p.x=RESOURCE.x;p.y=RESOURCE.y;const finished=[];
+ applyCommands(a,p,[command(1,0,0,0)],100,finished);
+ assert.equal(p.carrying,true);assert.ok(!q.carrying);assert.equal(finished.length,0);assert.equal(p.phase,'arena');
+});
+test('each extraction gate requires a seed and records one success with an old-life barrier',()=>{
+ for(const [x,y] of [[3000,1250],[4750,3000],[3000,4750],[1250,3000]]){
+  const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=x;p.y=y;const finished=[];
+  missionProgress(a,p,1000,finished);assert.equal(p.phase,'arena');assert.equal(finished.length,0);
+  p.carrying=true;missionProgress(a,p,1000,finished);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.life,1);assert.equal(p.scores.bestMs,1000);assert.equal(p.lastDeath.bot,-1);assert.equal(finished.length,1);assert.equal(a.totalTags,0);
+  missionProgress(a,p,1100,finished);applyCommands(a,p,[command(1,0,0,-1)],1200,finished);assert.equal(finished.length,1);assert.equal(p.phase,'safe');
+ }
+});
+test('motion capture loses cargo and does not replace fastest extraction',()=>{
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.carrying=true;p.scores.bestMs=900;a.bots[0].x=p.x;a.bots[0].y=p.y;
+ advance(a,1200);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.scores.bestMs,900);assert.equal(p.lastDeath.bot,0);assert.equal(a.bots[0].fitness,0,'stationary contact does not train pursuit');
+});
+test('motion extraction waits while a visible contact report is being resolved',()=>{
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=3000;p.y=4750;p.carrying=true;const finished=[];
+ applyCommands(a,p,[command(1,0,0,0)],1000,finished,false);assert.equal(p.phase,'arena');assert.equal(finished.length,0);
+ applyCommands(a,p,[command(2,0,0,0)],1100,finished,true);assert.equal(p.phase,'safe');assert.equal(finished.length,1);
+});
+test('motion contact still requires an issued visible frame and records once',()=>{
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.contactMode='visible-v1';p.carrying=true;a.bots[0].x=p.x+20;a.bots[0].y=p.y;
+ advance(a,100);assert.equal(p.life,0);const frame=rememberContactFrame(a,p,100),finished=[];
+ const report={frameId:frame,life:0,seq:0,bot:0,age:0,x:p.x,y:p.y,bx:a.bots[0].x,by:a.bots[0].y};
+ assert.equal(confirmContact(a,p,report,100,finished).status,'confirmed');assert.equal(p.carrying,false);assert.equal(p.life,1);assert.equal(finished.length,1);
+ confirmContact(a,p,report,120,finished);assert.equal(finished.length,1);
+});
+
+test('motion capture rewards use private observed motion even after a stop packet',()=>{
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.contactMode='visible-v1';p.vx=255;a.bots[0].x=p.x+20;a.bots[0].y=p.y;
+ const frame=rememberContactFrame(a,p,100);applyCommands(a,p,[],110,[]);assert.equal(p.vx,0);
+ const report={frameId:frame,life:0,seq:0,bot:0,age:0,x:p.x,y:p.y,bx:a.bots[0].x,by:a.bots[0].y};
+ assert.equal(confirmContact(a,p,report,120,[]).status,'confirmed');assert.equal(a.bots[0].fitness,50);
+ assert.ok(!JSON.stringify(snapshot(a)).includes('moving'),'issued movement observation stays private');
+});
+
+test('nursery selection follows elliptical floor pads, not surrounding specimens or labels',()=>{
+ assert.equal(menuZone({x:34,y:63}),'survival');assert.equal(menuZone({x:66,y:63}),'motion');
+ for(const p of [{x:50,y:68.5},{x:34,y:27},{x:66,y:27},{x:42,y:70},{x:58,y:56},{x:34,y:72}])assert.equal(menuZone(p),null);
+ assert.equal(menuZone({x:34,y:70}),'survival');
 });

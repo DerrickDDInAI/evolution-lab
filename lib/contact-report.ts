@@ -1,6 +1,6 @@
 import {bodyClear,BOT_RADIUS,type Obstacle} from './physics';
 import {projectBot,MAX_REMOTE_AGE,type Pose} from './net-motion';
-export type ContactFrame={id:string;at:number;life:number;generation:number;bots:(Pose&{id:number})[]};
+export type ContactFrame={id:string;at:number;life:number;generation:number;moving?:boolean;bots:(Pose&{id:number})[]};
 export type ContactReport={frameId:string;life:number;seq:number;bot:number;age:number;x:number;y:number;bx:number;by:number};
 export type ContactReply={life:number;seq:number;status:'pending'|'confirmed'|'rejected'};
 export function validContactReport(r:any):r is ContactReport {

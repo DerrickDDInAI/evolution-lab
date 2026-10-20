@@ -32,6 +32,7 @@ The runner defaults to `http://127.0.0.1:5173`, checks the HTTP loopback target 
 2. `tests/contact-respawn.mjs`: contact confirmation, outside respawn and durable run data.
 3. `tests/multiplayer.mjs` with `ARENA_TEST_DEATH=1`: concurrent clients, input validation, death/score commit and score restoration.
 4. `tests/network-lag.mjs`: movement preservation across 750 ms delayed input packets.
+5. `tests/motion-hunt.mjs`: mode isolation, collection/extraction, durable records, visible-contact cargo loss and rejoin.
 
 For a different local port, set `ARENA_TEST_URL=http://127.0.0.1:PORT`. It must be the preview attached to this checkout's local database. The wrapper rejects external hosts before any fixture runs; invoking `multiplayer.mjs` directly does not provide that early protection. Never use a public URL for these tests.
 

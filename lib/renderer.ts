@@ -100,14 +100,20 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
   const gates=[{x:3000,y:1200,label:'NORTH',horizontal:true},{x:4800,y:3000,label:'EAST',horizontal:false},{x:3000,y:4800,label:'SOUTH',horizontal:true},{x:1200,y:3000,label:'WEST',horizontal:false}];
   for(const gate of gates){
     if(!visible(gate.x,gate.y,180))continue;
-    const x=sx(gate.x),y=sy(gate.y),locked=predicted?.phase==='arena';
+    const x=sx(gate.x),y=sy(gate.y),extracting=state?.mode==='motion'&&predicted?.carrying,locked=predicted?.phase==='arena'&&!extracting;
     ctx.save();ctx.translate(x,y);ctx.scale(zoom,zoom*GROUND_TILT);
     ctx.fillStyle=locked?'#c38e6850':'#eef7da90';ctx.strokeStyle=locked?'#b87845':'#476a62';ctx.lineWidth=2;
     ctx.fillRect(gate.horizontal?-125:-12,gate.horizontal?-12:-125,gate.horizontal?250:24,gate.horizontal?24:250);
     ctx.setLineDash([6,9]);ctx.strokeRect(gate.horizontal?-125:-12,gate.horizontal?-12:-125,gate.horizontal?250:24,gate.horizontal?24:250);ctx.restore();
     ctx.font='600 10px system-ui';ctx.textAlign='center';ctx.fillStyle='#244d4c';
     ctx.fillText(gate.label+' PASSAGE',x,y+32*zoom);
-    ctx.font='10px system-ui';ctx.fillText(locked?'Run in progress':'Enter the shallows',x,y+47*zoom);
+    ctx.font='10px system-ui';ctx.fillText(extracting?'Reach this passage to extract':locked?(state?.mode==='motion'?'Collect the seed first':'Run in progress'):'Enter the shallows',x,y+47*zoom);
+  }
+  if(state?.resource&&!predicted?.carrying){
+    const seed=state.resource,x=sx(seed.x),y=sy(seed.y);
+    groundEllipse(ctx,x,y,seed.radius*zoom);ctx.fillStyle='#f9db7a55';ctx.fill();ctx.strokeStyle='#ffe5a0';ctx.lineWidth=2;ctx.stroke();
+    if(!sprite(ctx,art.atlas,4,x,y+7*zoom,76*zoom)){ctx.fillStyle='#ffe5a0';ctx.beginPath();ctx.arc(x,y,15*zoom,0,Math.PI*2);ctx.fill();}
+    ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#183f3d';ctx.fillText('LIFE-SUPPORT SEED',x,y+35*zoom);
   }
   for(let i=0;i<(state?.obstacles.length||0);i++){
     const o=state!.obstacles[i];if(!visible(o.x,o.y,o.r*3*zoom+50))continue;
@@ -175,7 +181,8 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
     c.strokeStyle='#789d91';c.lineWidth=1.5;c.strokeRect(FIELD.min/6000*mw,FIELD.min/6000*mh,(FIELD.max-FIELD.min)/6000*mw,(FIELD.max-FIELD.min)/6000*mh);
     c.strokeStyle='#bdd0b52b';c.lineWidth=.7;
     for(const o of state?.obstacles||[]){c.beginPath();c.moveTo(mw/2,mh/2);c.lineTo(o.x/6000*mw,o.y/6000*mh);c.stroke();c.fillStyle='#73958a';c.beginPath();c.arc(o.x/6000*mw,o.y/6000*mh,Math.max(1,o.r/6000*mw),0,Math.PI*2);c.fill();}
-    c.fillStyle='#f4e9c8';for(const gate of gates)c.fillRect(gate.x/6000*mw-2,gate.y/6000*mh-2,4,4);
+    if(state?.resource&&!predicted?.carrying){const x=state.resource.x/6000*mw,y=state.resource.y/6000*mh;c.fillStyle='#ffe17c';c.beginPath();c.moveTo(x,y-5);c.lineTo(x+5,y);c.lineTo(x,y+5);c.lineTo(x-5,y);c.closePath();c.fill();}
+    c.fillStyle=state?.mode==='motion'&&predicted?.carrying?'#ffe17c':'#f4e9c8';for(const gate of gates)c.fillRect(gate.x/6000*mw-2,gate.y/6000*mh-2,4,4);
     for(const b of state?.bots||[]){const p=positions.get('b'+b.id)||b;c.fillStyle=(b.spawnWait??0)>0?'#c6dad5':'#f7ad68';c.beginPath();c.arc(p.x/6000*mw,p.y/6000*mh,1.8,0,Math.PI*2);c.fill();}
     for(const p of state?.players||[]){const pos=p.id===self&&predicted?predicted:positions.get('p'+p.id)||p;c.fillStyle=p.id===self?'#fff7dc':'#a7dae1';c.beginPath();c.arc(pos.x/6000*mw,pos.y/6000*mh,p.id===self?3:2,0,Math.PI*2);c.fill();}
     c.strokeStyle='#f7edceaa';c.lineWidth=1;c.strokeRect(bounds.left/6000*mw,bounds.top/6000*mh,(bounds.right-bounds.left)/6000*mw,(bounds.bottom-bounds.top)/6000*mh);

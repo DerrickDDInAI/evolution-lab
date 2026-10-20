@@ -9,6 +9,7 @@ Start with [AGENTS.md](../AGENTS.md) and [project state](project-state.md). Read
 | Current milestone, decisions, verification and next handoff | [Project state](project-state.md) |
 | Planet narrative, three proposed visual directions, organic UI and selection handoff | [Visual directions](visual-directions.md) |
 | Selected tilted Glass Tide implementation, art assets and verification | [Glass Tide implementation](glass-tide-implementation.md) |
+| Two-mode survivor menu, Motion Hunt collection/extraction rules and verification | [Motion Hunt](motion-hunt.md) |
 | Choosing checks, integration precautions, CI and skill availability | [Engineering](engineering.md) |
 | Starting a focused product, research, implementation or testing chat | [Chat starters](agents/chat-starters.md) |
 

@@ -13,7 +13,7 @@ assert.ok(
 const cwd = fileURLToPath(new URL('../', import.meta.url));
 const env = { ...process.env, ARENA_TEST_URL: url.origin, ARENA_TEST_DEATH: '1' };
 console.log('Running sequential fixtures against', url.origin, '(local arena and scores will change).');
-for (const name of ['visible-contact', 'contact-respawn', 'multiplayer', 'network-lag']) {
+for (const name of ['visible-contact', 'contact-respawn', 'multiplayer', 'network-lag', 'motion-hunt']) {
   const result = spawnSync(process.execPath, [`tests/${name}.mjs`], { cwd, env, stdio: 'inherit' });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
