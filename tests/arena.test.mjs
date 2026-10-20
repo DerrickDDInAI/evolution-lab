@@ -487,3 +487,27 @@ test('sprint sheet fallback and sampled rows keep the draw anchor fixed',async()
   assert.deepEqual(translations.at(-1),[10,20]);
  }
 });
+
+test('walking and sprinting select exclusive gaits across headings and speed changes',async()=>{
+ const {walkFrame,sprintFrame}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ for(let facing=0;facing<8;facing++){
+  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*42,true,255).frame,frame);
+  assert.equal(walkFrame(facing,168,true,255).frame,0);
+  assert.equal(walkFrame(facing,120,true,255,true).frame,0);
+  for(const speed of [8,120,255,300]){assert.ok(walkFrame(facing,100,true,speed));assert.equal(sprintFrame(facing,100,true,speed),null);}
+  for(const speed of [301,430]){assert.equal(walkFrame(facing,100,true,speed),null);assert.ok(sprintFrame(facing,100,true,speed));}
+  for(const speed of [0,7,NaN])assert.equal(walkFrame(facing,100,true,speed),null);
+  assert.equal(walkFrame(facing,100,false,255),null);
+ }
+});
+test('walking atlas preserves draw origins, valid source bounds and loading fallback',async()=>{
+ const {walkFrame,walkSprite}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ assert.equal(walkSprite({}, {complete:false,naturalWidth:0},walkFrame(0,0,true,255),10,20,59),false);
+ const draws=[],translations=[];const ctx={save(){},restore(){},scale(){},translate(x,y){translations.push([x,y]);},drawImage(...args){draws.push(args);}};
+ const image={complete:true,naturalWidth:1120,naturalHeight:1400};
+ for(let facing=0;facing<8;facing++)for(let phase=0;phase<4;phase++){
+  walkSprite(ctx,image,walkFrame(facing,phase*42,true,255),10,20,59);
+  const [,x,y,w,h]=draws.at(-1);assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
+  assert.deepEqual(translations.at(-1),[10,20]);
+ }
+});

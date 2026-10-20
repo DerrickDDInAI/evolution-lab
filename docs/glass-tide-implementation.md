@@ -38,7 +38,7 @@ Environment: macOS, Node.js 22.22.3, npm 10.9.8, existing dependencies. Producti
 
 The first attempted test rerun in the source checkout was blocked by sandbox write permissions for generated test modules; the same final sources passed in the disposable checkout.
 
-Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. The initial sprites used static poses; the directional follow-up below replaces moving actors with eight-way facing. A full walk cycle remains future work; sprint animation is implemented in the follow-up below. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
+Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. The initial sprites used static poses; the directional follow-up below replaces moving actors with eight-way facing. Walking and sprinting now have separate sprite cycles, as recorded below. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
 
 ## Local use
 
@@ -61,3 +61,11 @@ Accepted 2026-10-20: add survivor sprint sprite frames, reusing Glass Tide ident
 Sprint follow-up verification: 56/56 tests, TypeScript, production build and focused renderer/helper lint passed. Added coverage for four-phase/eight-heading selection, walking/idle suppression, reduced-motion static pose, asset fallback and source-rectangle/anchor bounds. Live Shift movement showed the new forward lean and extended/passing poses; a visual correction aligned hips over the contact ring. Release returns to the directional idle pose. Physical touch and OS reduced-motion visual checks remain unverified. No gameplay/network/storage rules changed; integration fixtures were not repeated.
 
 The new sheet contains 20 drawn frames: five camera views × four phases, with mirrored views for eight headings and mirrored frontal/rear strike pairs. A phase advances every 40 travelled world units (about 10.75 frames/s at full sprint); it is selected only while moving with both observed and simulation velocity above 300 units/s (walk 255, sprint 430). Reduced motion holds the first sprint pose; asset failure falls back to directional/legacy artwork.
+
+## Walking animation follow-up
+
+Accepted: add a distinct survivor walking cycle using the established design. Builder review, no delegation. Four poses across five views mirrored for eight directions, upright torso and shorter stride than sprint. Acceptance: distance-driven walking at normal speed, separate sprint selection, stationary/blocked fallback, stable contact anchor, reduced-motion static pose and safe asset fallback.
+
+Walking verification: 58/58 tests, TypeScript, production build and focused renderer/helper lint passed. Tests cover every facing and phase, exclusive walk/sprint speed bands, idle/invalid-speed suppression, reduced-motion pose and source/fallback bounds. Live browser movement verified changing walking frames, ground alignment and Shift transition to the distinct sprint cycle. A stale running preview manifest initially failed to load images after rebuilding; restarting that confirmed QA server restored the assets without changing its database. Physical touch and OS reduced-motion visual checks remain unverified. No gameplay or network rules changed; integration fixtures were not repeated.
+
+The walking sheet uses four phases across five views, mirrored to eight directions. A phase advances every 42 travelled world units (about 6 frames/s at normal speed), compared with about 10.75 frames/s for sprinting. Idle/blocked movement uses the static directional pose, and reduced-motion mode holds frame zero. Shared drawing code keeps separate walk/sprint atlas bounds and hip anchors.

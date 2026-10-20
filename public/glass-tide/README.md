@@ -16,3 +16,7 @@ See [implementation and verification](../../docs/glass-tide-implementation.md) f
 ## Sprint animation
 
 `sprint.png` contains five survivor views (front, front-right, right, back-right, back) with four sprint phases each. Left views mirror the corresponding right views. Explicit row boundaries and hip/foot anchors keep bodies aligned while cape and limbs move. The renderer samples the original alpha without image postprocessing. [Sprint prompts](sprint-prompts.json) include the initial generation and gait correction.
+
+## Walking animation
+
+`walk.png` provides four upright, short-step walking phases for five camera views, mirrored for eight headings. The separate walking cadence is driven by travelled distance. Explicit atlas rows and hip/foot anchors preserve alignment; original generated alpha is unchanged. See [walking prompt](walk-prompts.json).

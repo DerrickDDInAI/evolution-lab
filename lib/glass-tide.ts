@@ -18,15 +18,16 @@ export function depthOrder<T extends {y:number;order:number}>(items:T[]):T[]{
   return [...items].sort((a,b)=>a.y-b.y||a.order-b.order);
 }
 
-type Art={atlas:HTMLImageElement;floor:HTMLImageElement;directions:HTMLImageElement;sprint:HTMLImageElement};
+type Art={atlas:HTMLImageElement;floor:HTMLImageElement;directions:HTMLImageElement;sprint:HTMLImageElement;walk:HTMLImageElement};
 let art:Art|undefined;
 export function glassArt(){
   if(!art){
-    const atlas=new Image(),floor=new Image(),directions=new Image(),sprint=new Image();
+    const atlas=new Image(),floor=new Image(),directions=new Image(),sprint=new Image(),walk=new Image();
     atlas.src='/glass-tide/sprites.png';floor.src='/glass-tide/shallows.png';
     directions.src='/glass-tide/directions.png';
     sprint.src='/glass-tide/sprint.png';
-    art={atlas,floor,directions,sprint};
+    walk.src='/glass-tide/walk.png';
+    art={atlas,floor,directions,sprint,walk};
   }
   return art;
 }
@@ -88,10 +89,23 @@ export function sprintFrame(facing:number,travel:number,moving:boolean,speed:num
   return {row,frame,flip};
 }
 export function sprintSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:NonNullable<ReturnType<typeof sprintFrame>>,x:number,y:number,size:number){
+  return gaitSprite(ctx,image,pose,x,y,size,false);
+}
+export function walkFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false){
+  if(!moving||!Number.isFinite(speed)||speed<8||speed>300)return null;
+  const frame=reducedMotion?0:Math.floor(Math.max(0,travel)/42)%4;
+  const row=[0,1,2,3,4,3,2,1][facing];
+  return {row,frame,flip:(facing>=1&&facing<=3)||((row===0||row===4)&&frame>=2)};
+}
+export function walkSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:NonNullable<ReturnType<typeof walkFrame>>,x:number,y:number,size:number){
+  return gaitSprite(ctx,image,pose,x,y,size,true);
+}
+function gaitSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:{row:number;frame:number;flip:boolean},x:number,y:number,size:number,walking:boolean){
   if(!ready(image))return false;
-  const {row,frame,flip}=pose,rows=[0,300,570,830,1090,1400],anchors=[292,563,820,1080,1365];
+  const {row,frame,flip}=pose,rows=walking?[0,300,570,835,1095,1400]:[0,300,570,830,1090,1400];
+  const anchors=walking?[288,565,830,1090,1370]:[292,563,820,1080,1365];
   const sw=image.naturalWidth/4,sy=rows[row]/1400*image.naturalHeight,sh=(rows[row+1]-rows[row])/1400*image.naturalHeight;
-  const width=size*.88,height=sh/sw*width,hip=[.55,.66,.7,.64,.5][row],anchor=(anchors[row]-rows[row])/(rows[row+1]-rows[row]);
+  const width=size*.88,height=sh/sw*width,hip=(walking?[.55,.61,.64,.58,.5]:[.55,.66,.7,.64,.5])[row],anchor=(anchors[row]-rows[row])/(rows[row+1]-rows[row]);
   ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);
   ctx.drawImage(image,frame*sw,sy,sw,sh,-width*hip,-height*anchor,width,height);
   ctx.restore();return true;
