@@ -38,7 +38,7 @@ Environment: macOS, Node.js 22.22.3, npm 10.9.8, existing dependencies. Producti
 
 The first attempted test rerun in the source checkout was blocked by sandbox write permissions for generated test modules; the same final sources passed in the disposable checkout.
 
-Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. The initial sprites used static poses; the directional follow-up below replaces moving actors with eight-way facing. Full multi-frame limb animation remains future work. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
+Limits: no physical touchscreen test, OS reduced-motion visual test, maximum-player visual/load test, hosted CI or deployment. HTTP fixtures cover simultaneous clients; that is not a 12-player performance claim. The initial sprites used static poses; the directional follow-up below replaces moving actors with eight-way facing. A full walk cycle remains future work; sprint animation is implemented in the follow-up below. The biological HUD is a visual interpretation; a fully modeled wearable symbiont is future art work.
 
 ## Local use
 
@@ -53,3 +53,11 @@ Accepted 2026-10-20: add eight facing poses to survivors and active seed sentine
 Directional follow-up verification: 54/54 tests and TypeScript passed; production build passed in the existing disposable preview. Focused renderer/helper lint passed. Browser checks verified front, rear, profile and diagonal survivor views, retained idle facing, moving sentinels and unchanged ground anchors. The three added tests cover all eight headings, boundary hysteresis/idle retention, distance-based gait/reset behavior and missing-sheet fallback. Existing integration results above are from the original tilted implementation; no networking/domain changes were made in this follow-up, so those fixtures were not repeated. Physical touch and OS reduced-motion visual testing remain unverified.
 
 The directional sheet uses five inspected views per actor plus mirrored counterparts for eight headings; per-row sampling and feet/tail anchors account for uneven generated atlas spacing. Movement bob uses actual travelled distance and stops while stationary; reduced-motion mode suppresses bob while retaining directional cues. Pose state is scoped to the canvas and discarded for missing actors/new lives.
+
+## Sprint animation follow-up
+
+Accepted 2026-10-20: add survivor sprint sprite frames, reusing Glass Tide identity and eight-way facing. Builder review; no additional delegation. Four stride phases across five views (mirrored for eight directions), triggered by actual sprint-speed motion; preserve idle/walk poses, collision rules and reduced-motion behavior. Acceptance: alternating limbs, stable feet/scale, correct heading, no sprint loop while idle/blocked or after stamina depletion; test selection/fallback and review the running preview.
+
+Sprint follow-up verification: 56/56 tests, TypeScript, production build and focused renderer/helper lint passed. Added coverage for four-phase/eight-heading selection, walking/idle suppression, reduced-motion static pose, asset fallback and source-rectangle/anchor bounds. Live Shift movement showed the new forward lean and extended/passing poses; a visual correction aligned hips over the contact ring. Release returns to the directional idle pose. Physical touch and OS reduced-motion visual checks remain unverified. No gameplay/network/storage rules changed; integration fixtures were not repeated.
+
+The new sheet contains 20 drawn frames: five camera views × four phases, with mirrored views for eight headings and mirrored frontal/rear strike pairs. A phase advances every 40 travelled world units (about 10.75 frames/s at full sprint); it is selected only while moving with both observed and simulation velocity above 300 units/s (walk 255, sprint 430). Reduced motion holds the first sprint pose; asset failure falls back to directional/legacy artwork.

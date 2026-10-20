@@ -460,3 +460,30 @@ test('directional art uses valid frame mappings and leaves a missing sheet to fa
  }
  assert.equal(directionalSprite({}, {complete:false,naturalWidth:0},true,0,0,0,60),false);
 });
+
+test('sprint cycle uses distance, preserves eight-way facing and stops below sprint speed',async()=>{
+ const {sprintFrame}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ for(let direction=0;direction<8;direction++){
+  for(let phase=0;phase<4;phase++){
+   const pose=sprintFrame(direction,phase*40,true,430);
+   assert.equal(pose.frame,phase);assert.equal(pose.row,[0,1,2,3,4,3,2,1][direction]);
+  }
+  assert.equal(sprintFrame(direction,160,true,430).frame,0);
+  assert.equal(sprintFrame(direction,100,false,430),null,'blocked or idle actors must not animate');
+  assert.equal(sprintFrame(direction,100,true,255),null,'walking or exhausted actors must not animate');
+  assert.equal(sprintFrame(direction,100,true,NaN),null);
+  assert.equal(sprintFrame(direction,100,true,430,true).frame,0,'reduced motion keeps a stable sprint pose');
+ }
+});
+test('sprint sheet fallback and sampled rows keep the draw anchor fixed',async()=>{
+ const {sprintFrame,sprintSprite}=await import(pathToFileURL(`${out}/glass-tide.mjs`));
+ assert.equal(sprintSprite({}, {complete:false,naturalWidth:0},sprintFrame(0,0,true,430),10,20,59),false);
+ const draws=[],translations=[];const ctx={save(){},restore(){},scale(){},translate(x,y){translations.push([x,y]);},drawImage(...args){draws.push(args);}};
+ const image={complete:true,naturalWidth:1120,naturalHeight:1400};
+ for(let direction=0;direction<8;direction++)for(let phase=0;phase<4;phase++){
+  sprintSprite(ctx,image,sprintFrame(direction,phase*40,true,430),10,20,59);
+  const [,x,y,w,h]=draws.at(-1);
+  assert.ok(x>=0&&y>=0&&x+w<=image.naturalWidth&&y+h<=image.naturalHeight);
+  assert.deepEqual(translations.at(-1),[10,20]);
+ }
+});

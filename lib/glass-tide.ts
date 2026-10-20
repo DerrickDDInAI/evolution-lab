@@ -18,14 +18,15 @@ export function depthOrder<T extends {y:number;order:number}>(items:T[]):T[]{
   return [...items].sort((a,b)=>a.y-b.y||a.order-b.order);
 }
 
-type Art={atlas:HTMLImageElement;floor:HTMLImageElement;directions:HTMLImageElement};
+type Art={atlas:HTMLImageElement;floor:HTMLImageElement;directions:HTMLImageElement;sprint:HTMLImageElement};
 let art:Art|undefined;
 export function glassArt(){
   if(!art){
-    const atlas=new Image(),floor=new Image(),directions=new Image();
+    const atlas=new Image(),floor=new Image(),directions=new Image(),sprint=new Image();
     atlas.src='/glass-tide/sprites.png';floor.src='/glass-tide/shallows.png';
     directions.src='/glass-tide/directions.png';
-    art={atlas,floor,directions};
+    sprint.src='/glass-tide/sprint.png';
+    art={atlas,floor,directions,sprint};
   }
   return art;
 }
@@ -50,13 +51,13 @@ export function facingDirection(vx:number,vy:number,previous=0){
   // Extra six degrees beyond a sector edge prevents tiny corrections flipping poses.
   return difference<=sector/2+Math.PI/30?previous:Math.round(angle/sector)%8;
 }
-export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean};
+export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean;speed:number};
 export function actorPose(previous:ActorPose|undefined,actor:{x:number;y:number;life:number;vx:number;vy:number},time:number):ActorPose{
   const reset=!previous||previous.life!==actor.life||Math.hypot(actor.x-previous.x,actor.y-previous.y)>160;
-  if(reset)return {x:actor.x,y:actor.y,life:actor.life,time,facing:facingDirection(actor.vx,actor.vy),travel:0,moving:false};
+  if(reset)return {x:actor.x,y:actor.y,life:actor.life,time,facing:facingDirection(actor.vx,actor.vy),travel:0,moving:false,speed:0};
   const dt=(time-previous.time)/1000,dx=actor.x-previous.x,dy=actor.y-previous.y,distance=Math.hypot(dx,dy);
   const moving=dt>0&&dt<.25&&distance/dt>=8;
-  return {x:actor.x,y:actor.y,life:actor.life,time,facing:moving?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(moving?distance:0),moving};
+  return {x:actor.x,y:actor.y,life:actor.life,time,facing:moving?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(moving?distance:0),moving,speed:moving?distance/dt:0};
 }
 // Generated views are mapped explicitly after visual inspection. Mirroring the
 // matching three-quarter/profile view gives consistent left/right anatomy.
@@ -73,5 +74,25 @@ export function directionalSprite(ctx:CanvasRenderingContext2D,image:HTMLImageEl
   const sy=rows[row]*unit,sh=(rows[row+1]-rows[row])*unit,sw=image.naturalWidth/4;
   ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);
   ctx.drawImage(image,(cell%4)*sw,sy,sw,sh,-size/2,-(anchors[row]-rows[row])/320*size,size,sh/sw*size);
+  ctx.restore();return true;
+}
+
+// Walk is 255 world units/s; sprint is 430. Use observed and authoritative
+// speeds together so correction jumps or holding Shift against a wall cannot run.
+export function sprintFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false){
+  if(!moving||!Number.isFinite(speed)||speed<=300)return null;
+  const frame=reducedMotion?0:Math.floor(Math.max(0,travel)/40)%4;
+  const row=[0,1,2,3,4,3,2,1][facing];
+  // Reverse the frontal/rear strike pair to alternate the visible leading foot.
+  const flip=(facing>=1&&facing<=3)||((row===0||row===4)&&frame>=2);
+  return {row,frame,flip};
+}
+export function sprintSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:NonNullable<ReturnType<typeof sprintFrame>>,x:number,y:number,size:number){
+  if(!ready(image))return false;
+  const {row,frame,flip}=pose,rows=[0,300,570,830,1090,1400],anchors=[292,563,820,1080,1365];
+  const sw=image.naturalWidth/4,sy=rows[row]/1400*image.naturalHeight,sh=(rows[row+1]-rows[row])/1400*image.naturalHeight;
+  const width=size*.88,height=sh/sw*width,hip=[.55,.66,.7,.64,.5][row],anchor=(anchors[row]-rows[row])/(rows[row+1]-rows[row]);
+  ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);
+  ctx.drawImage(image,frame*sw,sy,sw,sh,-width*hip,-height*anchor,width,height);
   ctx.restore();return true;
 }

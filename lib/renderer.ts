@@ -1,4 +1,4 @@
-import {GROUND_TILT,visibleGround,glassArt,ready,sprite,groundEllipse,depthOrder,overlaps,actorPose,directionalSprite,type ActorPose} from './glass-tide';
+import {GROUND_TILT,visibleGround,glassArt,ready,sprite,groundEllipse,depthOrder,overlaps,actorPose,directionalSprite,sprintFrame,sprintSprite,type ActorPose} from './glass-tide';
 import { FIELD, walls } from './physics';
 import {createEffects,updateEffects,cancelEffect,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline,type CollisionEvent} from './collision-effects';
 import {trackRemote,type Track} from './net-motion';
@@ -139,7 +139,8 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
       const moving=pose.moving;
       const sway=reducedMotion?0:actor.kind==='human'?(moving?-Math.abs(Math.sin(pose.travel/9))*1.8*zoom:0):Math.sin(time/300+actor.x)*.7*zoom;
       const human=actor.kind==='human',size=(human?59:actor.warming?39:47)*zoom;
-      const drawn=!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size);
+      const sprint=human?sprintFrame(pose.facing,pose.travel,pose.moving,Math.min(pose.speed,Math.hypot(actor.vx,actor.vy)),reducedMotion):null;
+      const drawn=(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
       if(!drawn&&!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,pose.facing>=1&&pose.facing<=3)){
         groundEllipse(ctx,x,y,radius*zoom);ctx.fillStyle=human?'#f5e9b3':actor.warming?'#e0e7dc':'#d78542';ctx.fill();
       }
