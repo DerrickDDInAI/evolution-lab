@@ -14,6 +14,8 @@ The arena takes priority in the interface. Training metrics, fitness history, an
 
 ## Development
 
+Contributor guidance: [AGENTS.md](AGENTS.md). Shared context and focused chat starters: [project wiki](docs/index.md). Verification scope and current gaps: [engineering](docs/engineering.md) and [project state](docs/project-state.md).
+
 Requires Node.js 22.13 or later. The local preview uses Cloudflare D1; no Python installation is required.
 
 ```sh
@@ -30,20 +32,16 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 Then apply `drizzle/0001_messy_tombstone.sql` with the same command. Start the preview with `npm run dev -- --port 5173 --hostname 127.0.0.1`.
 
 ```sh
-npm test
-npm run typecheck
+npm run verify
 ```
 
-With the local preview running, run these integration tests **sequentially** because they stage controlled fixtures in the same local database:
+With a disposable local preview running, use the integration runner. It runs the existing tests **sequentially** because they stage controlled fixtures in the same local database. These fixtures change arena state and create scores; see [integration prerequisites and coverage](docs/engineering.md#local-integration-checks):
 
 ```sh
-node tests/visible-contact.mjs
-node tests/contact-respawn.mjs
-ARENA_TEST_DEATH=1 node tests/multiplayer.mjs
-node tests/network-lag.mjs
+npm run test:integration
 ```
 
-Fixture scripts refuse non-loopback URLs. Never reset production data for testing. `.wrangler/`, `.sites-runtime/`, dependencies, credentials, and preview screenshots are ignored. The hosting identity in `.openai/hosting.json` belongs to the existing public Site; preserve it when publishing updates.
+The integration runner rejects non-loopback URLs before running fixtures. Never reset production data for testing. `.wrangler/`, `.sites-runtime/`, dependencies, credentials, and preview screenshots are ignored. The hosting identity in `.openai/hosting.json` belongs to the existing public Site; preserve it when publishing updates.
 
 ## Movement and collision timing
 
