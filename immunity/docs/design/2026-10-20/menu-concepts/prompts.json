@@ -2,7 +2,7 @@
   "tool": "built-in image_gen.imagegen",
   "reference_images": [
     "../glass-tide-tilted.png",
-    "../../../../public/immunity/sprites.png"
+    "../../../../public/immunity/sprites.webp"
   ],
   "concepts": [
     {

@@ -31,8 +31,8 @@
 .choosing .topbar nav button{background:#fff5dce6;border:1px solid #e4cfac;color:#244b48;box-shadow:0 2px 12px #163c3c25}
 .choosing .world,.choosing .arena-status,.choosing .generation-clock,.choosing .map-panel,.choosing .view-controls{visibility:hidden}
 .mode-menu{position:absolute;z-index:12;inset:0;display:grid;place-items:center;overflow:hidden;background:#2c5754}
-.mode-menu::before{content:'';position:absolute;inset:-20px;background:url('/immunity/nursery-menu.png') center/cover;filter:blur(14px) brightness(.65)}
-.nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/immunity/nursery-menu.png') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
+.mode-menu::before{content:'';position:absolute;inset:-20px;background:url('/immunity/nursery-menu.webp') center/cover;filter:blur(14px) brightness(.65)}
+.nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/immunity/nursery-menu.webp') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
 .nursery-scene:focus-visible::after{content:'';position:absolute;inset:5px;border:1px solid #fff2c96b;pointer-events:none}
 .nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;text-shadow:0 1px 4px #fff8e8}
 .nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8}

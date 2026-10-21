@@ -47,7 +47,7 @@ Verification: 77 tests, TypeScript, production build and focused training compon
 
 ## Tidal Lens — selected implementation, 2026-10-21
 
-The user selected the [Tidal Lens mockup](design/2026-10-21-tidal-lens.png): deep teal reading membranes, thin pearl/amber shell edges, perimeter capillaries, luminous stamina chambers, and a live fitness chart with best generation and score visible together. Players need readable survival feedback with an open view of the world. Builder owns review, single-agent. This presentation change preserves menu, simulation, rewards, genomes, scores and hosting identity. No publication included. Acceptance: selected materials and hierarchy with actual metrics; complete joining, help, training, records, offline and contact states; desktop, phone and short layouts; keyboard focus and reduced-motion support. Checks: domain suite/TypeScript, focused lint, build and browser gameplay/responsive comparison.
+The user selected the [Tidal Lens mockup](design/2026-10-21-tidal-lens.webp): deep teal reading membranes, thin pearl/amber shell edges, perimeter capillaries, luminous stamina chambers, and a live fitness chart with best generation and score visible together. Players need readable survival feedback with an open view of the world. Builder owns review, single-agent. This presentation change preserves menu, simulation, rewards, genomes, scores and hosting identity. No publication included. Acceptance: selected materials and hierarchy with actual metrics; complete joining, help, training, records, offline and contact states; desktop, phone and short layouts; keyboard focus and reduced-motion support. Checks: domain suite/TypeScript, focused lint, build and browser gameplay/responsive comparison.
 
 
 ### Implemented and reviewed

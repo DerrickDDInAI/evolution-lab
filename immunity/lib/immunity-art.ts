@@ -23,10 +23,10 @@ let art:Art|undefined;
 export function immunityArt(){
   if(!art){
     const atlas=new Image(),floor=new Image(),directions=new Image(),sprint=new Image(),walk=new Image();
-    atlas.src='/immunity/sprites.png';floor.src='/immunity/shallows.png';
-    directions.src='/immunity/directions.png';
-    sprint.src='/immunity/sprint.png';
-    walk.src='/immunity/walk.png';
+    atlas.src='/immunity/sprites.webp';floor.src='/immunity/shallows.webp';
+    directions.src='/immunity/directions.webp';
+    sprint.src='/immunity/sprint.webp';
+    walk.src='/immunity/walk.webp';
     art={atlas,floor,directions,sprint,walk};
   }
   return art;
