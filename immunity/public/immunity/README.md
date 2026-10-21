@@ -19,4 +19,4 @@ See [implementation and verification](../../docs/glass-tide-implementation.md) f
 
 ## Walking animation
 
-`walk.webp` provides four upright, short-step walking phases for five camera views, mirrored for eight headings. The separate walking cadence is driven by travelled distance. Explicit atlas rows and hip/foot anchors preserve alignment; WebP retains transparency. See [walking prompt](walk-prompts.json).
+`walk.webp` retains the original four-pose, five-view painting and transparency. The walking renderer now samples its first pose per view into masked thigh, shin/boot and body layers, articulating two legs half a cycle apart with continuous distance-driven motion. Left headings mirror the matching right view; bodies do not flip within a stride. Explicit sampling and hip/ground anchors preserve the original identity and scale. See the [original walking prompt](walk-prompts.json) and [walking realism correction](../../docs/glass-tide-implementation.md#walking-realism-correction--2026-10-21).

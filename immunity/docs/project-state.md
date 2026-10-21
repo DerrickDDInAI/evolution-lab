@@ -132,3 +132,15 @@ PASS: 90 domain/security tests and TypeScript; final production build; lint clea
 PASS browser: actual unauthenticated best-model download (v2, one genome, matching Gen 1 record), administrator sign-in/sign-out with a disposable credential, file-picker upload and compatibility preview, queued status, cancellation, rollback confirmation and Escape/focus return. A discovered focus escape after sign-out was fixed and rechecked. At 390 CSS pixels the archive has no document/panel horizontal overflow; desktop remains within the existing panel. No browser warning/error logs in the final check. Ignored screenshots: `outputs/training-archive-desktop.jpg`, `outputs/training-archive-phone.jpg`. Password setup was exercised in a separate temporary folder and verified to write a usable hash with mode 0600; no hash is embedded in the production build.
 
 All integration/browser work uses `/private/tmp/immunity-checkpoints-qa-20261021` and disposable D1/credentials. Existing project runtime data, hosting identity, menus, movement and reward definitions are preserved. Physical-device touch, OS reduced-motion visuals, maximum-player load, standardized learning-quality evaluation and production administrator CPU/secret/cookie behavior remain unverified. The host must choose its password privately and configure the server secret before admin imports can be used.
+
+
+## Survivor walking realism — 2026-10-22
+
+User reported that the right leg appeared permanently ahead of the left. The shared menu/arena walk now articulates two legs from the existing painted artwork, half a cycle apart, with planted support, lifted passing feet, knee bends and continuous interpolation. Body orientation stays fixed through both footfalls; cadence is slightly slower. Sprint, idle, reduced-motion fallback, movement/contact rules and runtime data are preserved. [Implementation and evidence](glass-tide-implementation.md#walking-realism-correction--2026-10-21).
+
+PASS: 92 tests, TypeScript, production build and focused helper/test lint (one existing unused-variable warning). Browser comparison covers all eight headings and both display scales; local play checks cover menu movement, joining, walking/sprinting, arena entry, visible capture, outside respawn and mode return. Disposable QA: `/private/tmp/immunity-walk-qa-20261021`; no existing database used. Physical touch, OS reduced-motion visuals and maximum-player render performance are unverified. No new HTTP integration run; rendering only. Local changes are uncommitted and undeployed.
+
+
+### Walking release preparation — 2026-10-22
+
+The user explicitly requested committing and deploying the improved walk. Release scope is the five walking renderer/regression/documentation files, preserving the public Site identity, existing storage bindings and source/runtime data. The verified 92-test/TypeScript, production build and browser evidence above remains current; no runtime source changed since those checks. Publication uses the existing flattened Site source checkout; the Evolution Lab repository retains its nested layout and history. Deployment receipt follows after a confirmed release.

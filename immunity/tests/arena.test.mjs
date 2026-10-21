@@ -491,8 +491,8 @@ test('sprint sheet fallback and sampled rows keep the draw anchor fixed',async()
 test('walking and sprinting select exclusive gaits across headings and speed changes',async()=>{
  const {walkFrame,sprintFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(let facing=0;facing<8;facing++){
-  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*42,true,255).frame,frame);
-  assert.equal(walkFrame(facing,168,true,255).frame,0);
+  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*56,true,255).frame,frame);
+  assert.equal(walkFrame(facing,224,true,255).frame,0);
   assert.equal(walkFrame(facing,120,true,255,true).frame,0);
   for(const speed of [8,120,255,300]){assert.ok(walkFrame(facing,100,true,speed));assert.equal(sprintFrame(facing,100,true,speed),null);}
   for(const speed of [301,430]){assert.equal(walkFrame(facing,100,true,speed),null);assert.ok(sprintFrame(facing,100,true,speed));}
@@ -500,15 +500,40 @@ test('walking and sprinting select exclusive gaits across headings and speed cha
   assert.equal(walkFrame(facing,100,false,255),null);
  }
 });
+test('walking retains body orientation through both footfalls',async()=>{
+ const {walkFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(let facing=0;facing<8;facing++){
+  const poses=Array.from({length:4},(_,phase)=>walkFrame(facing,phase*56,true,255));
+  assert.deepEqual(poses.map(p=>p.frame),[0,1,2,3]);
+  assert.ok(poses.every(p=>p.flip===(facing>=1&&facing<=3)),`heading ${facing} must retain its body orientation through both footfalls`);
+  assert.deepEqual(walkFrame(facing,0,true,255,true),walkFrame(facing,168,true,255,true),'reduced motion freezes both frame and orientation');
+ }
+});
+test('walking plants alternating feet and lifts only the passing foot continuously',async()=>{
+ const {walkLegMotion}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ assert.equal(walkLegMotion(0).reach,1);
+ assert.ok(walkLegMotion(.5).reach<0,'first foot trails as the opposite heel arrives');
+ assert.equal(walkLegMotion(.5+.5).reach,1,'opposite foot leads at half cycle');
+ for(let i=0;i<100;i++){
+  const p=i/100,a=walkLegMotion(p),b=walkLegMotion(p+.5);
+  assert.ok(a.support||b.support,'walking always has a supporting foot');
+  assert.ok(a.lift>=0&&a.lift<=1&&Math.abs(a.reach)<=1);
+  if(a.support)assert.equal(a.lift,0,'planted foot never lifts');
+  const next=walkLegMotion(p+.00001);
+  assert.ok(Math.abs(next.reach-a.reach)<.001&&Math.abs(next.lift-a.lift)<.001,'no jumps at stance, passing or loop boundaries');
+ }
+ assert.equal(walkLegMotion(.8).lift,1);
+});
 test('walking atlas preserves draw origins, valid source bounds and loading fallback',async()=>{
  const {walkFrame,walkSprite}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  assert.equal(walkSprite({}, {complete:false,naturalWidth:0},walkFrame(0,0,true,255),10,20,59),false);
- const draws=[],translations=[];const ctx={save(){},restore(){},scale(){},translate(x,y){translations.push([x,y]);},drawImage(...args){draws.push(args);}};
+ const draws=[],translations=[];let depth=0;const ctx={save(){depth++;},restore(){depth--;},scale(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));},rotate(angle){assert.ok(Number.isFinite(angle));},beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){},translate(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));if(depth===1)translations.push([x,y]);},drawImage(...args){draws.push(args);}};
  const image={complete:true,naturalWidth:1120,naturalHeight:1400};
- for(let facing=0;facing<8;facing++)for(let phase=0;phase<4;phase++){
-  walkSprite(ctx,image,walkFrame(facing,phase*42,true,255),10,20,59);
-  const [,x,y,w,h]=draws.at(-1);assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
-  assert.deepEqual(translations.at(-1),[10,20]);
+ for(let facing=0;facing<8;facing++)for(let phase=0;phase<32;phase++){
+  walkSprite(ctx,image,walkFrame(facing,phase*7,true,255),10,20,59);
+  assert.equal(draws.length%5,0,'two articulated legs and the body are composited');
+  for(const [,x,y,w,h] of draws.slice(-5))assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
+  assert.deepEqual(translations.at(-2),[10,20]);
  }
 });
 
