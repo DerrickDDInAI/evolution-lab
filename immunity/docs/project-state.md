@@ -144,3 +144,10 @@ PASS: 92 tests, TypeScript, production build and focused helper/test lint (one e
 ### Walking release preparation — 2026-10-22
 
 The user explicitly requested committing and deploying the improved walk. Release scope is the five walking renderer/regression/documentation files, preserving the public Site identity, existing storage bindings and source/runtime data. The verified 92-test/TypeScript, production build and browser evidence above remains current; no runtime source changed since those checks. Publication uses the existing flattened Site source checkout; the Evolution Lab repository retains its nested layout and history. Deployment receipt follows after a confirmed release.
+
+
+### Walking publication — 2026-10-22
+
+Committed the animation, regressions and supporting documentation on Evolution Lab `main` as `1d6a40d45dcb73cb6dc58eeb6db0c5e3df60ebb8` (`Improve survivor walking with alternating articulated legs`). The existing hosted source was opened in a fresh disposable checkout because an older temporary checkout had diverged; neither history was overwritten. Comparison confirmed that only the five walking files differed from the current hosted source, and hosted-only historical artwork was preserved.
+
+The exact release source was built successfully, committed/pushed through Sites as `8359c94d73ef59857950beef50439e08d527fcc0`, and saved as version **13** (`appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_47cab2a4fa688191902aa4423a5532c5`). Native deployment `appgdep_6ad93ea6c598819186852898251f158b` returned **succeeded** with [the existing public URL](https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site). The public audience, Site identity and D1 binding remain unchanged; no schema changes or production fixtures were run. The 92-test/TypeScript and local-browser evidence above remains current; the release build was rerun from the pushed source. Native success confirms publication; no additional production gameplay/device test is claimed. This receipt is a local documentation commit after the deployed source.
