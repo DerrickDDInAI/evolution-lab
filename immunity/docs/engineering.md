@@ -36,6 +36,8 @@ The runner defaults to `http://127.0.0.1:5173`, checks the HTTP loopback target 
 
 For a different local port, set `ARENA_TEST_URL=http://127.0.0.1:PORT`. It must be the preview attached to this checkout's local database. The wrapper rejects external hosts before any fixture runs; invoking `multiplayer.mjs` directly does not provide that early protection. Never use a public URL for these tests.
 
+The separate [training import fixture](training-checkpoints.md#verification) requires a disposable administrator credential and checks authentication, archives, concurrent imports and rollback; it is not added to the credential-free gameplay runner.
+
 These are HTTP checks and controlled SQLite fixtures, not rendered-browser tests, realistic network fault simulation, 12-player load testing or evidence of production D1 behavior.
 
 ## Experience review

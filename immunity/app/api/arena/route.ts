@@ -1,3 +1,5 @@
+import {type TrainingWrite} from '../../../lib/training-checkpoints';
+import {checkpointStatements} from '../../../lib/training-store';
 import {arenaKey,modeProfile,type GameMode} from '../../../lib/game-mode';
 import { env } from 'cloudflare:workers';
 import { createArena,upgradeArena,advance,applyCommands,join,snapshot,rememberContactFrame,confirmContact,type Arena,type Scores,type Run,type FinishedRun } from '../../../lib/arena';
@@ -67,7 +69,8 @@ export async function POST(request:Request){
       // unseen server overlap while its first updated input packet is applied.
       const existing=a.players.find(p=>p.token===hash);
       if(existing&&input.contactMode==='visible-v1')existing.contactMode='visible-v1';
-      advance(a,now,finished);
+      const trainingWrites:TrainingWrite[]=[];
+      advance(a,now,finished,trainingWrites);
       if(input.action==='join'){
         if(a.players.length>=12)return json({error:'The arena is full (12 players). Try again shortly.'},409);
         const joined=join(a,id,hash,input.name.trim().replace(/[\u0000-\u001f]/g,''),now,profileId,saved!);
@@ -87,6 +90,7 @@ export async function POST(request:Request){
       const viewer=a.players.find(p=>p.token===hash);if(viewer)rememberContactFrame(a,viewer,now);
       const commitId=crypto.randomUUID();a.commitId=commitId;
       const statements=[db.prepare("UPDATE arena SET state=?,revision=revision+1 WHERE id=? AND revision=?").bind(JSON.stringify(a),arenaKey(mode),row.revision),
+        ...checkpointStatements(db,mode,trainingWrites,commitId),
         ...finished.map(run=>db.prepare("INSERT OR IGNORE INTO runs (id,profile_id,duration_ms,generation,bot,died_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM arena WHERE id=? AND json_extract(state,'$.commitId')=?)")
           .bind(run.id,run.profileId,run.durationMs,run.generation,run.bot,run.diedAt,arenaKey(mode),commitId))];
       const result=statements.length===1?[await statements[0].run()]:await db.batch(statements);

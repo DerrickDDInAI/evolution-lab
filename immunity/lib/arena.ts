@@ -1,3 +1,4 @@
+import {emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
 import {RESOURCE,MOTION_THRESHOLD,atExit,type GameMode} from './game-mode';
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
 import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, type Motion, type Command, type Obstacle } from './physics';
@@ -10,7 +11,7 @@ export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;carrying?:boolean;contactMode?:'visible-v1';contactFrames?:ContactFrame[]};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
-export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string};
+export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
   return Array.from({length:60},()=>({x:FIELD.min+180+random(e)*3240,y:FIELD.min+180+random(e)*3240,r:35+random(e)*60}))
@@ -26,7 +27,9 @@ export function createArena(now:number,mode:GameMode='survival'):Arena {
 // Upgrade an existing live world without discarding its trained genomes or generation history.
 export function upgradeArena(raw:any,now:number):Arena {
   raw.collisions??=[];
+  raw.training??=emptyTraining();
   raw.bestGeneration=bestCompletedGeneration(raw.history||[],raw.bestGeneration??null);
+  recoverBestModel(raw);
   for(const b of raw.bots)ensureHome(raw,b);
   if(raw.version===2)return raw;
   raw.version=2;raw.time=now;raw.obstacles=obstacles(raw.evolution);
@@ -123,12 +126,12 @@ export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,fin
   }
   if(!commands.length){p.vx=0;p.vy=0;}
 }
-export function advance(a:Arena,now:number,finished:FinishedRun[]=[]) {
+export function advance(a:Arena,now:number,finished:FinishedRun[]=[],trainingWrites:TrainingWrite[]=[]) {
   a.players=a.players.filter(p=>now-p.lastSeen<15000);
   let remaining=Math.min(MAX_MOVEMENT_CREDIT,Math.max(0,(now-a.time)/1000));a.time=now;
-  while(remaining>1e-7){const dt=Math.min(1/30,remaining);remaining-=dt;step(a,dt,now,finished);}
+  while(remaining>1e-7){const dt=Math.min(1/30,remaining);remaining-=dt;step(a,dt,now,finished,trainingWrites);}
 }
-function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
+function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites:TrainingWrite[]) {
   const active=a.players.filter(p=>p.phase==='arena');
   if(!active.length){for(const b of a.bots){b.vx=0;b.vy=0;}return;}
   a.elapsed+=dt;
@@ -160,10 +163,13 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[]) {
   if(a.elapsed>=ROUND){
     for(const b of a.bots)b.genome.fitness=b.fitness;
     const result=breed(a.bots.map(b=>b.genome),a.evolution);
-    a.history.push({generation:a.generation,fitness:result.best.fitness,meanFitness:a.bots.reduce((sum,b)=>sum+b.fitness,0)/a.bots.length,tags:a.roundTags});
+    a.history.push({branch:a.training?.branch||1,generation:a.generation,fitness:result.best.fitness,meanFitness:a.bots.reduce((sum,b)=>sum+b.fitness,0)/a.bots.length,tags:a.roundTags});
     a.bestGeneration=bestCompletedGeneration(a.history,a.bestGeneration??null);a.history=a.history.slice(-40);
+    rememberBestModel(a,result.best,now);
     a.champion=result.best;a.species=result.species;a.generation++;a.elapsed=0;a.roundTags=0;
-    a.bots.forEach((b,i)=>{b.genome=result.genomes[i];b.fitness=0;b.tags=0;spawnBot(a,b);});
+    a.bots.forEach((b,i)=>{b.genome=result.genomes[i];b.fitness=0;b.tags=0;});
+    trainingBoundary(a,now,trainingWrites);
+    for(const b of a.bots)spawnBot(a,b);
   }
 }
 export function snapshot(a:Arena,selfToken?:string) {
@@ -173,5 +179,5 @@ export function snapshot(a:Arena,selfToken?:string) {
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),
     bots:a.bots.map(({genome,...b})=>({...b,nodes:genome.nodes.length+11,connections:genome.genes.filter(c=>c.enabled).length})),obstacles:a.obstacles,
-    bestFitness:Math.max(0,...a.bots.map(b=>b.fitness)),championAvailable:!!a.champion};
+    bestFitness:Math.max(0,...a.bots.map(b=>b.fitness)),training:trainingSummary(a),championAvailable:!!a.champion};
 }

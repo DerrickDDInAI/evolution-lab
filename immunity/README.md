@@ -87,3 +87,9 @@ The best two genomes survive each generation. Compatibility groups share selecti
 D1 compare-and-swap revisions serialize world updates. A unique commit marker guards score inserts in the same transaction, so failed retries cannot create duplicate scores. Session tokens stay in session storage and anonymous score identities in local storage; only hashes are persisted server-side. Clearing browser storage creates a new identity. Frame histories, identity hashes and private records are excluded from public world snapshots.
 
 Motion Hunt uses the `motion` arena row; Survival retains `shared`. Mode-specific anonymous profile hashes separate records without a schema migration; `bot = -1` represents an extraction, and only successful extractions contribute to its fastest time. World transitions and run inserts share the existing atomic commit guard. See [Motion Hunt implementation and verification](docs/motion-hunt.md).
+
+### Training archive and administrator access
+
+Open Adaptation's training details to export the all-time best saved model or the latest full population checkpoint. Administrator imports are validated and queued for the next generation boundary; the previous population is backed up automatically and can be restored. Player scores and earlier history remain intact, with imports/rollbacks marked as training branches.
+
+Set the host password locally with `npm run admin:password`; it uses a hidden prompt and stores only a hash in ignored `.dev.vars`. Production requires the corresponding server secret to be configured separately. See [Training archive](docs/training-checkpoints.md) for setup, compatibility, retention, security and testing limits.

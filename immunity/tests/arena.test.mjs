@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
+for(const name of ['training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
