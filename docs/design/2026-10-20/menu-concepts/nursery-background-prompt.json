@@ -1,7 +1,0 @@
-{
-  "tool": "built-in image_gen.imagegen",
-  "reference": "03-expedition-nursery.png",
-  "output": "../../../../public/glass-tide/nursery-menu.png",
-  "transparent_background": false,
-  "prompt": "Edit this exact Glass Tide game menu image into a clean game background plate. Preserve the composition, viewpoint, pale ivory organic shell architecture, glass canopy, turquoise water, lush coral and flowers, specimen pedestals, sentinel specimen on the left, luminous seed specimen on the right, and all lighting. Remove ALL text and lettering from the top title membrane, both specimen label membranes, and bottom instruction membrane, leaving those beautiful pearly surfaces blank. Remove the human survivor in the central foreground and their shadow, seamlessly restoring the stone floor. Remove the orange selection progress arc and bright orange branching veins on the right circular floor pad; make that floor pad neutral pale glass like the left pad, retaining both floor pad rims and their positions. Do not add any people or lettering. Keep the original wide landscape composition and the exact placement of all architectural and menu elements. This will be a live interactive menu background with real text, movable player and selection feedback layered on top."
-}
