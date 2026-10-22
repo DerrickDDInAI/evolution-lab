@@ -190,10 +190,12 @@ export function runPose(row:number,phase:number,sprinting=false){
   const lengthScale=sprinting?1.12:1.08;
   const upper=Math.hypot(view.knee[0]-view.hip[0],view.knee[1]-view.hip[1])*lengthScale;
   const lower=Math.hypot(view.ankle[0]-view.knee[0],view.ankle[1]-view.knee[1])*lengthScale;
-  const stride=sprinting?68:55,stance=sprinting?.36:.42,step=phase%.5,active=walkLegMotion(step,stance),vertical=view.ankle[1]-view.hip[1];
+  const stride=sprinting?68:55,stance=sprinting?.36:.42,vertical=view.ankle[1]-view.hip[1];
   const extension=(upper+lower)*.97;
-  const drop=step<stance?vertical-Math.sqrt(Math.max(1,extension*extension-(active.reach*stride)**2)):
-    vertical-Math.sqrt(Math.max(1,extension*extension-stride*stride))-16*Math.sin((step-stance)/(.5-stance)*Math.PI);
+  // Keep enough knee flexion for the long stride, with a small, smooth rise
+  // between contacts instead of snapping into a separate airborne bounce.
+  const contactDrop=vertical-Math.sqrt(Math.max(1,extension*extension-stride*stride));
+  const drop=contactDrop-(sprinting?2.5:1.5)*(1-Math.cos((phase-stance/2)*Math.PI*4));
   const hipHeight=view.baseline-view.hip[1]-drop,boot=view.baseline-view.ankle[1];
   for(const near of [false,true]){
     const foot=near?motion.near:motion.far,spread=row===0?-8:row===4?8:8*Math.abs(fy);

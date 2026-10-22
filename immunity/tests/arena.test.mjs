@@ -544,6 +544,18 @@ test('whole-body run has long projected steps, moving bent arms and continuous t
  const front=runPose(0,0),frontBack=runPose(0,.42);
  assert.ok(Math.abs(near(front).ankle[1]-near(frontBack).ankle[1])>60,'front/rear steps project actual depth rather than a tiny vertical twitch');
 });
+test('running keeps a steady pelvis and smooth velocity through contacts and flight',async()=>{
+ const {runPose}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(const sprinting of [false,true])for(let row=0;row<5;row++){
+  const h=.00001,drop=p=>runPose(row,p,sprinting).drop;
+  const values=Array.from({length:1000},(_,i)=>drop(i/1000));
+  assert.ok(Math.max(...values)-Math.min(...values)<=(sprinting?5:3)+1e-9,'root rise stays below one game-scale pixel');
+  for(let i=0;i<=1000;i++){
+   const p=i/1000,left=(drop(p)-drop(p-h))/h,right=(drop(p+h)-drop(p))/h;
+   assert.ok(Math.abs(right-left)<.05,'vertical velocity stays smooth at footfalls, flight and loop boundaries');
+  }
+ }
+});
 test('menu gait follows screen distance and actor scale across resize and portrait layouts',async()=>{
  const {menuGaitDistance}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  const d=menuGaitDistance(100,0,1672,941,180);
