@@ -66,10 +66,11 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
     stage.current?.focus();
   }
   function approach(mode:GameMode){if(!paused){goal.current=MENU_PADS[mode];stage.current?.focus();}}
-  return <section className="mode-menu" aria-labelledby="expedition-title">
+  return <section className="mode-menu" aria-labelledby="expedition-title" aria-describedby="nursery-purpose">
     <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose an expedition. Move with WASD or arrows into a floor circle. Stay for 0.85 seconds or press Enter." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)){keys.current.clear();goal.current=null;selection.current={mode:null,elapsed:0};}}}>
       <h1 id="expedition-title">Immunity</h1>
       <svg className="nursery-ornament" viewBox="0 0 240 24" aria-hidden="true"><path d="M0 8h88q20 0 32 14Q132 8 152 8h88M120 22V1m0 15Q105 0 92 3m28 13Q135 0 148 3"/></svg>
+      <p id="nursery-purpose" className="nursery-inscription"><small>A living experiment</small><strong>How skilled can the sentinels become?</strong><span>They learn by hunting you. Every survivor shapes the next generation.</span></p>
       {(['survival','motion'] as const).map(m=><button key={m} className={'nursery-label '+m+(display.mode===m?' selected':'')} disabled={paused} onPointerDown={e=>e.stopPropagation()} onClick={()=>approach(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat&&!paused){e.preventDefault();e.stopPropagation();if(!done.current){done.current=true;choose.current(m);}}}} aria-label={`${modeName(m)}. ${m==='survival'?'Survive the sentinels.':'Collect the seed. Freeze to hide. Reach an exit.'} Click to walk there, or press Enter to choose.`}>
         <strong>{modeName(m)}</strong><span>{m==='survival'?'Survive the sentinels':'Collect the seed. Reach an exit.'}</span>
       </button>)}
