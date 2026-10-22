@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {advanceMenu,MENU_HOLD_MS,MENU_PADS,modeName,type GameMode,type MenuPosition,type MenuSelection} from '../lib/game-mode';
-import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite} from '../lib/immunity-art';
+import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance} from '../lib/immunity-art';
 
 export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void;paused?:boolean}){
   const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null);
@@ -13,7 +13,9 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
     const element=stage.current;
     if(!paused)element?.focus();
     const art=immunityArt(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    let frame=0,last=0,facing=4,travel=0;
+    let frame=0,last=0,facing=4,travel=0,sceneWidth=1672,sceneHeight=941,actorWidth=180;
+    const measure=()=>{const box=element?.getBoundingClientRect();if(box){sceneWidth=box.width;sceneHeight=box.height;}actorWidth=actor.current?.getBoundingClientRect().width||180;};
+    const resize=new ResizeObserver(measure);if(element)resize.observe(element);measure();
     const confirm=(mode:GameMode)=>{if(!done.current){done.current=true;choose.current(mode);}};
     const clear=()=>{keys.current.clear();goal.current=null;selection.current={mode:null,elapsed:0};last=0;};
     const down=(e:KeyboardEvent)=>{
@@ -46,7 +48,7 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
       if(canvas&&ctx){
         canvas.style.left=p.x+'%';canvas.style.top=p.y+'%';
         const moving=Math.hypot(dx,dy)>.01;
-        if(moving){facing=facingDirection(dx*100,dy*100,facing);travel+=Math.hypot(dx,dy);}
+        if(moving){facing=facingDirection(dx*100,dy*100,facing);travel+=menuGaitDistance(dx,dy,sceneWidth,sceneHeight,actorWidth);}
         ctx.clearRect(0,0,180,190);
         ctx.fillStyle='#193f3d45';ctx.beginPath();ctx.ellipse(90,170,24,8,0,0,Math.PI*2);ctx.fill();
         const pose=walkFrame(facing,travel,moving,255,reduced.matches);
@@ -56,7 +58,7 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
     };
     element?.addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
     frame=requestAnimationFrame(draw);
-    return()=>{cancelAnimationFrame(frame);element?.removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();};
+    return()=>{cancelAnimationFrame(frame);resize.disconnect();element?.removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();};
   },[paused]);
   function walk(e:React.PointerEvent<HTMLDivElement>){
     if(paused)return;

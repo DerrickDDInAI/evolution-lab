@@ -148,7 +148,7 @@ export function renderArena(canvas:HTMLCanvasElement,mini:HTMLCanvasElement|null
       const speed=Math.min(pose.speed,Math.hypot(actor.vx,actor.vy));
       const sprint=human?sprintFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion):null;
       const walk=human?walkFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion):null;
-      const drawn=(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(walk&&walkSprite(ctx,art.walk,walk,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
+      const drawn=(sprint&&walkSprite(ctx,art.walk,sprint,x,y+4*zoom,size,true))||(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(walk&&walkSprite(ctx,art.walk,walk,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
       if(!drawn&&!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,pose.facing>=1&&pose.facing<=3)){
         groundEllipse(ctx,x,y,radius*zoom);ctx.fillStyle=human?'#f5e9b3':actor.warming?'#e0e7dc':'#d78542';ctx.fill();
       }

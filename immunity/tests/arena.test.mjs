@@ -491,8 +491,8 @@ test('sprint sheet fallback and sampled rows keep the draw anchor fixed',async()
 test('walking and sprinting select exclusive gaits across headings and speed changes',async()=>{
  const {walkFrame,sprintFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(let facing=0;facing<8;facing++){
-  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*56,true,255).frame,frame);
-  assert.equal(walkFrame(facing,224,true,255).frame,0);
+  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*26,true,255).frame,frame);
+  assert.equal(walkFrame(facing,104,true,255).frame,0);
   assert.equal(walkFrame(facing,120,true,255,true).frame,0);
   for(const speed of [8,120,255,300]){assert.ok(walkFrame(facing,100,true,speed));assert.equal(sprintFrame(facing,100,true,speed),null);}
   for(const speed of [301,430]){assert.equal(walkFrame(facing,100,true,speed),null);assert.ok(sprintFrame(facing,100,true,speed));}
@@ -503,37 +503,67 @@ test('walking and sprinting select exclusive gaits across headings and speed cha
 test('walking retains body orientation through both footfalls',async()=>{
  const {walkFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(let facing=0;facing<8;facing++){
-  const poses=Array.from({length:4},(_,phase)=>walkFrame(facing,phase*56,true,255));
+  const poses=Array.from({length:4},(_,phase)=>walkFrame(facing,phase*26,true,255));
   assert.deepEqual(poses.map(p=>p.frame),[0,1,2,3]);
   assert.ok(poses.every(p=>p.flip===(facing>=1&&facing<=3)),`heading ${facing} must retain its body orientation through both footfalls`);
   assert.deepEqual(walkFrame(facing,0,true,255,true),walkFrame(facing,168,true,255,true),'reduced motion freezes both frame and orientation');
  }
 });
-test('walking plants alternating feet and lifts only the passing foot continuously',async()=>{
- const {walkLegMotion}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+test('normal running alternates contacts with brief flight and continuous passing feet',async()=>{
+ const {walkLegMotion,runBodyMotion}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  assert.equal(walkLegMotion(0).reach,1);
- assert.ok(walkLegMotion(.5).reach<0,'first foot trails as the opposite heel arrives');
- assert.equal(walkLegMotion(.5+.5).reach,1,'opposite foot leads at half cycle');
+ assert.ok(walkLegMotion(.5).reach<0);
+ assert.equal(walkLegMotion(1).reach,1);
+ let flight=false;
  for(let i=0;i<100;i++){
-  const p=i/100,a=walkLegMotion(p),b=walkLegMotion(p+.5);
-  assert.ok(a.support||b.support,'walking always has a supporting foot');
+  const p=i/100,a=walkLegMotion(p),b=walkLegMotion(p+.5),next=walkLegMotion(p+.00001);
+  if(!a.support&&!b.support)flight=true;
   assert.ok(a.lift>=0&&a.lift<=1&&Math.abs(a.reach)<=1);
-  if(a.support)assert.equal(a.lift,0,'planted foot never lifts');
-  const next=walkLegMotion(p+.00001);
-  assert.ok(Math.abs(next.reach-a.reach)<.001&&Math.abs(next.lift-a.lift)<.001,'no jumps at stance, passing or loop boundaries');
+  if(a.support)assert.equal(a.lift,0);
+  assert.ok(Math.abs(next.reach-a.reach)<.001&&Math.abs(next.lift-a.lift)<.001);
  }
- assert.equal(walkLegMotion(.8).lift,1);
+ assert.ok(flight,'normal speed now uses a run rather than grounded shuffling');
+ assert.ok(Math.abs(walkLegMotion(.71).lift-1)<1e-12);
+ assert.ok(runBodyMotion(0).arm<0&&runBodyMotion(.5).arm>0,'arms counter the leading leg');
+});
+test('whole-body run has long projected steps, moving bent arms and continuous torso motion',async()=>{
+ const {runPose}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ const first=runPose(2,0),second=runPose(2,.5),back=runPose(2,.42);
+ const near=p=>p.legs.find(l=>l.near),arm=p=>p.arms.find(a=>a.near);
+ assert.ok(near(first).ankle[0]-near(back).ankle[0]>100,'visible leg excursion exceeds the old 50-unit shuffle');
+ assert.ok(arm(first).hand[0]<arm(first).shoulder[0]);
+ assert.ok(arm(second).hand[0]>arm(second).shoulder[0]+35);
+ for(let row=0;row<5;row++)for(let i=0;i<100;i++){
+  const a=runPose(row,i/100),b=runPose(row,i/100+.00001);
+  assert.ok(Math.abs(a.drop-b.drop)<.1&&Math.abs(a.lean-b.lean)<.001,'hips and torso have no cycle discontinuity');
+  for(const limb of [...a.legs,...a.arms])for(const p of Object.values(limb))if(Array.isArray(p))assert.ok(p.every(Number.isFinite));
+ }
+ const fast=runPose(2,0,true);
+ assert.ok(near(fast).ankle[0]-near(fast).hip[0]>near(first).ankle[0]-near(first).hip[0],'sprint extends the same whole-body rig further');
+ assert.ok(fast.lean>first.lean,'sprint has a stronger forward lean');
+ const front=runPose(0,0),frontBack=runPose(0,.42);
+ assert.ok(Math.abs(near(front).ankle[1]-near(frontBack).ankle[1])>60,'front/rear steps project actual depth rather than a tiny vertical twitch');
+});
+test('menu gait follows screen distance and actor scale across resize and portrait layouts',async()=>{
+ const {menuGaitDistance}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ const d=menuGaitDistance(100,0,1672,941,180);
+ assert.ok(d>37&&d<39,'large menu actor needs fewer cycles for the same scene travel');
+ assert.equal(menuGaitDistance(0,68,1672,941,180),d,'vertical cadence compensates for the ground tilt');
+ assert.equal(menuGaitDistance(100,0,3344,1882,360),d,'resizing scene and sprite together preserves cadence');
+ assert.equal(menuGaitDistance(100,0,1672,941,360),d/2,'doubling the actor halves cycle advance');
+ assert.equal(menuGaitDistance(0,0,390,220,50),0);
+ assert.equal(menuGaitDistance(10,10,390,220,0),0);
 });
 test('walking atlas preserves draw origins, valid source bounds and loading fallback',async()=>{
  const {walkFrame,walkSprite}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  assert.equal(walkSprite({}, {complete:false,naturalWidth:0},walkFrame(0,0,true,255),10,20,59),false);
- const draws=[],translations=[];let depth=0;const ctx={save(){depth++;},restore(){depth--;},scale(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));},rotate(angle){assert.ok(Number.isFinite(angle));},beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){},translate(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));if(depth===1)translations.push([x,y]);},drawImage(...args){draws.push(args);}};
+ const draws=[],translations=[];let depth=0;const ctx={save(){depth++;},restore(){depth--;},scale(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));},rotate(angle){assert.ok(Number.isFinite(angle));},beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){},fillRect(){},translate(x,y){assert.ok(Number.isFinite(x)&&Number.isFinite(y));if(depth===1)translations.push([x,y]);},drawImage(...args){draws.push(args);}};
  const image={complete:true,naturalWidth:1120,naturalHeight:1400};
  for(let facing=0;facing<8;facing++)for(let phase=0;phase<32;phase++){
-  walkSprite(ctx,image,walkFrame(facing,phase*7,true,255),10,20,59);
-  assert.equal(draws.length%5,0,'two articulated legs and the body are composited');
-  for(const [,x,y,w,h] of draws.slice(-5))assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
+  walkSprite(ctx,image,walkFrame(facing,phase*3.25,true,255),10,20,59);
+  for(const [,x,y,w,h] of draws)assert.ok(x>=0&&y>=0&&x+w<=1120&&y+h<=1400);
   assert.deepEqual(translations.at(-2),[10,20]);
+  assert.equal(depth,0,'limb and torso transforms are balanced');
  }
 });
 
