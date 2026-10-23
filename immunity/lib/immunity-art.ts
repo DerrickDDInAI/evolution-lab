@@ -58,13 +58,17 @@ export function facingDirection(vx:number,vy:number,previous=0){
   // Extra six degrees beyond a sector edge prevents tiny corrections flipping poses.
   return difference<=sector/2+Math.PI/30?previous:Math.round(angle/sector)%8;
 }
-export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean;speed:number;direction?:GroundPoint};
+export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean;speed:number;direction?:GroundPoint;motionTime?:number};
 export function actorPose(previous:ActorPose|undefined,actor:{x:number;y:number;life:number;vx:number;vy:number},time:number):ActorPose{
   const reset=!previous||previous.life!==actor.life||Math.hypot(actor.x-previous.x,actor.y-previous.y)>160;
-  if(reset)return {x:actor.x,y:actor.y,life:actor.life,time,facing:facingDirection(actor.vx,actor.vy),travel:0,moving:false,speed:0};
+  if(reset)return {x:actor.x,y:actor.y,life:actor.life,time,facing:facingDirection(actor.vx,actor.vy),travel:0,moving:false,speed:0,motionTime:time};
   const dt=(time-previous.time)/1000,dx=actor.x-previous.x,dy=actor.y-previous.y,distance=Math.hypot(dx,dy);
-  const moving=dt>0&&dt<.25&&distance/dt>=8;
-  return {x:actor.x,y:actor.y,life:actor.life,time,facing:moving?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(moving?distance:0),moving,speed:moving?distance/dt:0,direction:moving?{x:dx/distance,y:dy/distance}:previous.direction};
+  const stepped=dt>0&&dt<.25&&distance/dt>=8,motionTime=stepped?time:previous.motionTime??previous.time;
+  // Rendering may run faster than the 60 Hz movement simulation. An unchanged
+  // position between ticks is not idle; hold the pose without inventing travel.
+  const betweenTicks=dt>0&&dt<.25&&distance===0&&previous.moving&&time-motionTime<50&&Math.hypot(actor.vx,actor.vy)>=8;
+  const moving=stepped||betweenTicks;
+  return {x:actor.x,y:actor.y,life:actor.life,time,facing:stepped?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(stepped?distance:0),moving,speed:stepped?distance/dt:betweenTicks?previous.speed:0,direction:stepped?{x:dx/distance,y:dy/distance}:previous.direction,motionTime};
 }
 // Generated views are mapped explicitly after visual inspection. Mirroring the
 // matching three-quarter/profile view gives consistent left/right anatomy.
@@ -166,8 +170,11 @@ function mask(ctx:CanvasRenderingContext2D,points:Point[],holes:Point[][]=[]){
 function paintedLimb(ctx:CanvasRenderingContext2D,image:HTMLImageElement,sy:number,sw:number,sh:number,sourceA:Point,sourceB:Point,targetA:Point,targetB:Point,points:Point[],bottom?:number){
   const sourceLength=Math.hypot(sourceB[0]-sourceA[0],sourceB[1]-sourceA[1]);
   const length=Math.hypot(targetB[0]-targetA[0],targetB[1]-targetA[1]);
-  const angle=Math.atan2(targetB[1]-targetA[1],targetB[0]-targetA[0])-Math.atan2(sourceB[1]-sourceA[1],sourceB[0]-sourceA[0]);
-  ctx.save();ctx.translate(...targetA);ctx.rotate(angle);ctx.scale(length/sourceLength,length/sourceLength);ctx.translate(-sourceA[0],-sourceA[1]);mask(ctx,points);
+  const sourceAngle=Math.atan2(sourceB[1]-sourceA[1],sourceB[0]-sourceA[0]);
+  const targetAngle=Math.atan2(targetB[1]-targetA[1],targetB[0]-targetA[0]);
+  // Foreshortening changes length, not armor thickness. Uniform scaling made
+  // front/rear limbs vanish as their projected endpoints approached each other.
+  ctx.save();ctx.translate(...targetA);ctx.rotate(targetAngle);ctx.scale(length/sourceLength,1);ctx.rotate(-sourceAngle);ctx.translate(-sourceA[0],-sourceA[1]);mask(ctx,points);
   if(bottom!==undefined)mask(ctx,[[0,0],[280,0],[280,bottom],[0,bottom]]);
   ctx.drawImage(image,0,sy,sw,sh,0,0,280,sh/sw*280);ctx.restore();
 }
@@ -207,6 +214,7 @@ export function menuGaitDistance(dx:number,dy:number,sceneWidth:number,sceneHeig
 }
 export function runPose(row:number,phase:number,sprinting=false,direction?:GroundPoint){
   const view=WALK_VIEWS[row],arms=RUN_ARMS[row],fx=Math.sin(row*Math.PI/4),fy=Math.cos(row*Math.PI/4),motion=runBodyMotion(phase,sprinting);
+  const frontal=Math.abs(fy)**4;
   const distance=direction?Math.hypot(direction.x,direction.y):0;
   const gx=direction&&Number.isFinite(distance)&&distance>0?direction.x/distance:fx,gy=direction&&Number.isFinite(distance)&&distance>0?direction.y/distance:fy;
   const legs:{near:boolean;hip:Point;knee:Point;ankle:Point;bootAngle:number}[]=[],armPoses:{near:boolean;shoulder:Point;elbow:Point;hand:Point}[]=[];
@@ -227,6 +235,11 @@ export function runPose(row:number,phase:number,sprinting=false,direction?:Groun
     const hip:Point=[hx,view.baseline-hipHeight+depth];
     const joint:Point=[hx+gx*knee[0],view.baseline+knee[1]+gy*knee[0]*GROUND_TILT+depth];
     const ankle:Point=[hx+gx*foot.reach*stride,view.baseline-boot-foot.lift*25+gy*foot.reach*stride*GROUND_TILT+depth];
+    // A depth-facing knee needs a small lateral bend. A purely sagittal
+    // projection crosses the ankle/hip and flips the painted limb by 180 degrees.
+    const fraction=upper/(upper+lower),outward=hx<view.center?-1:1;
+    joint[0]=joint[0]*(1-frontal)+(hx+(ankle[0]-hx)*fraction+outward*(8+4*foot.lift))*frontal;
+    joint[1]=joint[1]*(1-frontal)+(hip[1]+(ankle[1]-hip[1])*fraction)*frontal;
     legs.push({near,hip,knee:joint,ankle,bootAngle:foot.support?0:fx*.2*foot.lift});
   }
   for(const near of [false,true]){
@@ -236,8 +249,8 @@ export function runPose(row:number,phase:number,sprinting=false,direction?:Groun
     const elbow:Point=[shoulder[0]+fx*Math.sin(angle)*u,shoulder[1]+Math.cos(angle)*u+fy*Math.sin(angle)*u*GROUND_TILT];
     const hand:Point=[elbow[0]+fx*Math.sin(angle+(sprinting?1.3:1.05))*l,elbow[1]+Math.cos(angle+(sprinting?1.3:1.05))*l+fy*Math.sin(angle+(sprinting?1.3:1.05))*l*GROUND_TILT];
     const inward=shoulder[0]<view.center?1:-1;
-    elbow[0]+=Math.abs(fy)*Math.sin(angle)*inward*4;
-    hand[0]+=Math.abs(fy)*Math.sin(angle)*inward*12;
+    elbow[0]+=inward*(frontal*10+Math.abs(fy)*Math.sin(angle)*4);
+    hand[0]+=inward*(frontal*22+Math.abs(fy)*Math.sin(angle)*12);
     armPoses.push({near,shoulder,elbow,hand});
   }
   return {legs,arms:armPoses,drop,lean:fx*(sprinting?.17:.1)+fy*motion.twist};

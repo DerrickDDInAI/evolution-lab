@@ -444,12 +444,32 @@ test('facing and gait follow visible travel, stop at rest and reset on new lives
  const initial=actorPose(undefined,actor,0);
  const moved=actorPose(initial,{...actor,x:104},20);
  assert.equal(moved.facing,6);assert.equal(moved.moving,true);assert.equal(moved.travel,4);assert.deepEqual(moved.direction,{x:1,y:0});
- const idle=actorPose(moved,{...actor,x:104},40);
+ const idle=actorPose(moved,{...actor,x:104,vx:0,vy:0},40);
  assert.equal(idle.moving,false);assert.equal(idle.facing,6);assert.equal(idle.travel,4);
  const newborn=actorPose(idle,{...actor,life:2,vx:0},60);
  assert.equal(newborn.travel,0);assert.equal(newborn.facing,0);assert.equal(newborn.moving,false);
  const teleport=actorPose(moved,{...actor,x:900},40);
  assert.equal(teleport.travel,0);assert.equal(teleport.moving,false);
+});
+test('60 Hz movement never flashes idle artwork on faster or uneven rendering frames',async()=>{
+ const {actorPose,walkFrame,sprintFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(const hz of [60,90,120,144,240])for(const speed of [255,430]){
+  let actor={x:0,y:0,vx:speed,vy:0,life:1},pose=actorPose(undefined,actor,0),started=false;
+  for(let i=1;i<=hz;i++){
+   const time=i*1000/hz+(i%3===0?.1:0),ticks=Math.floor(time/(1000/60)+1e-8);
+   actor={...actor,x:ticks*speed/60};
+   pose=actorPose(pose,actor,time);started||=pose.travel>0;
+   if(started){
+    assert.ok(pose.moving,'render frames between simulation ticks retain the moving drawing');
+    assert.ok((speed>300?sprintFrame:walkFrame)(pose.facing,pose.travel,pose.moving,Math.min(speed,pose.speed)),'no directional-idle fallback during continuous movement');
+   }
+   assert.ok(Math.abs(pose.travel-actor.x)<1e-8,'pose hold adds no distance or animation phase');
+  }
+  const stopped=actorPose(pose,{...actor,vx:0},pose.time+1);
+  assert.equal(stopped.moving,false,'actual zero velocity stops immediately');
+  const stalled=actorPose(pose,actor,pose.time+60);
+  assert.equal(stalled.moving,false,'stale velocity cannot keep an unmoving actor running');
+ }
 });
 test('directional art uses valid frame mappings and leaves a missing sheet to fallback',async()=>{
  const {directionalFrame,directionalSprite}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
@@ -589,6 +609,33 @@ test('feet ease through lift-off and landing without a velocity jump',async()=>{
    for(const axis of ['reach','lift'])assert.ok(Math.abs((b[axis]-a[axis])/h-(c[axis]-b[axis])/h)<.01,'support, return swing and loop have matching velocities');
   }
  }
+});
+test('front and rear painted limbs never collapse or invert as feet pass',async()=>{
+ const {runPose}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(const sprinting of [false,true])for(const row of [0,4]){
+  let previous;
+  for(let frame=0;frame<=2000;frame++){
+   const pose=runPose(row,frame/2000,sprinting);
+   const limbs=pose.legs.flatMap(l=>[[l.hip,l.knee],[l.knee,l.ankle]]).concat(pose.arms.flatMap(a=>[[a.shoulder,a.elbow],[a.elbow,a.hand]]));
+   const angles=limbs.map(([a,b],i)=>{
+    assert.ok(Math.hypot(b[0]-a[0],b[1]-a[1])>5,'projected armor never collapses to a subpixel line');
+    const angle=Math.atan2(b[1]-a[1],b[0]-a[0]);
+    if(previous)assert.ok(Math.abs(Math.atan2(Math.sin(angle-previous[i]),Math.cos(angle-previous[i])))<.06,'a passing limb must not flip its texture by 180 degrees');
+    return angle;
+   });
+   previous=angles;
+  }
+ }
+});
+test('foreshortened limb drawing keeps armor width independent of segment length',async()=>{
+ const {walkFrame,walkSprite}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ let depth=0,count=0;const ctx={save(){depth++;},restore(){depth--;},scale(x,y){if(depth>1){assert.equal(y,1,'only the bone axis scales; armor thickness stays constant');assert.ok(x>0);count++;}},rotate(){},translate(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){},fillRect(){},drawImage(){}};
+ const image={complete:true,naturalWidth:1120,naturalHeight:1400};
+ for(const facing of [0,4])for(const phase of [.06,.094,.12,.129,.248,.5,.558]){
+  walkSprite(ctx,image,walkFrame(facing,phase*156,true,255),0,0,59);
+  assert.equal(depth,0);
+ }
+ assert.ok(count>0);
 });
 test('menu gait follows screen distance and actor scale across resize and portrait layouts',async()=>{
  const {menuGaitDistance}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
