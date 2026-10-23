@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {advanceMenu,MENU_HOLD_MS,MENU_PADS,modeName,type GameMode,type MenuPosition,type MenuSelection} from '../lib/game-mode';
-import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance} from '../lib/immunity-art';
+import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance,GROUND_TILT} from '../lib/immunity-art';
 
 export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void;paused?:boolean}){
   const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null);
@@ -51,7 +51,7 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
         if(moving){facing=facingDirection(dx*100,dy*100,facing);travel+=menuGaitDistance(dx,dy,sceneWidth,sceneHeight,actorWidth);}
         ctx.clearRect(0,0,180,190);
         ctx.fillStyle='#193f3d45';ctx.beginPath();ctx.ellipse(90,170,24,8,0,0,Math.PI*2);ctx.fill();
-        const pose=walkFrame(facing,travel,moving,255,reduced.matches);
+        const pose=walkFrame(facing,travel,moving,255,reduced.matches,{x:dx*sceneWidth/1672,y:dy*sceneHeight/941/GROUND_TILT});
         if(!pose||!walkSprite(ctx,art.walk,pose,90,170,156))directionalSprite(ctx,art.directions,true,facing,90,170,156);
       }
       frame=requestAnimationFrame(draw);

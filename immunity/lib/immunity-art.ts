@@ -1,5 +1,11 @@
 // Presentation only. Physics, input, prediction and contact reports stay in world space.
 export const GROUND_TILT = 0.68;
+export const SURVIVOR_SIZE = 59;
+// Model-space foot travel must equal world travel during ground contact.
+export function survivorGait(sprinting=false){
+  const stride=sprinting?68:55,cycle=sprinting?216:156;
+  return {stride,cycle,stance:2*stride*(SURVIVOR_SIZE*.88/280)/cycle};
+}
 export type GroundPoint = {x:number;y:number};
 export function projectGround(point:GroundPoint,camera:GroundPoint,zoom:number,width:number,height:number){
   return {x:(point.x-camera.x)*zoom+width/2,y:(point.y-camera.y)*zoom*GROUND_TILT+height/2};
@@ -52,13 +58,13 @@ export function facingDirection(vx:number,vy:number,previous=0){
   // Extra six degrees beyond a sector edge prevents tiny corrections flipping poses.
   return difference<=sector/2+Math.PI/30?previous:Math.round(angle/sector)%8;
 }
-export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean;speed:number};
+export type ActorPose={x:number;y:number;life:number;time:number;facing:number;travel:number;moving:boolean;speed:number;direction?:GroundPoint};
 export function actorPose(previous:ActorPose|undefined,actor:{x:number;y:number;life:number;vx:number;vy:number},time:number):ActorPose{
   const reset=!previous||previous.life!==actor.life||Math.hypot(actor.x-previous.x,actor.y-previous.y)>160;
   if(reset)return {x:actor.x,y:actor.y,life:actor.life,time,facing:facingDirection(actor.vx,actor.vy),travel:0,moving:false,speed:0};
   const dt=(time-previous.time)/1000,dx=actor.x-previous.x,dy=actor.y-previous.y,distance=Math.hypot(dx,dy);
   const moving=dt>0&&dt<.25&&distance/dt>=8;
-  return {x:actor.x,y:actor.y,life:actor.life,time,facing:moving?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(moving?distance:0),moving,speed:moving?distance/dt:0};
+  return {x:actor.x,y:actor.y,life:actor.life,time,facing:moving?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(moving?distance:0),moving,speed:moving?distance/dt:0,direction:moving?{x:dx/distance,y:dy/distance}:previous.direction};
 }
 // Generated views are mapped explicitly after visual inspection. Mirroring the
 // matching three-quarter/profile view gives consistent left/right anatomy.
@@ -80,25 +86,25 @@ export function directionalSprite(ctx:CanvasRenderingContext2D,image:HTMLImageEl
 
 // Walk is 255 world units/s; sprint is 430. Use observed and authoritative
 // speeds together so correction jumps or holding Shift against a wall cannot run.
-export function sprintFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false){
+export function sprintFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false,direction?:GroundPoint){
   if(!moving||!Number.isFinite(speed)||speed<=300)return null;
-  const phase=reducedMotion?0:(Math.max(0,travel)%160)/160,frame=Math.floor(phase*4);
+  const phase=reducedMotion?0:(Math.max(0,travel)%survivorGait(true).cycle)/survivorGait(true).cycle,frame=Math.floor(phase*4);
   const row=[0,1,2,3,4,3,2,1][facing];
   // Reverse the frontal/rear strike pair to alternate the visible leading foot.
   const flip=(facing>=1&&facing<=3)||((row===0||row===4)&&frame>=2);
-  return {row,frame,flip,phase};
+  return {row,frame,flip,phase,direction};
 }
 export function sprintSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:NonNullable<ReturnType<typeof sprintFrame>>,x:number,y:number,size:number){
   return gaitSprite(ctx,image,pose,x,y,size);
 }
-export function walkFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false){
+export function walkFrame(facing:number,travel:number,moving:boolean,speed:number,reducedMotion=false,direction?:GroundPoint){
   if(!moving||!Number.isFinite(speed)||speed<8||speed>300)return null;
   // One continuous two-step cycle; distance keeps cadence tied to travel.
-  const phase=reducedMotion?0:(Math.max(0,travel)%104)/104;
+  const phase=reducedMotion?0:(Math.max(0,travel)%survivorGait().cycle)/survivorGait().cycle;
   const frame=Math.floor(phase*4);
   const row=[0,1,2,3,4,3,2,1][facing];
   // Footfalls come from independent legs; mirror only to change heading.
-  return {row,frame,phase,flip:facing>=1&&facing<=3};
+  return {row,frame,phase,flip:facing>=1&&facing<=3,direction};
 }
 type Point=[number,number];
 type WalkView={hip:Point;knee:Point;ankle:Point;center:number;baseline:number;thigh:Point[];shin:Point[];body:Point[]};
@@ -126,10 +132,24 @@ const WALK_VIEWS:WalkView[]=[
     shin:[[128,198],[160,198],[161,245],[158,269],[144,277],[128,272],[124,245]],
     body:[[0,0],[280,0],[280,305],[184,305],[171,211],[156,185],[132,185],[117,217],[111,305],[0,305]]},
 ];
-export function walkLegMotion(phase:number,stance=.42){
+export function walkLegMotion(phase:number,stance=survivorGait().stance){
   const p=((phase%1)+1)%1,support=p<stance;
-  const swing=(p-stance)/(1-stance);
-  return {reach:support?1-2*p/stance:-Math.cos(swing*Math.PI),lift:support?0:Math.sin(swing*Math.PI),support};
+  if(support)return {reach:1-2*p/stance,lift:0,support};
+  const swing=(p-stance)/(1-stance),transition=stance*.08;
+  let reach:number;
+  // Match planted velocity at lift-off and landing, easing into the longer
+  // return swing. A small follow-through avoids an abrupt direction reversal.
+  if(p<stance+transition){
+    const t=(p-stance)/transition;
+    reach=-1-transition/stance*(2*t-t*t);
+  }else if(p>1-transition){
+    const t=(p-1+transition)/transition;
+    reach=1+transition/stance*(1-t*t);
+  }else{
+    const t=(p-stance-transition)/(1-stance-2*transition),ease=t*t*t*(t*(6*t-15)+10);
+    reach=(2*ease-1)*(1+transition/stance);
+  }
+  return {reach,lift:Math.sin(swing*Math.PI)**2,support};
 }
 function kneeBetween(hip:Point,ankle:Point,upper:number,lower:number,forward:Point):Point{
   const dx=ankle[0]-hip[0],dy=ankle[1]-hip[1],distance=Math.max(.001,Math.hypot(dx,dy));
@@ -143,11 +163,12 @@ function mask(ctx:CanvasRenderingContext2D,points:Point[],holes:Point[][]=[]){
   for(const polygon of [points,...holes]){ctx.moveTo(...polygon[0]);for(const point of polygon.slice(1))ctx.lineTo(...point);ctx.closePath();}
   ctx.clip('evenodd');
 }
-function paintedLimb(ctx:CanvasRenderingContext2D,image:HTMLImageElement,sy:number,sw:number,sh:number,sourceA:Point,sourceB:Point,targetA:Point,targetB:Point,points:Point[]){
+function paintedLimb(ctx:CanvasRenderingContext2D,image:HTMLImageElement,sy:number,sw:number,sh:number,sourceA:Point,sourceB:Point,targetA:Point,targetB:Point,points:Point[],bottom?:number){
   const sourceLength=Math.hypot(sourceB[0]-sourceA[0],sourceB[1]-sourceA[1]);
   const length=Math.hypot(targetB[0]-targetA[0],targetB[1]-targetA[1]);
   const angle=Math.atan2(targetB[1]-targetA[1],targetB[0]-targetA[0])-Math.atan2(sourceB[1]-sourceA[1],sourceB[0]-sourceA[0]);
   ctx.save();ctx.translate(...targetA);ctx.rotate(angle);ctx.scale(length/sourceLength,length/sourceLength);ctx.translate(-sourceA[0],-sourceA[1]);mask(ctx,points);
+  if(bottom!==undefined)mask(ctx,[[0,0],[280,0],[280,bottom],[0,bottom]]);
   ctx.drawImage(image,0,sy,sw,sh,0,0,280,sh/sw*280);ctx.restore();
 }
 type ArmView={shoulder:Point;elbow:Point;hand:Point;far:Point;upper:Point[];fore:Point[];holes:Point[][];patches:Point[];coat:Point[]};
@@ -175,22 +196,24 @@ const RUN_ARMS:ArmView[]=[
 ];
 export function runBodyMotion(phase:number,sprinting=false){
   const p=((phase%1)+1)%1;
-  const stance=sprinting?.36:.42;
+  const {stance}=survivorGait(sprinting);
   return {near:walkLegMotion(p,stance),far:walkLegMotion(p+.5,stance),arm:-Math.cos(p*Math.PI*2),twist:Math.sin(p*Math.PI*2)*.018};
 }
 // Normalize menu travel by its actual CSS/canvas scale and larger actor size.
 // Arena zoom scales travel and the actor together, so its world distance is used directly.
 export function menuGaitDistance(dx:number,dy:number,sceneWidth:number,sceneHeight:number,canvasWidth:number){
   if(sceneWidth<=0||sceneHeight<=0||canvasWidth<=0)return 0;
-  return Math.hypot(dx*sceneWidth/1672,dy*sceneHeight/941/GROUND_TILT)*180/canvasWidth*59/156;
+  return Math.hypot(dx*sceneWidth/1672,dy*sceneHeight/941/GROUND_TILT)*180/canvasWidth*SURVIVOR_SIZE/156;
 }
-export function runPose(row:number,phase:number,sprinting=false){
+export function runPose(row:number,phase:number,sprinting=false,direction?:GroundPoint){
   const view=WALK_VIEWS[row],arms=RUN_ARMS[row],fx=Math.sin(row*Math.PI/4),fy=Math.cos(row*Math.PI/4),motion=runBodyMotion(phase,sprinting);
-  const legs:{near:boolean;hip:Point;knee:Point;ankle:Point}[]=[],armPoses:{near:boolean;shoulder:Point;elbow:Point;hand:Point}[]=[];
+  const distance=direction?Math.hypot(direction.x,direction.y):0;
+  const gx=direction&&Number.isFinite(distance)&&distance>0?direction.x/distance:fx,gy=direction&&Number.isFinite(distance)&&distance>0?direction.y/distance:fy;
+  const legs:{near:boolean;hip:Point;knee:Point;ankle:Point;bootAngle:number}[]=[],armPoses:{near:boolean;shoulder:Point;elbow:Point;hand:Point}[]=[];
   const lengthScale=sprinting?1.12:1.08;
   const upper=Math.hypot(view.knee[0]-view.hip[0],view.knee[1]-view.hip[1])*lengthScale;
   const lower=Math.hypot(view.ankle[0]-view.knee[0],view.ankle[1]-view.knee[1])*lengthScale;
-  const stride=sprinting?68:55,stance=sprinting?.36:.42,vertical=view.ankle[1]-view.hip[1];
+  const {stride,stance}=survivorGait(sprinting),vertical=view.ankle[1]-view.hip[1];
   const extension=(upper+lower)*.97;
   // Keep enough knee flexion for the long stride, with a small, smooth rise
   // between contacts instead of snapping into a separate airborne bounce.
@@ -202,9 +225,9 @@ export function runPose(row:number,phase:number,sprinting=false){
     const hx=view.hip[0]-(near?0:2*spread),depth=near?0:-8*fx;
     const knee=kneeBetween([0,-hipHeight],[foot.reach*stride,-boot+foot.lift*-25],upper,lower,[1,0]);
     const hip:Point=[hx,view.baseline-hipHeight+depth];
-    const joint:Point=[hx+fx*knee[0],view.baseline+knee[1]+fy*knee[0]*GROUND_TILT+depth];
-    const ankle:Point=[hx+fx*foot.reach*stride,view.baseline-boot-foot.lift*25+fy*foot.reach*stride*GROUND_TILT+depth];
-    legs.push({near,hip,knee:joint,ankle});
+    const joint:Point=[hx+gx*knee[0],view.baseline+knee[1]+gy*knee[0]*GROUND_TILT+depth];
+    const ankle:Point=[hx+gx*foot.reach*stride,view.baseline-boot-foot.lift*25+gy*foot.reach*stride*GROUND_TILT+depth];
+    legs.push({near,hip,knee:joint,ankle,bootAngle:foot.support?0:fx*.2*foot.lift});
   }
   for(const near of [false,true]){
     const shoulder=near?arms.shoulder:arms.far,sign=near?1:-1,angle=motion.arm*(sprinting?.95:.75)*sign;
@@ -221,13 +244,21 @@ export function runPose(row:number,phase:number,sprinting=false){
 }
 export function walkSprite(ctx:CanvasRenderingContext2D,image:HTMLImageElement,pose:NonNullable<ReturnType<typeof walkFrame>>,x:number,y:number,size:number,sprinting=false){
   if(!ready(image))return false;
-  const {row,flip,phase}=pose,view=WALK_VIEWS[row],arms=RUN_ARMS[row],rows=[0,300,570,835,1095,1400],rig=runPose(row,phase,sprinting);
+  const {row,flip,phase}=pose,view=WALK_VIEWS[row],arms=RUN_ARMS[row],rows=[0,300,570,835,1095,1400];
+  const mirror=!(sprinting&&(row===0||row===4))&&flip;
+  const direction=pose.direction?{x:pose.direction.x*(mirror?-1:1),y:pose.direction.y}:undefined;
+  const rig=runPose(row,phase,sprinting,direction);
   const sw=image.naturalWidth/4,sy=rows[row]/1400*image.naturalHeight,sh=(rows[row+1]-rows[row])/1400*image.naturalHeight;
   const scale=size*.88/280;
-  ctx.save();ctx.translate(x,y);ctx.scale((sprinting&&(row===0||row===4)?false:flip)?-scale:scale,scale);ctx.translate(-view.center,-view.baseline);
+  ctx.save();ctx.translate(x,y);ctx.scale(mirror?-scale:scale,scale);ctx.translate(-view.center,-view.baseline);
   for(const leg of rig.legs){
     paintedLimb(ctx,image,sy,sw,sh,view.hip,view.knee,leg.hip,leg.knee,view.thigh);
-    paintedLimb(ctx,image,sy,sw,sh,view.knee,view.ankle,leg.knee,leg.ankle,view.shin);
+    paintedLimb(ctx,image,sy,sw,sh,view.knee,view.ankle,leg.knee,leg.ankle,view.shin,view.ankle[1]);
+    // The sole stays level and fixed during contact; shin rotation must not
+    // swing the painted boot around the ankle and drag it across the floor.
+    ctx.save();ctx.translate(...leg.ankle);ctx.rotate(leg.bootAngle);ctx.translate(-view.ankle[0],-view.ankle[1]);
+    mask(ctx,view.shin);mask(ctx,[[0,view.ankle[1]-8],[280,view.ankle[1]-8],[280,320],[0,320]]);
+    ctx.drawImage(image,0,sy,sw,sh,0,0,280,sh/sw*280);ctx.restore();
   }
   ctx.save();ctx.translate(view.hip[0],view.hip[1]+rig.drop);ctx.rotate(rig.lean);ctx.translate(-view.hip[0],-view.hip[1]);
   const drawArm=(near:boolean)=>{
