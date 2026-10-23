@@ -465,6 +465,9 @@ test('60 Hz movement never flashes idle artwork on faster or uneven rendering fr
    }
    assert.ok(Math.abs(pose.travel-actor.x)<1e-8,'pose hold adds no distance or animation phase');
   }
+  const corrected=actorPose(pose,{...actor,x:actor.x+.001},pose.time+2);
+  assert.ok(corrected.moving,'subpixel reconciliation between ticks must not flash idle artwork');
+  assert.equal(corrected.travel,pose.travel,'a tiny correction does not invent stride progress');
   const stopped=actorPose(pose,{...actor,vx:0},pose.time+1);
   assert.equal(stopped.moving,false,'actual zero velocity stops immediately');
   const stalled=actorPose(pose,actor,pose.time+60);

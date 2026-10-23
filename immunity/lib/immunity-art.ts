@@ -66,7 +66,7 @@ export function actorPose(previous:ActorPose|undefined,actor:{x:number;y:number;
   const stepped=dt>0&&dt<.25&&distance/dt>=8,motionTime=stepped?time:previous.motionTime??previous.time;
   // Rendering may run faster than the 60 Hz movement simulation. An unchanged
   // position between ticks is not idle; hold the pose without inventing travel.
-  const betweenTicks=dt>0&&dt<.25&&distance===0&&previous.moving&&time-motionTime<50&&Math.hypot(actor.vx,actor.vy)>=8;
+  const betweenTicks=dt>0&&dt<.25&&distance/dt<8&&previous.moving&&time-motionTime<50&&Math.hypot(actor.vx,actor.vy)>=8;
   const moving=stepped||betweenTicks;
   return {x:actor.x,y:actor.y,life:actor.life,time,facing:stepped?facingDirection(dx/dt,dy/dt,previous.facing):previous.facing,travel:previous.travel+(stepped?distance:0),moving,speed:stepped?distance/dt:betweenTicks?previous.speed:0,direction:stepped?{x:dx/distance,y:dy/distance}:previous.direction,motionTime};
 }
