@@ -33,24 +33,24 @@
 .mode-menu::before{content:'';position:absolute;inset:-20px;background:url('/immunity/nursery-menu.webp') center/cover;filter:blur(14px) brightness(.65)}
 .nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/immunity/nursery-menu.webp') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
 .nursery-scene:focus-visible::after{content:'';position:absolute;inset:5px;border:1px solid #fff2c96b;pointer-events:none}
-.nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;text-shadow:0 1px 4px #fff8e8}
+.nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;color:#0b2c2e;text-shadow:0 1px 1px #fff8e8,0 0 3px #fff8e8b3}
 .nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8}
 /* Recessed lettering follows the painted foreground shell; no floating plaque. */
-.nursery-inscription{position:absolute;left:27%;bottom:2.6%;width:46%;margin:0;padding:0 1cqw;text-align:center;color:#554d3e;font-size:clamp(10px,.86cqw,15px);line-height:1.4;pointer-events:none;text-wrap:balance;text-shadow:0 1px .4px #fffbeded,0 -.65px .35px #453a2c80;transform:perspective(600px) rotateX(16deg);transform-origin:50% 100%;isolation:isolate}
-.nursery-inscription small{display:block;margin-bottom:.25cqw;font:500 clamp(8px,.58cqw,10px)/1.4 Georgia,serif;letter-spacing:.17em;text-transform:uppercase;color:#61543f}
-.nursery-inscription strong{display:block;margin-bottom:.25cqw;font:400 clamp(12px,1.15cqw,20px)/1.3 Georgia,serif}.nursery-inscription span{display:block}
-.nursery-label{position:absolute;z-index:4;top:21.8%;width:20%;height:9.7%;min-height:0;padding:0;gap:.6cqw;display:flex;flex-direction:column;border:0;border-radius:45%;font-family:Georgia,serif;color:#143f42;text-shadow:0 1px 3px #fff7e5;transition:filter .15s}
+.nursery-inscription{position:absolute;left:27%;bottom:2.6%;width:46%;margin:0;padding:0 1cqw;text-align:center;color:#27291f;font-weight:600;font-size:clamp(10px,.86cqw,15px);line-height:1.4;pointer-events:none;text-wrap:balance;text-shadow:0 1px .5px #fffbed,0 -.5px .3px #18201680;transform:perspective(600px) rotateX(16deg);transform-origin:50% 100%;isolation:isolate}
+.nursery-inscription small{display:block;margin-bottom:.25cqw;font:700 clamp(8px,.58cqw,10px)/1.4 Georgia,serif;letter-spacing:.17em;text-transform:uppercase;color:#303025}
+.nursery-inscription strong{display:block;margin-bottom:.25cqw;font:600 clamp(12px,1.15cqw,20px)/1.3 Georgia,serif}.nursery-inscription span{display:block}
+.nursery-label{position:absolute;z-index:4;top:21.8%;width:20%;height:9.7%;min-height:0;padding:0;gap:.6cqw;display:flex;flex-direction:column;border:0;border-radius:45%;font-family:Georgia,serif;color:#0b2c2e;text-shadow:0 1px 1px #fff7e5,0 0 3px #fff7e5cc;transition:filter .15s}
 .nursery-label.survival{left:23%;transform:rotate(-5deg)}.nursery-label.motion{left:57%;transform:rotate(4deg)}
-.nursery-label strong{font-size:1.9cqw;font-weight:400;letter-spacing:.08cqw;text-transform:uppercase;white-space:nowrap}
-.nursery-label span{font-size:1.08cqw;color:#302d22;white-space:nowrap}
+.nursery-label strong{font-size:1.9cqw;font-weight:600;letter-spacing:.08cqw;text-transform:uppercase;white-space:nowrap}
+.nursery-label span{font-size:1.08cqw;font-weight:600;color:#201f18;white-space:nowrap}
 .nursery-label:hover,.nursery-label.selected{background:transparent;border:0;filter:drop-shadow(0 0 6px #fff3bb)}
 .nursery-label:focus-visible{outline:2px solid #b47e36;outline-offset:4px;background:#fff1ce66}
 .nursery-pad{position:absolute;z-index:1;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
 .pad-halo{fill:#f7c45700;stroke:#ffedb700;stroke-width:3}.pad-veins{fill:none;stroke:#ffe3a0;stroke-width:1.8;opacity:0;stroke-linecap:round;stroke-linejoin:round}.pad-progress{fill:none;stroke:#fff0b3;stroke-width:7;transform:rotate(-90deg);transform-origin:center;filter:drop-shadow(0 0 4px #ff9900)}
 .nursery-pad.selected .pad-halo{fill:#ffc34224;stroke:#ffd68a;filter:drop-shadow(0 0 7px #ffb73b)}.nursery-pad.selected .pad-veins{opacity:1;filter:drop-shadow(0 0 3px #ff9c22)}
 .nursery-survivor{position:absolute;left:50%;top:68.5%;z-index:3;width:10.75%;height:auto;transform:translate(-50%,-89.47%);pointer-events:none;filter:drop-shadow(-8px 9px 5px #193c3b33)}
-.nursery-instructions{position:absolute;left:28%;top:80.5%;width:44%;margin:0;text-align:center;color:#494537;text-shadow:0 1px 2px #fff9e5,0 0 5px #fff9e5;font-size:.9cqw;letter-spacing:.025cqw;white-space:nowrap}.nursery-instructions span{padding:0 .25cqw}
-.nursery-touch-hint{position:absolute;left:0;right:0;bottom:1%;margin:0;text-align:center;font:10px system-ui;color:#fff8e3;text-shadow:0 1px 4px #143d3c;opacity:0}.nursery-scene:focus-visible .nursery-touch-hint{opacity:1}
+.nursery-instructions{position:absolute;left:28%;top:80.5%;width:44%;margin:0;text-align:center;color:#25291f;font-weight:600;text-shadow:0 1px 1px #fff9e5,0 0 4px #fff9e5;font-size:.9cqw;letter-spacing:.025cqw;white-space:nowrap}.nursery-instructions span{padding:0 .25cqw}
+.nursery-touch-hint{position:absolute;left:0;right:0;bottom:1%;margin:0;text-align:center;font:600 10px system-ui;color:#fffae9;text-shadow:0 1px 2px #092627,0 0 4px #092627;opacity:0}.nursery-scene:focus-visible .nursery-touch-hint{opacity:1}
 @media(max-aspect-ratio:1/1){
  .nursery-scene{width:100vw;margin-top:-250px}
  .nursery-scene h1{top:7%;left:15%;width:70%;font-size:5cqw;letter-spacing:1cqw}
