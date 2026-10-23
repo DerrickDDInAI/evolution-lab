@@ -16,7 +16,7 @@ type ArenaResponse=View & {session?:Session;error?:string;contactReply?:ContactR
 export function useArena(help:boolean,zoom:number){
   const [mode,setMode]=useState<GameMode|null>(null),modeRef=useRef<GameMode>('survival');
   const [state,setState]=useState<View|null>(null),[session,setSession]=useState<Session|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[online,setOnline]=useState(false),[latency,setLatency]=useState(0),[clock,setClock]=useState(Date.now()),[scores,setScores]=useState<Scores>({bestMs:0,runs:[]});
-  const canvas=useRef<HTMLCanvasElement>(null),mini=useRef<HTMLCanvasElement>(null),view=useRef<View|null>(null),sessionRef=useRef<Session|null>(null),zoomRef=useRef(zoom),keys=useRef(new Set<string>()),taps=useRef(new Set<string>()),stick=useRef({x:0,y:0,dash:false}),positions=useRef(new Map()),joining=useRef(false),profile=useRef(''),commands=useRef<Command[]>([]),sequence=useRef(0),predicted=useRef<PredictedPlayer|null>(null),offset=useRef(0),networkDelay=useRef(0),correction=useRef<Correction>({x:0,y:0}),wake=useRef(()=>{});
+  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<View|null>(null),sessionRef=useRef<Session|null>(null),zoomRef=useRef(zoom),keys=useRef(new Set<string>()),taps=useRef(new Set<string>()),stick=useRef({x:0,y:0,dash:false}),positions=useRef(new Map()),joining=useRef(false),profile=useRef(''),commands=useRef<Command[]>([]),sequence=useRef(0),predicted=useRef<PredictedPlayer|null>(null),offset=useRef(0),networkDelay=useRef(0),correction=useRef<Correction>({x:0,y:0}),wake=useRef(()=>{});
   const contact=useRef<LocalContact|null>(null),localEvent=useRef<CollisionEvent|null>(null),localStartedAt=useRef(0),blockedContact=useRef<LocalContact|null>(null),noticeRef=useRef<{run:Run;shownAt:number}|null>(null),[notice,setNotice]=useState<{run:Run;shownAt:number}|null>(null);
   const showNotice=(run:Run|null,shownAt=performance.now())=>{noticeRef.current=run?{run,shownAt}:null;setNotice(noticeRef.current);};
   const onlineRef=useRef(false);onlineRef.current=online;
@@ -129,7 +129,7 @@ export function useArena(help:boolean,zoom:number){
         display=contact.current.player;
         // A timeout is not a resurrection. Retry until the server resolves this life.
       }
-      if(canvas.current)renderArena(canvas.current,mini.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current);
+      if(canvas.current)renderArena(canvas.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current);
       if(noticeRef.current&&time-noticeRef.current.shownAt>3500)showNotice(null);
       if(time-lastUi>80){setClock(Date.now()+offset.current);lastUi=time;}
       frame=requestAnimationFrame(draw);
@@ -147,5 +147,5 @@ export function useArena(help:boolean,zoom:number){
     }catch(e){setError(e instanceof Error?e.message:'Could not join. Please retry.');}finally{setBusy(false);joining.current=false;}
   }
   async function leave(){const s=sessionRef.current;clearSession();if(s)try{await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'leave',mode:s.mode||'survival'})});}catch{}}
-  return {mode,chooseMode,backToMenu:()=>setMode(null),state,session,notice,contact,name,setName,error,setError,busy,online,latency,clock,scores,canvas,mini,stick,predicted,enter,leave};
+  return {mode,chooseMode,backToMenu:()=>setMode(null),state,session,notice,contact,name,setName,error,setError,busy,online,latency,clock,scores,canvas,stick,predicted,enter,leave};
 }

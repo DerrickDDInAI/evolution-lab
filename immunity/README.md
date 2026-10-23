@@ -78,7 +78,7 @@ The best two genomes survive each generation. Compatibility groups share selecti
 - `lib/evolution.ts`: neural activation, topology mutation, compatibility and breeding.
 - `lib/net-motion.ts`: remote movement and bounded visual corrections.
 - `lib/contact-report.ts`, `lib/contact-prediction.ts`: visible contact detection and server validation.
-- `lib/renderer.ts`, `lib/collision-effects.ts`: arena, minimap and deduplicated impact animation; reduced-motion support.
+- `lib/renderer.ts`, `lib/collision-effects.ts`: arena and deduplicated impact animation; reduced-motion support.
 - `app/use-arena.ts`: input, networking, prediction, reconciliation and score state.
 - `app/page.tsx`, `app/globals.css`: game interface and responsive controls.
 - `app/api/arena/route.ts`: sessions, D1 transactions, conflict retries and champion export.

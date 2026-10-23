@@ -404,7 +404,7 @@ test('tilted camera keeps contact footprints faithful in every direction and zoo
   assert.equal(normalized<=29+1e-9,distance<=29,'projected ground ellipses must not imply a different contact distance');
  }
 });
-test('tilted minimap viewport includes the full visible depth and round-trips to world coordinates',async()=>{
+test('tilted camera viewport includes the full visible depth and round-trips to world coordinates',async()=>{
  const {projectGround,unprojectGround,visibleGround}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(const [width,height] of [[1440,800],[390,600]])for(const zoom of [.35,1,1.5]){
   const camera={x:3050,y:4850},bounds=visibleGround(camera,zoom,width,height);

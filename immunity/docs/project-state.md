@@ -216,4 +216,11 @@ Implemented the user's request to reduce HUD coverage on phones, reusing Tidal L
 
 PASS: 95 domain tests, TypeScript, final production build, and responsive browser checks at measured 390×660, 390×500, 320×500, 800×360 and 1600×900 CSS pixels. Verified both mode HUDs/joining, Survival movement/sprint/contact/outside respawn/re-entry, saved runs on rejoin, training focus/Escape, Help, View/zoom and expanded Motion Hunt. The narrow run-history panel now stays fully within the screen. Physical multitouch, OS reduced-motion visuals, disconnect recovery, full Motion Hunt extraction and load remain unverified. Disposable QA/D1 only; existing runtime data is preserved.
 
-Handoff: local, uncommitted changes to `app/page.tsx`, `app/globals.css`, this record and `docs/organic-interface.md`, based on clean `main` at `75c467b`. Phone screenshot: ignored `outputs/compact-hud-phone.png`; disposable preview source: `/private/tmp/immunity-mobile-hud-20261023/immunity`. No source push or deployment. Next step is user review and separate publication authorization per AGENTS.md.
+Committed at the user’s request as `dbb196a` (`Compact the HUD on small screens`). Phone screenshot: ignored `outputs/compact-hud-phone.png`; disposable preview source: `/private/tmp/immunity-mobile-hud-20261023/immunity`. No source push or deployment.
+
+
+## Minimap removed — 2026-10-23
+
+User requested committing the compact HUD first, removing the map, then committing again. First commit: `dbb196a`. The follow-up removes the minimap throughout `app/page.tsx`, `app/use-arena.ts`, `lib/renderer.ts` and map-specific CSS; View retains zoom and expanded-arena controls. Motion Hunt guidance and README no longer refer to the removed map. [Implementation and checks](organic-interface.md#minimap-removal--2026-10-23).
+
+PASS: 95 tests, TypeScript, final build and whitespace checks. Browser confirmed one arena canvas/zero minimap elements on phone and desktop, Motion Hunt joining/movement/entry, zoom, expansion/restoration, updated mission text and no 390×500 page overflow. Evidence: ignored `outputs/no-minimap-phone.png`. No fresh full contact/extraction, physical multitouch, OS reduced-motion or production pass is claimed. Disposable D1 only. This follow-up is the user-requested second local commit; no push or deployment was requested.
