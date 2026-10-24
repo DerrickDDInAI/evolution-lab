@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
+for(const name of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -683,26 +683,65 @@ test('mode storage keeps legacy survival identity and isolates motion learning a
  const original=createArena(0),hunt=createArena(0,'motion');hunt.bots[0].genome.genes[0].weight=999;
  assert.notEqual(original.bots[0].genome.genes[0].weight,999);assert.equal(snapshot(hunt).mode,'motion');assert.deepEqual(snapshot(hunt).resource,RESOURCE);assert.equal(snapshot(original).resource,null);
 });
-test('motion bots halt and earn no proximity fitness from stationary humans',()=>{
- const a=createArena(0,'motion'),p=runner(a);p.x=3600;p.y=3000;
- for(const b of a.bots){b.spawnWait=0;b.vx=100;b.vy=100;}
- const before=a.bots.map(b=>({x:b.x,y:b.y,fitness:b.fitness}));advance(a,100);
- for(const [i,b] of a.bots.entries()){assert.deepEqual({x:b.x,y:b.y,fitness:b.fitness},before[i]);assert.equal(b.vx,0);assert.equal(b.vy,0);}
+const {observePlayers,observationInputs,motionDecision,MOTION_CONTROLLER}=await import(pathToFileURL(`${out}/motion-observation.mjs`));
+function directedMotion(a,attention=1){
+ for(const b of a.bots){b.spawnWait=0;for(const g of b.genome.genes)g.weight=0;
+  b.genome.genes.find(g=>g.from===10&&g.to===11).weight=1;
+  b.genome.genes.find(g=>g.from===10&&g.to===13).weight=attention;
+ }
+}
+test('experimental motion can pursue a stationary player and penalizes that choice instead of forcing a halt',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=3700;p.y=3700;directedMotion(a);
+ const before=a.bots[0].x;advance(a,100);
+ assert.ok(a.bots[0].x>before);assert.ok(a.bots[0].fitness<0);
+ const rest=createArena(0,'motion'),q=runner(rest);q.x=3700;q.y=3700;q.vx=255;directedMotion(rest,-1);
+ advance(rest,100);assert.ok(rest.bots.every(b=>b.vx===0&&b.vy===0),'learned attention can ignore moving players');
 });
-test('motion pursuit ignores nearer stationary humans and stops when the signal disappears',()=>{
- const a=createArena(0,'motion'),p=runner(a);p.x=3800;p.y=3000;p.vx=255;
- for(const b of a.bots)b.spawnWait=0;
- const other=join(a,'hidden','secret2','Hidden',0);other.phase='arena';other.x=3400;other.y=3000;other.runStartedAt=0;
- const alternative=structuredClone(a);alternative.players[1].x=1600;alternative.players[1].y=2000;
- advance(a,100);advance(alternative,100);
- assert.deepEqual(a.bots,alternative.bots,'hidden coordinates must not alter pursuit or fitness');
- assert.ok(a.bots.some(b=>Math.hypot(b.vx,b.vy)>0));
- p.vx=0;p.vy=0;advance(a,150);assert.ok(a.bots.every(b=>b.vx===0&&b.vy===0));
+test('motion observations contain temporal positions but no target velocity or hardcoded motion label',()=>{
+ const a=createArena(0,'motion'),p=runner(a),b=a.bots[0],history={};
+ const obstacle={x:2500,y:2500,r:50};p.x=3600;
+ for(const at of [0,.1,.2]){p.x+=10;observePlayers(history,[p],at);}
+ const inputs=observationInputs(b,p,history,.2,obstacle),decision=motionDecision(b,[p],history,.2,obstacle);
+ assert.equal(inputs.length,11);assert.equal(inputs[6],1);assert.notEqual(inputs[0],inputs[2]);
+ p.vx=430;p.vy=-430;assert.deepEqual(observationInputs(b,p,history,.2,obstacle),inputs);
+ assert.deepEqual(motionDecision(b,[p],history,.2,obstacle),decision,'velocity cannot change the controller decision');
 });
-test('motion senses realized velocity: pushing a wall does not create movement',()=>{
+test('stationary position history stays constant in a moving bot frame, and histories expire on life changes and leave',()=>{
+ const history={},p={id:'one',life:1,x:3500,y:3000},obstacle={x:2000,y:2000,r:50};
+ for(let i=0;i<20;i++)observePlayers(history,[p],i/30);
+ const input=observationInputs({x:3200,y:3000},p,history,19/30,obstacle);
+ assert.deepEqual(input.slice(2,6),[0,0,0,0]);
+ const shifted=observationInputs({x:3400,y:3200},p,history,19/30,obstacle);assert.deepEqual(shifted.slice(2,6),input.slice(2,6));
+ assert.ok(history.one.samples.length<=12);
+ p.life++;observePlayers(history,[p],.7);assert.equal(history.one.samples.length,1);
+ assert.equal(observationInputs({x:3200,y:3000},p,history,.7,obstacle)[6],1/3);
+ observePlayers(history,[],.8);assert.deepEqual(history,{});
+});
+test('motion attention chooses across all candidates including a nearer stationary player',()=>{
+ const a=createArena(0,'motion'),b=a.bots[0],history={},p=runner(a);p.x=b.x+400;p.y=b.y;
+ const other={...p,id:'other',x:b.x+100};
+ for(const g of b.genome.genes)g.weight=0;
+ b.genome.genes.find(g=>g.from===0&&g.to===13).weight=1;
+ observePlayers(history,[other,p],0);
+ const result=motionDecision(b,[other,p],history,0,{x:0,y:0,r:0});
+ assert.equal(result.candidates.length,2);assert.equal(result.selected.player.id,p.id,'attention can select the farther player');
+});
+test('blocked player motion remains physically stationary without imposing a neural decision',()=>{
  const a=createArena(0,'motion'),p=runner(a);p.x=FIELD.max-28;p.y=3000;
  applyCommands(a,p,[command(1,0,1,0)],100,[]);assert.equal(p.vx,0);assert.equal(p.vy,0);
- advance(a,110);assert.ok(a.bots.every(b=>b.vx===0&&b.vy===0));
+ directedMotion(a);advance(a,110);assert.ok(a.bots.some(b=>b.vx>0));
+});
+test('legacy Motion Hunt reset runs once and preserves players, scores, cargo and terrain; Survival is unchanged',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.carrying=true;p.scores.bestMs=1234;p.contactFrames=[{id:'old'}];
+ a.generation=99;a.elapsed=30;a.history=[{generation:98,fitness:99,tags:1}];a.bestGeneration=a.history[0];a.champion=structuredClone(a.bots[0].genome);a.bestModel={old:true};
+ a.training={branch:4,events:[],pending:{old:true},checkpointGeneration:99,rollbackGeneration:98};delete a.motionController;
+ const players=structuredClone(a.players),terrain=structuredClone(a.obstacles);upgradeArena(a,1000);
+ assert.equal(a.generation,1);assert.equal(a.elapsed,0);assert.equal(a.champion,null);assert.equal(a.bestModel,undefined);assert.equal(a.bestGeneration,null);assert.deepEqual(a.history,[]);assert.equal(a.training.pending,null);
+ assert.equal(a.motionController,MOTION_CONTROLLER);assert.ok(a.bots.every(b=>b.genome.outputs===3&&b.spawnWait===3));
+ players[0].contactFrames=[];assert.deepEqual(a.players,players);assert.deepEqual(a.obstacles,terrain);
+ a.generation=2;const saved=structuredClone(a);upgradeArena(a,2000);assert.deepEqual(a,saved,'reload cannot repeat the reset');
+ const survival=createArena(0);upgradeArena(survival,0);const before=structuredClone(survival);upgradeArena(survival,100);assert.deepEqual(survival,before);
+ assert.ok(!JSON.stringify(snapshot(a)).includes('motionHistory'),'observations stay private');
 });
 test('motion collection is personal and cannot complete a mission without reaching an exit',()=>{
  const a=createArena(0,'motion'),p=runner(a),q=join(a,'two','secret2','Other',0);parkBots(a);
@@ -720,7 +759,7 @@ test('each extraction gate requires a seed and records one success with an old-l
 });
 test('motion capture loses cargo and does not replace fastest extraction',()=>{
  const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.carrying=true;p.scores.bestMs=900;a.bots[0].x=p.x;a.bots[0].y=p.y;
- advance(a,1200);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.scores.bestMs,900);assert.equal(p.lastDeath.bot,0);assert.equal(a.bots[0].fitness,0,'stationary contact does not train pursuit');
+ advance(a,1200);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.scores.bestMs,900);assert.equal(p.lastDeath.bot,0);assert.equal(a.bots[0].fitness,-25,'stationary contact penalizes the experimental pursuit');
 });
 test('motion extraction waits while a visible contact report is being resolved',()=>{
  const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=3000;p.y=4750;p.carrying=true;const finished=[];

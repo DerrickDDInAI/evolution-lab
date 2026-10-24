@@ -43,3 +43,8 @@ Domain/security tests are included in `npm run verify`. `tests/training-import.m
 Final evidence and remaining limits are recorded in project state after verification.
 
 Verified locally: 90 domain/security tests, TypeScript, production build, new-file/focused UI lint, the dedicated archive/authentication HTTP fixture and all five gameplay fixtures pass. Browser review covers signed-out export, sign-in/out, file preview, queue/cancel, rollback confirmation, 390px overflow checks and focus/Escape recovery. Existing lint debt is unchanged. Physical-device, load and production-host behavior remain unverified; confirm the host CPU budget accommodates password hashing before release. The local preview's temporary test credential is not copied into the source checkout.
+
+
+## Motion Hunt experimental compatibility — 2026-10-24
+
+Motion Hunt now uses `immunity-motion-history-v1` archives with three outputs (steering x/y and learned attention). Its old `immunity-pursuit-v1` models and checkpoints are incompatible and rejected. Survival retains its existing two-output archive format and rules. The user-authorized one-time Motion Hunt reset clears its generation history, champions and pending imports; score records remain. Stored incompatible backup slots are not offered for export/restore and compatible checkpoints replace them as training proceeds. See [the experiment and limits](motion-hunt.md#experimental-history-controller--2026-10-24).

@@ -1,3 +1,4 @@
+import {MOTION_CONTROLLER,observePlayers,motionDecision,type MotionHistory} from './motion-observation';
 import {emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
 import {RESOURCE,MOTION_THRESHOLD,atExit,type GameMode} from './game-mode';
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
@@ -11,21 +12,30 @@ export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;carrying?:boolean;contactMode?:'visible-v1';contactFrames?:ContactFrame[]};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
-export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState};
+export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState;motionController?:string;motionHistory?:MotionHistory};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
   return Array.from({length:60},()=>({x:FIELD.min+180+random(e)*3240,y:FIELD.min+180+random(e)*3240,r:35+random(e)*60}))
     .filter(o=>Math.abs(o.x-3000)>180&&Math.abs(o.y-3000)>180);
 }
 export function createArena(now:number,mode:GameMode='survival'):Arena {
-  const evolution={seed:42719,nextNode:13,splits:{}};
+  const evolution={seed:42719,nextNode:mode==='motion'?14:13,splits:{}};
   const a:Arena={version:2,mode,time:now,generation:1,elapsed:0,totalTags:0,species:1,players:[],bots:[],obstacles:obstacles(evolution),history:[],bestGeneration:null,champion:null,evolution,roundTags:0,collisions:[]};
-  a.bots=Array.from({length:POPULATION},(_,id)=>({id,x:0,y:0,vx:0,vy:0,fitness:0,tags:0,genome:createGenome(evolution)}));
+  if(mode==='motion'){a.motionController=MOTION_CONTROLLER;a.motionHistory={};}
+  a.bots=Array.from({length:POPULATION},(_,id)=>({id,x:0,y:0,vx:0,vy:0,fitness:0,tags:0,genome:createGenome(evolution,mode==='motion'?3:2)}));
   for(const b of a.bots)spawnBot(a,b);
   return a;
 }
 // Upgrade an existing live world without discarding its trained genomes or generation history.
 export function upgradeArena(raw:any,now:number):Arena {
+  // One-time user-authorized reset. Keep player lives, cargo, scores, terrain and
+  // Survival intact; invalidate issued frames from the replaced bot population.
+  if(raw.mode==='motion'&&raw.motionController!==MOTION_CONTROLLER){
+    const fresh=createArena(now,'motion');
+    Object.assign(raw,{motionController:MOTION_CONTROLLER,motionHistory:{},time:now,generation:1,elapsed:0,totalTags:0,species:1,bots:fresh.bots,evolution:fresh.evolution,history:[],bestGeneration:null,champion:null,roundTags:0,collisions:[],training:emptyTraining()});
+    delete raw.bestModel;
+    for(const p of raw.players)p.contactFrames=[];
+  }
   raw.collisions??=[];
   raw.training??=emptyTraining();
   raw.bestGeneration=bestCompletedGeneration(raw.history||[],raw.bestGeneration??null);
@@ -78,7 +88,11 @@ function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?
   const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(endedAt-p.runStartedAt)),generation:observed?.generation??a.generation,bot:b.id,diedAt:endedAt};
   p.scores={bestMs:a.mode==='motion'?p.scores.bestMs:Math.max(p.scores.bestMs,run.durationMs),runs:[run,...p.scores.runs].slice(0,10)};p.lastDeath=run;p.tags++;
   if(p.profileId)finished.push({...run,profileId:p.profileId});
-  if((!observed||observed.generation===a.generation)&&(a.mode!=='motion'||(observed?.moving??Math.hypot(p.vx,p.vy)>MOTION_THRESHOLD))){b.fitness+=50;b.tags++;a.roundTags++;}
+  if(!observed||observed.generation===a.generation){
+    const rewarded=a.mode!=='motion'||(observed?.moving??Math.hypot(p.vx,p.vy)>MOTION_THRESHOLD);
+    b.fitness+=rewarded?50:-25;
+    if(rewarded){b.tags++;a.roundTags++;}
+  }
   a.totalTags++;respawn(p,now);
   a.collisions=[...(a.collisions||[]).filter(e=>now-e.at<5000),{id:crypto.randomUUID(),playerId:p.id,bot:b.id,...contact,respawnX:p.x,respawnY:p.y,at:now}].slice(-24);
 }
@@ -136,6 +150,7 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
   if(!active.length){for(const b of a.bots){b.vx=0;b.vy=0;}return;}
   a.elapsed+=dt;
   for(const p of active)if(now-p.lastSeen>750){p.vx=0;p.vy=0;}
+  if(a.mode==='motion')observePlayers(a.motionHistory??={},active,a.elapsed);
   for(const b of a.bots){
     const alive=active.filter(p=>p.phase==='arena');if(!alive.length)break;
     if(!botReady(b)){
@@ -145,19 +160,39 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
       if(b.spawnWait<=.001&&alive.every(p=>Math.hypot(p.x-b.x,p.y-b.y)>120))b.spawnWait=0;
       continue;
     }
-    const detectable=a.mode==='motion'?alive.filter(p=>Math.hypot(p.vx,p.vy)>MOTION_THRESHOLD):alive;
-    // No stationary coordinates reach target selection, activation or proximity fitness.
-    if(!detectable.length){b.vx=0;b.vy=0;for(const p of alive)if(Math.hypot(p.x-b.x,p.y-b.y)<=29)kill(a,p,b,now,finished);continue;}
-    const target=detectable.reduce((best,p)=>Math.hypot(p.x-b.x,p.y-b.y)<Math.hypot(best.x-b.x,best.y-b.y)?p:best,detectable[0]);
-    const dx=target.x-b.x,dy=target.y-b.y,dist=Math.hypot(dx,dy);
     const obstacle=a.obstacles.length?a.obstacles.reduce((best,o)=>Math.hypot(o.x-b.x,o.y-b.y)-o.r<Math.hypot(best.x-b.x,best.y-b.y)-best.r?o:best,a.obstacles[0]):{x:b.x+1000,y:b.y,r:0};
     const od=Math.max(1,Math.hypot(obstacle.x-b.x,obstacle.y-b.y));
+    if(a.mode==='motion'){
+      const decision=motionDecision(b,alive,a.motionHistory!,a.elapsed,obstacle);
+      // Ground-truth speed is used ONLY by the fitness evaluator, never by the
+      // sensor/controller. Per-candidate classification feedback supplies selection
+      // pressure even for bots that initially choose rest on every observation.
+      for(const c of decision.candidates)if(c.complete){
+        const label=Math.hypot(c.player.vx,c.player.vy)>MOTION_THRESHOLD?1:-1;
+        b.fitness+=dt*2*(1-(c.attention-label)**2)/decision.candidates.length;
+      }
+      const chosen=decision.selected;
+      const length=chosen?Math.max(1,Math.hypot(chosen.x,chosen.y)):1;
+      b.vx=chosen?chosen.x/length*290:0;b.vy=chosen?chosen.y/length*290:0;
+      const before=chosen?Math.hypot(chosen.player.x-b.x,chosen.player.y-b.y):0;
+      const hit=moveActor(b,13,dt,a.obstacles),speed=Math.hypot(b.vx,b.vy)/290;
+      b.fitness-=dt*(speed*.1+(hit?3:0));
+      if(chosen){
+        const after=Math.hypot(chosen.player.x-b.x,chosen.player.y-b.y);
+        if(Math.hypot(chosen.player.vx,chosen.player.vy)>MOTION_THRESHOLD)b.fitness+=(before-after)*.04+dt*(1-after/SIZE)*.1;
+        else b.fitness-=dt*4*(.5+speed);
+      }
+      for(const p of alive)if(Math.hypot(p.x-b.x,p.y-b.y)<=29)kill(a,p,b,now,finished);
+      continue;
+    }
+    const target=alive.reduce((best,p)=>Math.hypot(p.x-b.x,p.y-b.y)<Math.hypot(best.x-b.x,best.y-b.y)?p:best,alive[0]);
+    const dx=target.x-b.x,dy=target.y-b.y,dist=Math.hypot(dx,dy);
     const inputs=[clamp(dx/800,-1,1),clamp(dy/800,-1,1),target.vx/430,target.vy/430,b.vx/290,b.vy/290,(obstacle.x-b.x)/od,(obstacle.y-b.y)/od,clamp((od-obstacle.r)/300,0,1),dist/Math.max(dist,800),1];
     const [ox,oy]=activate(b.genome,inputs),length=Math.max(1,Math.hypot(ox,oy));b.vx=ox/length*290;b.vy=oy/length*290;
     const hit=moveActor(b,13,dt,a.obstacles);
     const after=Math.hypot(target.x-b.x,target.y-b.y);
     b.fitness+=(dist-after)*.04+dt*(1-after/SIZE)*.1-(hit?dt*3:0);
-    if(a.mode==='motion'){for(const p of alive)if(Math.hypot(p.x-b.x,p.y-b.y)<=29)kill(a,p,b,now,finished);}else if(after<=29)kill(a,target,b,now,finished);
+    if(after<=29)kill(a,target,b,now,finished);
   }
   if(!a.players.some(p=>p.phase==='arena'))for(const b of a.bots){b.vx=0;b.vy=0;}
   if(a.elapsed>=ROUND){
@@ -169,12 +204,13 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
     a.champion=result.best;a.species=result.species;a.generation++;a.elapsed=0;a.roundTags=0;
     a.bots.forEach((b,i)=>{b.genome=result.genomes[i];b.fitness=0;b.tags=0;});
     trainingBoundary(a,now,trainingWrites);
+    if(a.mode==='motion')a.motionHistory={};
     for(const b of a.bots)spawnBot(a,b);
   }
 }
 export function snapshot(a:Arena,selfToken?:string) {
   const me=a.players.find(p=>p.token===selfToken);
-  return {version:2,mode:a.mode||'survival',resource:a.mode==='motion'?RESOURCE:null,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,bestGeneration:bestCompletedGeneration(a.history,a.bestGeneration??null),
+  return {version:2,controller:a.mode==='motion'?MOTION_CONTROLLER:'pursuit-v1',mode:a.mode||'survival',resource:a.mode==='motion'?RESOURCE:null,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,bestGeneration:bestCompletedGeneration(a.history,a.bestGeneration??null),
     players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactMode,contactFrames,...p})=>p),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),

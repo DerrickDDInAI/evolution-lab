@@ -3,13 +3,13 @@
 // This is not the Python neat package or a compatible genome file format.
 export type Gene = { from: number; to: number; weight: number; enabled: boolean };
 export type Node = { id: number; depth: number };
-export type Genome = { nodes: Node[]; genes: Gene[]; fitness: number };
+export type Genome = { nodes: Node[]; genes: Gene[]; fitness: number; outputs?: 3 };
 export type Evolution = { seed: number; nextNode: number; splits: Record<string, number> };
 export const INPUTS = 11;
 export function random(e: Evolution) { e.seed = (Math.imul(e.seed, 1664525) + 1013904223) >>> 0; return e.seed / 4294967296; }
 const signed = (e: Evolution) => random(e) * 2 - 1;
-export function createGenome(e: Evolution): Genome {
-  return { nodes: [{id:11,depth:1},{id:12,depth:1}], genes: Array.from({length:22},(_,i)=>({from:i%11,to:11+Math.floor(i/11),weight:signed(e),enabled:true})), fitness:0 };
+export function createGenome(e: Evolution, outputs:2|3=2): Genome {
+  return { ...(outputs===3?{outputs}:{}), nodes: Array.from({length:outputs},(_,i)=>({id:11+i,depth:1})), genes: Array.from({length:11*outputs},(_,i)=>({from:i%11,to:11+Math.floor(i/11),weight:signed(e),enabled:true})), fitness:0 };
 }
 type ActivationNode = { id: number; incoming: Gene[] };
 const plans = new WeakMap<Genome, ActivationNode[]>();
@@ -24,13 +24,13 @@ export function activate(g: Genome, inputs: number[]): number[] {
   const values:Record<number,number>={};
   for(let i=0;i<inputs.length;i++)values[i]=inputs[i];
   for(const node of plan){let sum=0;for(const gene of node.incoming)sum+=(values[gene.from]||0)*gene.weight;values[node.id]=Math.tanh(sum);}
-  return [values[11]||0,values[12]||0];
+  return Array.from({length:g.outputs??2},(_,i)=>values[11+i]||0);
 }
 export function mutate(g: Genome,e: Evolution) {
   plans.delete(g);
   g.fitness=0;
   for(const c of g.genes) if(random(e)<.8) c.weight=Math.max(-5,Math.min(5,c.weight+signed(e)*.35));
-  if(random(e)<.18 && g.nodes.length<14) {
+  if(random(e)<.18 && g.nodes.length<(g.outputs??2)+12) {
     const enabled=g.genes.filter(c=>c.enabled);
     const c=enabled[Math.floor(random(e)*enabled.length)];
     if(c) {

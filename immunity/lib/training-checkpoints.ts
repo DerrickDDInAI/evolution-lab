@@ -1,3 +1,4 @@
+import {MOTION_RULES} from './motion-observation';
 import {z} from 'zod';
 import {mutate,type Genome} from './evolution';
 import type {Arena} from './arena';
@@ -7,12 +8,12 @@ export const MAX_IMPORT_BYTES=512*1024;
 export const TRAINING_RULES='immunity-pursuit-v1';
 const id=z.number().int().min(0).max(10_000_000);
 const genomeSchema=z.object({
-  nodes:z.array(z.object({id:id.min(11),depth:z.number().finite().gt(0).max(1)}).strict()).min(2).max(14),
+  nodes:z.array(z.object({id:id.min(11),depth:z.number().finite().gt(0).max(1)}).strict()).min(2).max(15),
   genes:z.array(z.object({from:id,to:id.min(11),weight:z.number().finite().min(-5).max(5),enabled:z.boolean()}).strict()).max(512),
-  fitness:z.number().finite().min(-1e12).max(1e12),
+  fitness:z.number().finite().min(-1e12).max(1e12),outputs:z.literal(3).optional(),
 }).strict();
 const artifactSchema=z.object({
-  format:z.literal('immunity-training-v2'),rules:z.literal(TRAINING_RULES),
+  format:z.literal('immunity-training-v2'),rules:z.enum([TRAINING_RULES,MOTION_RULES]),
   kind:z.enum(['champion','checkpoint']),mode:z.enum(['survival','motion']),
   generation:z.number().int().min(1).max(Number.MAX_SAFE_INTEGER-1),
   createdAt:z.number().int().nonnegative().max(8.64e15),
@@ -32,16 +33,19 @@ export function parseTrainingArtifact(value:unknown,mode:GameMode):TrainingArtif
   const result=artifactSchema.safeParse(value);
   if(!result.success)throw new Error('Use an Immunity v2 model or checkpoint with compatible training rules.');
   const file=result.data;
+  if(file.rules!==(mode==='motion'?MOTION_RULES:TRAINING_RULES))throw new Error('This model uses incompatible observations. Motion Hunt requires the history controller.');
   if(file.mode!==mode)throw new Error('This file belongs to the other game mode.');
   if(file.genomes.length!==(file.kind==='champion'?1:24))throw new Error('A checkpoint needs 24 bots; a champion file needs one.');
   let largest=12;
   for(const g of file.genomes){
+    const outputs=mode==='motion'?3:2;
+    if((g.outputs??2)!==outputs||g.nodes.length>outputs+12)throw new Error('Incompatible controller outputs.');
     const depths=new Map(Array.from({length:11},(_,i)=>[i,0]));
     for(const n of g.nodes){
-      if(depths.has(n.id)||((n.id===11||n.id===12)?n.depth!==1:n.depth>=1))throw new Error('Invalid or duplicate network nodes.');
+      if(depths.has(n.id)||(n.id<11+outputs?n.depth!==1:n.depth>=1))throw new Error('Invalid or duplicate network nodes.');
       depths.set(n.id,n.depth);largest=Math.max(largest,n.id);
     }
-    if(!depths.has(11)||!depths.has(12))throw new Error('Both movement outputs are required.');
+    if(Array.from({length:outputs},(_,i)=>11+i).some(id=>!depths.has(id)))throw new Error('Movement and attention outputs are required.');
     const edges=new Set<string>();
     for(const gene of g.genes){
       const from=depths.get(gene.from),to=depths.get(gene.to),edge=`${gene.from}:${gene.to}`;
@@ -62,7 +66,7 @@ export function parseTrainingArtifact(value:unknown,mode:GameMode):TrainingArtif
 }
 
 export function checkpoint(a:Arena,now:number):TrainingArtifact{
-  return {format:'immunity-training-v2',rules:TRAINING_RULES,kind:'checkpoint',mode:a.mode||'survival',generation:a.generation,createdAt:now,species:a.species,
+  return {format:'immunity-training-v2',rules:a.mode==='motion'?MOTION_RULES:TRAINING_RULES,kind:'checkpoint',mode:a.mode||'survival',generation:a.generation,createdAt:now,species:a.species,
     genomes:a.bots.map(b=>({...structuredClone(b.genome),fitness:0})),evolution:structuredClone(a.evolution)};
 }
 export function rememberBestModel(a:Arena,genome:Genome,now:number){
@@ -97,6 +101,7 @@ export function trainingBoundary(a:Arena,now:number,writes:TrainingWrite[]){
     a.training.events.push({branch:a.training.branch,generation:a.generation,sourceGeneration:file.generation,kind:pending.kind,at:now});
     a.training.events=a.training.events.slice(-40);
     a.training.pending=null;
+    if(a.mode==='motion')a.motionHistory={};
   }
   writes.push({slot:'latest',artifact:checkpoint(a,now)});
   a.training.checkpointGeneration=a.generation;

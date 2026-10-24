@@ -1,3 +1,4 @@
+import {MOTION_CONTROLLER,MOTION_INPUTS} from '../../../lib/motion-observation';
 import {type TrainingWrite} from '../../../lib/training-checkpoints';
 import {checkpointStatements} from '../../../lib/training-store';
 import {arenaKey,modeProfile,type GameMode} from '../../../lib/game-mode';
@@ -8,7 +9,16 @@ import { MAX_PACKET_COMMANDS,type Command } from '../../../lib/physics';
 export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 async function database(){const db=(env as unknown as {DB:D1Database}).DB;if(!db)throw new Error('The shared arena database is unavailable.');return db;}
-async function read(db:D1Database,mode:GameMode){return db.prepare("SELECT revision,state FROM arena WHERE id=?").bind(arenaKey(mode)).first<{revision:number;state:string}>();}
+async function read(db:D1Database,mode:GameMode){
+  for(let attempt=0;attempt<5;attempt++){
+    const row=await db.prepare('SELECT revision,state FROM arena WHERE id=?').bind(arenaKey(mode)).first<{revision:number;state:string}>();
+    if(!row||mode!=='motion'||JSON.parse(row.state).motionController===MOTION_CONTROLLER)return row;
+    const state=upgradeArena(JSON.parse(row.state),Date.now());
+    const result=await db.prepare('UPDATE arena SET state=?,revision=revision+1 WHERE id=? AND revision=?').bind(JSON.stringify(state),arenaKey(mode),row.revision).run();
+    if(result.meta.changes===1)return {revision:row.revision+1,state:JSON.stringify(state)};
+  }
+  throw new Error('Motion Hunt reset is busy.');
+}
 async function digest(token:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function loadScores(db:D1Database,profileId:string,mode:GameMode='survival'):Promise<Scores>{
   const [recent,best]=await Promise.all([
@@ -31,7 +41,7 @@ export async function GET(request:Request){try{
   const row=await read(db,mode),state=row?upgradeArena(JSON.parse(row.state),Date.now()):createArena(Date.now(),mode);
   if(new URL(request.url).searchParams.has('export')){
     if(!state.champion)return json({error:'Finish a generation before exporting a champion.'},409);
-    return json({mode,format:'immunity-neuroevolution-v1',generation:state.generation-1,inputs:['target dx','target dy','target vx','target vy','self vx','self vy','obstacle dx','obstacle dy','obstacle clearance','target distance','bias'],genome:state.champion});
+    return json({mode,format:'immunity-neuroevolution-v1',generation:state.generation-1,inputs:mode==='motion'?MOTION_INPUTS:['target dx','target dy','target vx','target vy','self vx','self vy','obstacle dx','obstacle dy','obstacle clearance','target distance','bias'],outputs:mode==='motion'?['move x','move y','attention']:['move x','move y'],genome:state.champion});
   }
   state.players=state.players.filter(p=>Date.now()-p.lastSeen<15000);
   return json(snapshot(state));

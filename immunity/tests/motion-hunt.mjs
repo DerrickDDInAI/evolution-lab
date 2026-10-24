@@ -13,6 +13,17 @@ try{
  assert.equal((await post('survival',hunt,{action:'input',commands:[]})).status,401);
  assert.equal((await post('invalid',null,{action:'join',name:'Invalid'})).status,400);
  assert.equal((await fetch(base+'/api/arena?mode=invalid')).status,400);
+ // Exercise the one-time release upgrade through HTTP against disposable D1.
+ const beforeSurvival=await (await fetch(base+'/api/arena?mode=survival')).json();
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(json_remove(state,'$.motionController'),'$.generation',77,'$.elapsed',20,'$.history',json('[{"generation":76,"fitness":999,"tags":2}]'),'$.champion',json('{}'),'$.bestModel',json('{}')) WHERE id='motion'`);
+ const reset=await (await fetch(base+'/api/arena?mode=motion')).json();
+ assert.equal(reset.controller,'motion-history-v1');assert.equal(reset.generation,1);assert.equal(reset.elapsed,0);assert.equal(reset.bestGeneration,null);assert.equal(reset.championAvailable,false);assert.deepEqual(reset.history,[]);
+ assert.deepEqual(reset.players,joined.data.players,'reset preserves current player state');
+ const afterSurvival=await (await fetch(base+'/api/arena?mode=survival')).json();
+ for(const key of ['generation','elapsed','bots','history'])assert.deepEqual(afterSurvival[key],beforeSurvival[key],'Survival is untouched');
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'$.generation',2) WHERE id='motion'`);
+ assert.equal((await (await fetch(base+'/api/arena?mode=motion')).json()).generation,2,'reset marker is durable');
+ assert.equal((await fetch(base+'/api/training/export?mode=motion&kind=champion')).status,409);
  const i=joined.data.players.findIndex(p=>p.id===hunt.id),p=`$.players[${i}]`,now=Date.now();
  sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.x',3000,'${p}.y',2600,'${p}.phase','arena','${p}.runStartedAt',${now-8000},'${p}.runId','${crypto.randomUUID()}','${p}.lastSeen',${now},'$.time',${now+60000}) WHERE id='motion'`);
  const command={seq:1,life:0,x:0,y:0,dt:1/60,dash:false};
@@ -33,5 +44,12 @@ try{
  const saved=await scores('motion');assert.equal(saved.runs.length,2);assert.equal(saved.bestMs,run.durationMs);
  await post('motion',hunt,{action:'leave'});hunt=null;
  const restored=await post('motion',null,{action:'join',name:'Motion restored',contactMode:'visible-v1'});hunt=restored.data.session;assert.equal(restored.data.personal.scores.runs.length,2);assert.equal(restored.data.personal.scores.bestMs,run.durationMs);
- console.log('PASS: mode isolation, invalid/cross-mode rejection, pickup, extraction, durable fastest success, contact cargo loss, retry/old-life barriers and rejoin.');
+ // A completed experimental generation exports the new compatible population.
+ const ri=restored.data.players.findIndex(p=>p.id===hunt.id),rp=`$.players[${ri}]`,tick=Date.now();
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'$.elapsed',44.99,'$.time',${tick-100},'${rp}.x',1500,'${rp}.y',1500,'${rp}.phase','arena','${rp}.lastSeen',${tick},'${rp}.runStartedAt',${tick}) WHERE id='motion'`);
+ const boundary=await post('motion',hunt,{action:'input',commands:[]});assert.equal(boundary.status,200);
+ const exported=await fetch(base+'/api/training/export?mode=motion&kind=checkpoint');assert.equal(exported.status,200);
+ const file=await exported.json();assert.equal(file.rules,'immunity-motion-history-v1');assert.equal(file.genomes.length,24);assert.ok(file.genomes.every(g=>g.outputs===3));
+ for(const key of ['players','motionHistory','contactFrames'])assert.ok(!JSON.stringify(file).includes('"'+key+'"'));
+ console.log('PASS: one-time reset, Survival preservation, experimental checkpoint, mode isolation, invalid/cross-mode rejection, pickup, extraction, durable fastest success, contact cargo loss, retry/old-life barriers and rejoin.');
 }finally{if(hunt)await post('motion',hunt,{action:'leave'});if(survival)await post('survival',survival,{action:'leave'});}

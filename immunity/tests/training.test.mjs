@@ -5,7 +5,7 @@ import {readFileSync,mkdirSync,writeFileSync,copyFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/training-tests');mkdirSync(out,{recursive:true});
-const modules=['training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http'];
+const modules=['motion-observation','training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http'];
 for(const name of modules){
  let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
  for(const dep of modules)code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
@@ -109,4 +109,17 @@ test('unconfigured admin and password rotation invalidate existing sessions',asy
  assert.ok(await adminSession(db,request,hash));assert.equal(await adminSession(db,request,undefined),null);
  assert.equal(await adminSession(db,request,await hashAdminPassword('a different admin test password')),null);
  state.sessions[0].expires=0;assert.equal(await adminSession(db,request,hash),null);
+});
+
+test('history-controller checkpoints preserve three outputs and reject legacy Motion Hunt artifacts',()=>{
+ const a=createArena(0,'motion'),file=checkpoint(a,0);
+ assert.equal(file.rules,'immunity-motion-history-v1');assert.deepEqual(parseTrainingArtifact(file,'motion'),file);
+ const old=structuredClone(file);old.rules='immunity-pursuit-v1';assert.throws(()=>parseTrainingArtifact(old,'motion'),/incompatible observations/);
+ const wrong=structuredClone(file);delete wrong.genomes[0].outputs;assert.throws(()=>parseTrainingArtifact(wrong,'motion'),/outputs/);
+ const output=structuredClone(file);output.genomes[0].nodes.find(n=>n.id===13).depth=.5;assert.throws(()=>parseTrainingArtifact(output,'motion'),/nodes/);
+ const e=structuredClone(a.evolution);let genomes=structuredClone(file.genomes);
+ for(let i=0;i<20;i++){genomes.forEach((g,j)=>g.fitness=j);genomes=breed(genomes,e).genomes;}
+ const evolved={...file,genomes,evolution:e};assert.deepEqual(parseTrainingArtifact(evolved,'motion'),evolved);
+ a.motionHistory={old:{life:0,samples:[{at:0,x:100,y:100}]}};
+ queueTraining(a,file,'import','motion-import',0);trainingBoundary(a,100,[]);assert.deepEqual(a.motionHistory,{});
 });
