@@ -5,14 +5,14 @@ import { activate, breed, createGenome, random, type Evolution, type Genome } fr
 import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, type Motion, type Command, type Obstacle } from './physics';
 import {matchesContact,type ContactFrame,type ContactReport,type ContactReply} from './contact-report';
 import type {CollisionEvent} from './collision-effects';
-import {bestCompletedGeneration,type TrainingSample} from './training-metrics';
+import {bestCompletedGeneration,emptyDetection,recordDetection,type DetectionCounts,type TrainingSample} from './training-metrics';
 export { SIZE, FIELD }; export type { Obstacle };
 export const POPULATION=24, ROUND=45, MAX_PLAYERS=12, SPAWN_WARMUP=3;
 export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt:number};
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;carrying?:boolean;contactMode?:'visible-v1';contactFrames?:ContactFrame[]};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
-export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState;motionController?:string;motionHistory?:MotionHistory};
+export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState;motionController?:string;motionHistory?:MotionHistory;detection?:DetectionCounts};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
   return Array.from({length:60},()=>({x:FIELD.min+180+random(e)*3240,y:FIELD.min+180+random(e)*3240,r:35+random(e)*60}))
@@ -21,7 +21,7 @@ function obstacles(e:Evolution):Obstacle[]{
 export function createArena(now:number,mode:GameMode='survival'):Arena {
   const evolution={seed:42719,nextNode:mode==='motion'?14:13,splits:{}};
   const a:Arena={version:2,mode,time:now,generation:1,elapsed:0,totalTags:0,species:1,players:[],bots:[],obstacles:obstacles(evolution),history:[],bestGeneration:null,champion:null,evolution,roundTags:0,collisions:[]};
-  if(mode==='motion'){a.motionController=MOTION_CONTROLLER;a.motionHistory={};}
+  if(mode==='motion'){a.motionController=MOTION_CONTROLLER;a.motionHistory={};a.detection=emptyDetection();}
   a.bots=Array.from({length:POPULATION},(_,id)=>({id,x:0,y:0,vx:0,vy:0,fitness:0,tags:0,genome:createGenome(evolution,mode==='motion'?3:2)}));
   for(const b of a.bots)spawnBot(a,b);
   return a;
@@ -32,10 +32,11 @@ export function upgradeArena(raw:any,now:number):Arena {
   // Survival intact; invalidate issued frames from the replaced bot population.
   if(raw.mode==='motion'&&raw.motionController!==MOTION_CONTROLLER){
     const fresh=createArena(now,'motion');
-    Object.assign(raw,{motionController:MOTION_CONTROLLER,motionHistory:{},time:now,generation:1,elapsed:0,totalTags:0,species:1,bots:fresh.bots,evolution:fresh.evolution,history:[],bestGeneration:null,champion:null,roundTags:0,collisions:[],training:emptyTraining()});
+    Object.assign(raw,{motionController:MOTION_CONTROLLER,motionHistory:{},detection:emptyDetection(),time:now,generation:1,elapsed:0,totalTags:0,species:1,bots:fresh.bots,evolution:fresh.evolution,history:[],bestGeneration:null,champion:null,roundTags:0,collisions:[],training:emptyTraining()});
     delete raw.bestModel;
     for(const p of raw.players)p.contactFrames=[];
   }
+  if(raw.mode==='motion')raw.detection??=emptyDetection(raw.elapsed>0);
   raw.collisions??=[];
   raw.training??=emptyTraining();
   raw.bestGeneration=bestCompletedGeneration(raw.history||[],raw.bestGeneration??null);
@@ -168,7 +169,9 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
       // sensor/controller. Per-candidate classification feedback supplies selection
       // pressure even for bots that initially choose rest on every observation.
       for(const c of decision.candidates)if(c.complete){
-        const label=Math.hypot(c.player.vx,c.player.vy)>MOTION_THRESHOLD?1:-1;
+        const moving=Math.hypot(c.player.vx,c.player.vy)>MOTION_THRESHOLD;
+        recordDetection(a.detection??=emptyDetection(true),moving,c.attention);
+        const label=moving?1:-1;
         b.fitness+=dt*2*(1-(c.attention-label)**2)/decision.candidates.length;
       }
       const chosen=decision.selected;
@@ -198,19 +201,19 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
   if(a.elapsed>=ROUND){
     for(const b of a.bots)b.genome.fitness=b.fitness;
     const result=breed(a.bots.map(b=>b.genome),a.evolution);
-    a.history.push({branch:a.training?.branch||1,generation:a.generation,fitness:result.best.fitness,meanFitness:a.bots.reduce((sum,b)=>sum+b.fitness,0)/a.bots.length,tags:a.roundTags});
+    a.history.push({branch:a.training?.branch||1,generation:a.generation,fitness:result.best.fitness,meanFitness:a.bots.reduce((sum,b)=>sum+b.fitness,0)/a.bots.length,tags:a.roundTags,...(a.mode==='motion'&&a.detection?{detection:{...a.detection}}:{})});
     a.bestGeneration=bestCompletedGeneration(a.history,a.bestGeneration??null);a.history=a.history.slice(-40);
     rememberBestModel(a,result.best,now);
     a.champion=result.best;a.species=result.species;a.generation++;a.elapsed=0;a.roundTags=0;
     a.bots.forEach((b,i)=>{b.genome=result.genomes[i];b.fitness=0;b.tags=0;});
     trainingBoundary(a,now,trainingWrites);
-    if(a.mode==='motion')a.motionHistory={};
+    if(a.mode==='motion'){a.motionHistory={};a.detection=emptyDetection();}
     for(const b of a.bots)spawnBot(a,b);
   }
 }
 export function snapshot(a:Arena,selfToken?:string) {
   const me=a.players.find(p=>p.token===selfToken);
-  return {version:2,controller:a.mode==='motion'?MOTION_CONTROLLER:'pursuit-v1',mode:a.mode||'survival',resource:a.mode==='motion'?RESOURCE:null,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,bestGeneration:bestCompletedGeneration(a.history,a.bestGeneration??null),
+  return {...(a.mode==='motion'?{detection:a.detection??null}:{}),version:2,controller:a.mode==='motion'?MOTION_CONTROLLER:'pursuit-v1',mode:a.mode||'survival',resource:a.mode==='motion'?RESOURCE:null,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,bestGeneration:bestCompletedGeneration(a.history,a.bestGeneration??null),
     players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactMode,contactFrames,...p})=>p),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),

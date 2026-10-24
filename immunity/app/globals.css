@@ -241,3 +241,6 @@
 }
 
 @media(min-width:701px) and (pointer:fine){.in-expedition .touch-controls{display:none}}
+
+/* Detection uses the existing training panel; the persistent HUD stays compact. */
+.detection-summary{gap:14px}.detection-summary>div{min-width:0}.detection-summary strong{font-size:30px}.detection-summary small{display:block;color:var(--subtle);font-size:10px;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}.detection-point{stroke-width:1.5}.detection-point.accuracy{fill:#ffd180;stroke:#ffd180}.detection-point.false-positive{fill:#95e5df;stroke:#95e5df}.detection-point.partial{fill:#183b40}.detection-live>div{flex-wrap:wrap}.training-panel .detection-live dd{margin-left:auto}.generation-results td small{display:block;color:var(--subtle);font-size:9px}

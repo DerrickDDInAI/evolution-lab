@@ -45,11 +45,16 @@ try{
  await post('motion',hunt,{action:'leave'});hunt=null;
  const restored=await post('motion',null,{action:'join',name:'Motion restored',contactMode:'visible-v1'});hunt=restored.data.session;assert.equal(restored.data.personal.scores.runs.length,2);assert.equal(restored.data.personal.scores.bestMs,run.durationMs);
  // A completed experimental generation exports the new compatible population.
+ const detection={truePositive:60,trueNegative:30,falsePositive:5,falseNegative:5,partial:false};
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'$.detection',json('${JSON.stringify(detection)}')) WHERE id='motion'`);
+ assert.deepEqual((await (await fetch(base+'/api/arena?mode=motion')).json()).detection,detection);
  const ri=restored.data.players.findIndex(p=>p.id===hunt.id),rp=`$.players[${ri}]`,tick=Date.now();
  sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'$.elapsed',44.99,'$.time',${tick-100},'${rp}.x',1500,'${rp}.y',1500,'${rp}.phase','arena','${rp}.lastSeen',${tick},'${rp}.runStartedAt',${tick}) WHERE id='motion'`);
  const boundary=await post('motion',hunt,{action:'input',commands:[]});assert.equal(boundary.status,200);
+ assert.deepEqual(boundary.data.history.at(-1).detection,detection,'completed confusion counts survive the boundary');
+ const persisted=await (await fetch(base+'/api/arena?mode=motion')).json();assert.deepEqual(persisted.history.at(-1).detection,detection);assert.deepEqual(persisted.detection,{truePositive:0,trueNegative:0,falsePositive:0,falseNegative:0,partial:false});
  const exported=await fetch(base+'/api/training/export?mode=motion&kind=checkpoint');assert.equal(exported.status,200);
  const file=await exported.json();assert.equal(file.rules,'immunity-motion-history-v1');assert.equal(file.genomes.length,24);assert.ok(file.genomes.every(g=>g.outputs===3));
  for(const key of ['players','motionHistory','contactFrames'])assert.ok(!JSON.stringify(file).includes('"'+key+'"'));
- console.log('PASS: one-time reset, Survival preservation, experimental checkpoint, mode isolation, invalid/cross-mode rejection, pickup, extraction, durable fastest success, contact cargo loss, retry/old-life barriers and rejoin.');
+ console.log('PASS: one-time reset, Survival preservation, experimental checkpoint, persisted detection history and live reset, mode isolation, invalid/cross-mode rejection, pickup, extraction, durable fastest success, contact cargo loss, retry/old-life barriers and rejoin.');
 }finally{if(hunt)await post('motion',hunt,{action:'leave'});if(survival)await post('survival',survival,{action:'leave'});}

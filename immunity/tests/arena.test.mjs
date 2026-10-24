@@ -863,3 +863,52 @@ test('best generation survives history rollover, upgrades legacy worlds and adva
  assert.equal(restored.bestGeneration.generation,42);assert.equal(restored.bestGeneration.fitness,101);
  const motion=createArena(1000,'motion');assert.equal(snapshot(motion).bestGeneration,null,'mode records remain independent');
 });
+
+const {emptyDetection,recordDetection,detectionMetrics,detectionSummary,detectionPlot}=await import(pathToFileURL(`${out}/training-metrics.mjs`));
+test('detection rates use the full confusion matrix and stationary-only false-positive denominator',()=>{
+ const counts=emptyDetection();
+ for(const [moving,attention] of [[true,1],[true,0],[false,.1],[false,-1]])recordDetection(counts,moving,attention);
+ assert.deepEqual(counts,{truePositive:1,trueNegative:1,falsePositive:1,falseNegative:1,partial:false});
+ const metrics=detectionMetrics(counts);assert.equal(metrics.samples,4);assert.equal(metrics.accuracy,.5);assert.equal(metrics.falsePositiveRate,.5);assert.equal(metrics.recall,.5);
+ const movingOnly=detectionMetrics({...emptyDetection(),truePositive:9,falseNegative:1});assert.equal(movingOnly.accuracy,.9);assert.equal(movingOnly.falsePositiveRate,null);
+ const stillOnly=detectionMetrics({...emptyDetection(),trueNegative:9,falsePositive:1});assert.equal(stillOnly.falsePositiveRate,.1);assert.equal(stillOnly.recall,null);
+ for(const absent of [undefined,null,emptyDetection()]){assert.equal(detectionMetrics(absent).accuracy,null);assert.equal(detectionMetrics(absent).falsePositiveRate,null);}
+});
+test('detection comparisons skip unknown, partial, nonconsecutive and imported generations',()=>{
+ const first={generation:1,fitness:0,tags:0,detection:{...emptyDetection(),truePositive:3,trueNegative:3,falsePositive:1,falseNegative:1}};
+ const second={generation:2,fitness:0,tags:0,detection:{...emptyDetection(),truePositive:4,trueNegative:4}};
+ const change=detectionSummary([first,second],emptyDetection());assert.equal(change.accuracyChange,.25);assert.equal(change.falsePositiveChange,-.25);
+ for(const previous of [{...first,detection:undefined},{...first,detection:{...first.detection,partial:true}},{...first,branch:2},{...first,generation:0}])assert.equal(detectionSummary([previous,second],null).accuracyChange,null);
+ assert.equal(detectionSummary([first,{...second,detection:{...second.detection,partial:true}}],null).falsePositiveChange,null);
+});
+test('detection plots retain gaps, branch breaks, no-negative gaps and partial markers',()=>{
+ const row=(generation,detection,branch=1)=>({generation,fitness:0,tags:0,detection,branch});
+ const measured={...emptyDetection(),truePositive:8,trueNegative:9,falsePositive:1,falseNegative:2};
+ const rows=[row(1,measured),row(2,undefined),row(3,{...measured,partial:true}),row(4,{...emptyDetection(),truePositive:10}),row(5,measured,2)];
+ const plot=detectionPlot(rows);
+ assert.equal(plot.accuracy.points.length,4);assert.equal(plot.accuracy.segments.length,3);assert.equal(plot.falsePositiveRate.points.length,3);assert.equal(plot.falsePositiveRate.segments.length,3);
+ assert.equal(plot.accuracy.points[1].partial,true);assert.equal(plot.accuracy.points[0].rate,.85);
+ assert.equal(detectionPlot([row(1,undefined)]).accuracy.points.length,0);
+});
+test('motion detection counters cover all eligible bot-player decisions and exclude incomplete windows and warm-up',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=3600;p.y=3600;parkBots(a);
+ advance(a,100);assert.equal(detectionMetrics(a.detection).samples,0);
+ advance(a,400);assert.ok(a.detection.trueNegative>=24);assert.equal(a.detection.trueNegative%24,0);assert.equal(a.detection.falsePositive,0);
+ const before={...a.detection};p.vx=255;p.lastSeen=400;advance(a,500);assert.ok(a.detection.falseNegative>before.falseNegative);assert.equal(a.detection.trueNegative,before.trueNegative);
+ const warming=createArena(0,'motion');runner(warming).x=3600;advance(warming,500);assert.equal(detectionMetrics(warming.detection).samples,0);
+ const live=snapshot(a);assert.deepEqual(live.detection,a.detection);assert.ok(!JSON.stringify(live.detection).includes(p.id));
+ const survival=createArena(0);assert.equal(survival.detection,undefined);assert.ok(!Object.hasOwn(snapshot(survival),'detection'));
+});
+test('detection counters are retained before breeding, reset per generation and survive persistence without aliasing',()=>{
+ const a=createArena(0,'motion'),p=runner(a);p.x=3600;p.y=3600;for(const b of a.bots)b.spawnWait=10;
+ a.detection={truePositive:7,trueNegative:8,falsePositive:3,falseNegative:2,partial:true};const expected={...a.detection};a.elapsed=ROUND-.001;
+ advance(a,100);assert.equal(a.generation,2);assert.deepEqual(a.history.at(-1).detection,expected);assert.deepEqual(a.detection,emptyDetection());
+ a.detection.trueNegative=40;assert.deepEqual(a.history.at(-1).detection,expected);
+ const saved=JSON.parse(JSON.stringify(a));upgradeArena(saved,200);assert.deepEqual(saved.history.at(-1).detection,expected);assert.equal(saved.detection.trueNegative,40);
+});
+test('adding detection tracking to an active world marks partial coverage and preserves its population, scores and generation',()=>{
+ const a=createArena(0,'motion'),p=runner(a);upgradeArena(a,0);a.generation=12;a.elapsed=18;p.scores.bestMs=1234;
+ delete a.detection;const before=structuredClone(a);upgradeArena(a,100);
+ assert.deepEqual(a.detection,emptyDetection(true));const counts=a.detection;delete a.detection;assert.deepEqual(a,before);a.detection=counts;
+ a.detection.truePositive=20;upgradeArena(a,200);assert.equal(a.detection.truePositive,20);assert.equal(a.generation,12);
+});
