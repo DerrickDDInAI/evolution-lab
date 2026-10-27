@@ -4,9 +4,9 @@ import {Download,LockKeyhole} from 'lucide-react';
 import type {View} from '../lib/renderer';
 import type {GameMode} from '../lib/game-mode';
 const MAX_IMPORT_BYTES=512*1024;
-type Status={configured:boolean;authenticated:boolean;expires:number|null;training:View['training']};
+type Status={configured:boolean;authenticated:boolean;expires:number|null;generation:number|null;training:View['training']};
 type Preview={kind:'champion'|'checkpoint';mode:GameMode;generation:number;createdAt:number;bots:number;fitness:number|null};
-export function TrainingVault({state,motion,online}:{state:View|null;motion:boolean;online:boolean}){
+export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|null;motion:boolean;online:boolean;adminOpen?:boolean}){
   const mode=motion?'motion':'survival';
   const [status,setStatus]=useState<Status|null>(null),[password,setPassword]=useState(''),[preview,setPreview]=useState<Preview|null>(null);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[confirmRollback,setConfirmRollback]=useState(false);
@@ -17,7 +17,7 @@ export function TrainingVault({state,motion,online}:{state:View|null;motion:bool
   },[mode]);
   useEffect(()=>{
     let active=true;
-    const poll=()=>{if(active)void refresh().catch(()=>{});};poll();const timer=setInterval(poll,10000);
+    const poll=()=>{if(active)void refresh().catch(()=>setError('Cannot reach model storage. Check your connection and retry.'));};poll();const timer=setInterval(poll,10000);
     return()=>{active=false;clearInterval(timer);};
   },[refresh,state?.generation]);
   const t=status?.training||state?.training;
@@ -31,7 +31,7 @@ export function TrainingVault({state,motion,online}:{state:View|null;motion:bool
     try{await operation();}catch(e){setError(e instanceof Error?e.message:'Please retry.');}
     finally{await refresh().catch(()=>{});setBusy(false);}
   }
-  async function download(kind:'champion'|'checkpoint'|'rollback'){
+  async function download(kind:'champion'|'current'|'checkpoint'|'rollback'){
     await run(async()=>{
       const response=await fetch(`/api/training/export?mode=${mode}&kind=${kind}`);const data=await response.json().catch(()=>({error:'Connection interrupted. Refresh training status before retrying.'})) as {error?:string;generation:number};
       if(!response.ok)throw new Error(data.error||'Export failed.');
@@ -41,15 +41,18 @@ export function TrainingVault({state,motion,online}:{state:View|null;motion:bool
     });
   }
   return <section className="training-vault" aria-label="Training archive">
-    <h3>Training archive <small>Shared progress, safely kept</small></h3>
+    <h3>Save models <small>{status?.generation?`Current generation ${status.generation}`:'Shared training progress'}</small></h3>
     <button className="export" disabled={busy||!online||!t?.bestModelAvailable} onClick={()=>void download('champion')}><Download size={15}/>Export best model</button>
     {!t?.bestModelAvailable&&<p>A new fitness record will save the best model. Older record scores may predate model archiving.</p>}
+    <button className="vault-button" disabled={busy||!online||!status?.generation} onClick={()=>void download('current')}><Download size={15}/>Export current generation</button>
+    <p>All 24 active models and their evolution state, ready to resume as a fresh generation. In-progress fitness and player data are excluded.</p>
+    <details><summary>Automatic checkpoint</summary>
     <button className="vault-button" disabled={busy||!online||!t?.checkpointGeneration} onClick={()=>void download('checkpoint')}><Download size={15}/>Export training checkpoint</button>
-    <p>{t?.checkpointGeneration?`Checkpoint ready for generation ${t.checkpointGeneration}.`:'The first checkpoint is saved when a generation completes.'} Includes all 24 bots and their evolution state.</p>
+    <p>{t?.checkpointGeneration?`Checkpoint ready for generation ${t.checkpointGeneration}.`:'The first checkpoint is saved when a generation completes.'} Includes all 24 bots and their evolution state.</p></details>
     {t?.pending&&<p className="vault-notice" role="status">{t.pending.kind==='rollback'?'Rollback':'Import'} queued from generation {t.pending.sourceGeneration}. Applies when the active generation ends; waits while training is paused.</p>}
-    <details className="training-admin" onToggle={e=>{if(e.currentTarget.open)void refresh().catch(()=>setError('Cannot reach administrator controls. Try again when connected.'));}}>
+    <details className="training-admin" open={adminOpen||undefined} onToggle={e=>{if(e.currentTarget.open)void refresh().catch(()=>setError('Cannot reach administrator controls. Try again when connected.'));}}>
       <summary><LockKeyhole size={14}/> Administrator</summary>
-      {!status?<><p>Checking administrator access…</p><button className="vault-button" disabled={busy} onClick={()=>void run(refresh)}>Retry connection</button></>:!status.configured?<p>Administrator access needs to be configured by the game’s host before sign-in.</p>:!status.authenticated?
+      {!status?<><p>Checking administrator access…</p><button className="vault-button" disabled={busy} onClick={()=>void run(refresh)}>Retry connection</button></>:!status.configured?<p>Admin sign-in is not configured on this host yet. Model downloads are still available. The owner must finish the private password setup before importing.</p>:!status.authenticated?
         <form onSubmit={e=>{e.preventDefault();void run(async()=>{try{await action('login',{password});setMessage('Signed in for 30 minutes.');}finally{setPassword('');}});}}>
           <label htmlFor="training-password">Administrator password</label><input id="training-password" type="password" autoComplete="current-password" value={password} maxLength={256} onChange={e=>setPassword(e.target.value)} required disabled={busy}/>
           <button className="vault-button" disabled={busy||!online||!password} type="submit">{busy?'Signing in…':'Sign in'}</button>
@@ -73,6 +76,6 @@ export function TrainingVault({state,motion,online}:{state:View|null;motion:bool
           </div>}
         </>}
     </details>
-    {busy&&<p role="status">Working…</p>}{message&&<p className="vault-notice" role="status">{message}</p>}{error&&<p className="vault-error" role="alert">{error}</p>}
+    <button className="vault-refresh" disabled={busy} onClick={()=>void run(refresh)}>Refresh model status</button>{busy&&<p role="status">Working…</p>}{message&&<p className="vault-notice" role="status">{message}</p>}{error&&<p className="vault-error" role="alert">{error}</p>}
   </section>;
 }

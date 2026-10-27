@@ -12,7 +12,7 @@ async function read(db:D1Database,mode:GameMode){return db.prepare('SELECT revis
 export async function GET(request:Request){try{
   const {DB:db,IMMUNITY_ADMIN_PASSWORD_HASH:hash}=config(),mode=modeFrom(new URL(request.url).searchParams.get('mode'));
   const session=await adminSession(db,request,hash),row=await read(db,mode),a=row?upgradeArena(JSON.parse(row.state),Date.now()):createArena(Date.now(),mode);
-  return json({configured:adminConfigured(hash),authenticated:!!session,expires:session?.expires??null,training:trainingSummary(a)});
+  return json({configured:adminConfigured(hash),authenticated:!!session,expires:session?.expires??null,generation:row?a.generation:null,training:trainingSummary(a)});
 }catch(error){return trainingFailure(error);}}
 export async function POST(request:Request){try{
   requireSameOrigin(request);

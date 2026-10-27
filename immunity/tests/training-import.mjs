@@ -23,6 +23,13 @@ try{
  const login=await admin('login',{password});assert.equal(login.status,200,JSON.stringify(login.data));cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);
  assert.equal((await api('/api/training')).data.authenticated,true);
  const joined=await api('/api/arena',{action:'join',name:'Checkpoint test',profileToken});assert.equal(joined.status,200);session=joined.data.session;
+ const liveBefore=readState(),current=await api('/api/training/export?kind=current');
+ assert.equal(current.status,200);assert.equal(current.data.generation,liveBefore.generation);assert.equal(current.data.kind,'checkpoint');
+ assert.deepEqual(current.data.genomes,liveBefore.bots.map(b=>({...b.genome,fitness:0})));assert.deepEqual(current.data.evolution,liveBefore.evolution);
+ assert.deepEqual(readState(),liveBefore,'current export must not mutate the world');
+ assert.equal((await api('/api/training')).data.generation,liveBefore.generation);
+ assert.equal((await admin('preview',{artifact:current.data})).status,200,'current population must round-trip through importer');
+ for(const field of ['players','profileId','token','contactFrames','runs'])assert.ok(!JSON.stringify(current.data).includes(`"${field}"`));
  const first=await boundary();const best=await api('/api/training/export?kind=champion'),checkpoint=await api('/api/training/export?kind=checkpoint');
  assert.equal(best.status,200);assert.equal(best.data.generation,first.bestGeneration.generation);assert.equal(checkpoint.status,200);assert.equal(checkpoint.data.genomes.length,24);
  for(const file of [best.data,checkpoint.data])for(const field of ['players','profileId','token','contactFrames','runs'])assert.ok(!JSON.stringify(file).includes(`"${field}"`));

@@ -77,6 +77,38 @@
 }
 @media(prefers-reduced-motion:reduce){.nursery-label{transition:none}}
 
+/* EvoGoo menu: keep the painting, with readable notes and credits below it. */
+.mode-menu{display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;overflow-x:hidden;background:#173d3c}
+.mode-menu::before{position:fixed;pointer-events:none}
+.nursery-scene{width:min(100%,calc((100dvh - 158px)*1.7768));margin:auto auto 0}
+.nursery-label{padding:.55cqw 1.4cqw;gap:.35cqw;box-sizing:border-box}
+.nursery-label strong{font-size:1.65cqw;letter-spacing:.04cqw}
+.nursery-label span{font-size:.92cqw;white-space:normal;text-wrap:balance;line-height:1.3}
+.nursery-inscription{left:31%;width:38%;bottom:3.4%;font-size:.76cqw;line-height:1.3;padding:0 1.2cqw}
+.nursery-inscription small{font-size:.55cqw;margin-bottom:.2cqw}
+.nursery-inscription strong{font-size:1.04cqw;margin-bottom:.22cqw}
+.nursery-touch-hint{display:none}
+.nursery-footer{position:relative;z-index:1;flex-shrink:0;width:100%;padding:12px max(20px,calc((100% - 1100px)/2)) 10px;background:#153938f2;color:#e7efda;border-top:1px solid #b7c9a633;font:12px/1.5 system-ui;box-sizing:border-box}
+.nursery-learning{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.nursery-learning p{margin:0}.nursery-learning strong,.nursery-learning span{display:block}.nursery-learning strong{color:#f5dfad;font-size:13px;margin-bottom:3px}.nursery-learning span{color:#d3e1d7}
+.nursery-credits{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;border-top:1px solid #b7c9a622;padding-top:5px;font-size:11px}
+.nursery-credits nav{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px}.nursery-credits a,.nursery-credits button{color:#f7e7c5;min-height:32px;display:inline-flex;align-items:center;padding:4px 0;font:inherit;text-underline-offset:4px}.nursery-credits a:hover,.nursery-credits button:hover{text-decoration:underline}.nursery-credits :is(a,button):focus-visible{outline:2px solid #ffda85;outline-offset:4px}
+@media(max-aspect-ratio:1/1), (max-height:600px) and (max-width:1000px){
+ .mode-menu{padding-top:68px}.nursery-scene{width:100%;margin:0 0 334px}
+ .nursery-label{top:104%;width:43%;border:1px solid #e2d0ad;background:linear-gradient(140deg,#fff4dff5,#dfe7d8f5);border-radius:28px 10px;text-shadow:none;height:112px;padding:14px 16px;gap:8px}.nursery-label strong{font-size:clamp(14px,3.8cqw,22px)}.nursery-label span{font-size:clamp(11px,2.85cqw,15px);line-height:1.4}
+ .nursery-label.survival{left:4%;transform:none}.nursery-label.motion{left:53%;transform:none}
+ .nursery-inscription{top:calc(104% + 132px);left:6%;width:88%;bottom:auto;padding:18px 20px;transform:none;border-radius:50% 50% 20px 20px / 20px 20px 16px 16px;font-size:12px;line-height:1.5}
+ .nursery-inscription::before{content:'';position:absolute;z-index:-1;inset:0;border-radius:inherit;background:url('/immunity/nursery-menu.webp') center bottom / 700% 1800%;mask-image:radial-gradient(ellipse 75% 90% at 50% 60%,#000 52%,#000b 75%,transparent 100%)}
+ .nursery-inscription small{font-size:9px;margin-bottom:5px}.nursery-inscription strong{font-size:16px;margin-bottom:6px}
+ .nursery-instructions{top:calc(104% + 294px);font-size:11px;left:4%;width:92%;color:#fff5db;text-shadow:0 1px 4px #173c3b;white-space:normal;line-height:1.5}
+ .nursery-footer{padding:16px 20px 20px}.nursery-learning{grid-template-columns:1fr;gap:14px}.nursery-credits{display:block;margin-top:14px;padding-top:12px}.nursery-credits nav{margin-top:8px;gap:4px 16px}.nursery-credits a,.nursery-credits button{min-height:44px}
+}
+@media(max-height:600px) and (min-width:1001px){
+ .nursery-scene{width:min(100%,1066px);margin:50px auto 0}
+ .nursery-inscription::before{display:none}.nursery-inscription{left:31%;width:38%;bottom:3.4%;font-size:.76cqw;line-height:1.3}.nursery-inscription small{font-size:.55cqw}.nursery-inscription strong{font-size:1.04cqw}.nursery-instructions{top:80.5%;font-size:.9cqw}
+ .nursery-credits{flex-wrap:wrap}
+}
+
 /* Tidal Lens: opaque reading membranes inside fine, translucent shell edges. */
 .in-expedition{--ink:#102e32;--pearl:#fff3d9;--subtle:#d0e1da;--gold:#ffda8b;--aqua:#95e5df;position:relative;height:100dvh;min-height:600px;padding:0;background:#244e49;isolation:isolate;color:var(--pearl)}
 .in-expedition .arena-shell{border:0;border-radius:0;min-height:0;box-shadow:none}
@@ -245,3 +277,11 @@
 
 /* Detection uses the existing training panel; the persistent HUD stays compact. */
 .detection-summary{gap:14px}.detection-summary>div{min-width:0}.detection-summary strong{font-size:30px}.detection-summary small{display:block;color:var(--subtle);font-size:10px;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}.detection-point{stroke-width:1.5}.detection-point.accuracy{fill:#ffd180;stroke:#ffd180}.detection-point.false-positive{fill:#95e5df;stroke:#95e5df}.detection-point.partial{fill:#183b40}.detection-live>div{flex-wrap:wrap}.training-panel .detection-live dd{margin-left:auto}.generation-results td small{display:block;color:var(--subtle);font-size:9px}
+
+/* A direct, mode-specific archive without entering a live arena. */
+.model-manager-backdrop{position:fixed;inset:0;z-index:60;background:#071d25b8;display:flex;justify-content:flex-end}
+.model-manager{--pearl:#fff3d9;--subtle:#d0e1da;--gold:#ffda8b;width:min(520px,100%);height:100%;overflow-y:auto;overscroll-behavior:contain;padding:26px;background:#153a3d;color:var(--pearl);box-shadow:-12px 0 60px #061a2455;font-size:14px;line-height:1.6}
+.model-manager h2{font:30px Georgia,serif;margin:0}.model-manager .eyebrow{color:var(--subtle);margin-bottom:8px}.model-manager .panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:center}.model-manager .panel-heading button{min-width:44px;min-height:44px;color:var(--pearl)}
+.model-manager>p{color:var(--subtle)}.model-manager>label{display:block;margin:20px 0 7px}.model-manager select{width:100%;padding:12px;background:#0d292e;color:var(--pearl);border:1px solid #d6c69b88;border-radius:12px;font:inherit}.model-manager :is(button,select,input,summary):focus-visible{outline:2px solid #ffda85;outline-offset:3px}
+.model-manager .training-vault h3{font:22px Georgia,serif}.model-manager h3 small{display:block;font:12px system-ui;margin:8px 0;color:var(--subtle)}.model-manager .export{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:12px;background:#edd8a9;color:#183b3a;border-radius:16px 8px;font-size:13px}.model-manager details{margin:16px 0}.model-manager summary{cursor:pointer;min-height:44px;padding:10px 0}.model-manager dl{margin:12px 0}.model-manager dl>div{display:flex;justify-content:space-between;gap:12px}.model-manager dd{margin:0}.vault-refresh{margin-top:12px;min-height:44px;color:inherit;text-decoration:underline;text-underline-offset:4px}
+@media(max-width:420px){.model-manager{padding:20px}.model-manager h2{font-size:26px}}

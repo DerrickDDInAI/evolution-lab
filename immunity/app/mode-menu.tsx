@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {advanceMenu,MENU_HOLD_MS,MENU_PADS,modeName,type GameMode,type MenuPosition,type MenuSelection} from '../lib/game-mode';
 import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance,GROUND_TILT} from '../lib/immunity-art';
 
-export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void;paused?:boolean}){
+export function ModeMenu({onChoose,paused=false,onModels}:{onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void}){
   const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null);
   const position=useRef<MenuPosition>({x:50,y:68.5}),selection=useRef<MenuSelection>({mode:null,elapsed:0});
   const keys=useRef(new Set<string>()),goal=useRef<MenuPosition|null>(null),done=useRef(false),choose=useRef(onChoose);
@@ -11,7 +11,7 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
   useEffect(()=>{choose.current=onChoose;},[onChoose]);
   useEffect(()=>{
     const element=stage.current;
-    if(!paused)element?.focus();
+    if(!paused&&!element?.parentElement?.contains(document.activeElement))element?.focus();
     const art=immunityArt(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     let frame=0,last=0,facing=4,travel=0,sceneWidth=1672,sceneHeight=941,actorWidth=180;
     const measure=()=>{const box=element?.getBoundingClientRect();if(box){sceneWidth=box.width;sceneHeight=box.height;}actorWidth=actor.current?.getBoundingClientRect().width||180;};
@@ -70,9 +70,9 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
     <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose an expedition. Move with WASD or arrows into a floor circle. Stay for 0.85 seconds or press Enter." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)){keys.current.clear();goal.current=null;selection.current={mode:null,elapsed:0};}}}>
       <h1 id="expedition-title"><small>EvoGoo</small>Immunity</h1>
       <svg className="nursery-ornament" viewBox="0 0 240 24" aria-hidden="true"><path d="M0 8h88q20 0 32 14Q132 8 152 8h88M120 22V1m0 15Q105 0 92 3m28 13Q135 0 148 3"/></svg>
-      <p id="nursery-purpose" className="nursery-inscription"><small>A living experiment</small><strong>How skilled can the sentinels become?</strong><span>They learn by hunting you. Every survivor shapes the next generation.</span></p>
+      <p id="nursery-purpose" className="nursery-inscription"><small>A living experiment</small><strong>How skilled can the sentinels become?</strong><span>They learn by hunting you.<br/>Every survivor shapes the next generation.</span></p>
       {(['survival','motion'] as const).map(m=><button key={m} className={'nursery-label '+m+(display.mode===m?' selected':'')} disabled={paused} onPointerDown={e=>e.stopPropagation()} onClick={()=>approach(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat&&!paused){e.preventDefault();e.stopPropagation();if(!done.current){done.current=true;choose.current(m);}}}} aria-label={`${modeName(m)}. ${m==='survival'?'Survive the sentinels.':'Collect the seed. Sentinels learn to sense movement. Reach an exit.'} Click to walk there, or press Enter to choose.`}>
-        <strong>{modeName(m)}</strong><span>{m==='survival'?'Survive the sentinels':'Collect the seed. Reach an exit.'}</span>
+        <strong>{modeName(m)}</strong><span>{m==='survival'?'Survive the sentinels':'Collect a seed. Find an exit.'}</span>
       </button>)}
       {(['survival','motion'] as const).map(m=>{const pad=MENU_PADS[m],selected=display.mode===m;return <svg key={m} className={'nursery-pad'+(selected?' selected':'')} style={{left:pad.x+'%',top:pad.y+'%',width:pad.rX*2+'%',height:pad.rY*2+'%'}} viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true">
         <circle className="pad-halo" cx="100" cy="100" r="94"/><path className="pad-veins" d="M100 188V100L66 66 46 32M100 145l45-36 20-53M100 116l-43 15-27-21M100 88l26-35-5-30M66 66l-30 8m109 35 30 12M100 165l-30-10"/>
@@ -83,5 +83,17 @@ export function ModeMenu({onChoose,paused=false}:{onChoose:(mode:GameMode)=>void
       <p className="nursery-touch-hint">WASD / arrows to move · Tap a circle to walk there</p>
       <div className="sr-only" role="status">{display.mode?`${modeName(display.mode)} selected. Stay to confirm or press Enter.`:'Choose Survival on the left or Motion Hunt on the right.'}</div>
     </div>
+    <footer className="nursery-footer">
+      <div className="nursery-learning" aria-label="What the sentinels learn">
+        <p><strong>Survival · learning to chase</strong><span>Sentinels evolve pursuit and obstacle avoidance. Stay alive as they adapt.</span></p>
+        <p><strong>Motion Hunt · learning to notice movement</strong><span>Sentinels learn to detect motion from recent positions, then pursue. Stillness may help; it is no guarantee.</span></p>
+      </div>
+      <div className="nursery-credits"><span>Created by <strong>Derrick Van Frausum</strong></span><nav aria-label="Creator and project links">
+        <a href="https://github.com/DerrickDDInAI/evolution-lab" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        <a href="mailto:info@evogoo.com">Business inquiries</a>
+        <a href="mailto:contact@evogoo.com">Contact & feedback</a>
+        <button type="button" onClick={onModels}>Models & admin</button>
+      </nav></div>
+    </footer>
   </section>;
 }

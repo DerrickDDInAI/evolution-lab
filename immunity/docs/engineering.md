@@ -1,6 +1,6 @@
 # Engineering and verification
 
-The [README](../README.md#development) owns installation, build, database migration and preview commands; its [module map](../README.md#modules) owns architecture facts. [AGENTS.md](../AGENTS.md) owns development rules. This page explains check selection and limits.
+The [README](../README.md#development) owns installation, build, database migration and preview commands; the [module map](architecture.md#modules) owns architecture facts. [AGENTS.md](../AGENTS.md) owns development rules. This page explains check selection and limits.
 
 ## Routine checks
 

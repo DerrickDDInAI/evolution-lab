@@ -331,3 +331,16 @@ Live browser checks passed on https://evogoo.com and https://www.evogoo.com: bra
 Additional disposable browser verification: normal movement, sprint/stamina, capture followed by outside respawn, and leave/rejoin with the saved 01:31.42 personal best. The exact instant of contact was not visually captured. Desktop and measured 390×844 menu checks passed; physical touch, OS reduced-motion and load remain unverified. The owned preview was stopped and browser viewport restored. Live screenshot: ignored `outputs/evogoo-live.png`.
 
 The release source is committed/pushed in the existing hosted repository. Local Evolution Lab branding edits and this receipt remain uncommitted alongside the pre-existing gate-fix edits, which were preserved. No identity transfer across browser origins was added.
+
+
+## Menu, public documentation and model manager — 2026-10-27
+
+The EvoGoo branding/domain work was committed separately as `1cfba12` before this follow-up. Added creator Derrick Van Frausum, repository and labeled business/feedback email links; explicit mode-specific learning descriptions; and a menu-level Models & admin dialog. The Nursery painting and survivor selection remain. Inscription lines stay inside the foreground shell; choice labels have inset padding. Portrait and short windows scroll naturally to notes and creator links.
+
+The model manager selects a mode without joining an arena, exports its best saved model or current population, and exposes the existing protected preview/import/cancel/rollback flow. The new current export reads saved models/evolution state into the compatible checkpoint format, resets transient fitness for resume, includes no player data, and performs no world write. Missing populations report unavailable. Existing automatic checkpoints and legacy exports remain. Keyboard Escape restores focus to Models & admin.
+
+Both public READMEs now focus on purpose, play/setup, checks, contribution and contacts. Removed alternate hosting addresses, local paths and hosting IDs; preserved deeper technical content in architecture.md and updated links. No license or unsupported guarantees were invented.
+
+PASS: 112 tests, TypeScript, exact-source production build, clean focused lint for the new/changed model controls and endpoints, dedicated authenticated model fixture (including current export/import round trip and non-mutation), all five isolated gameplay fixtures, browser download/preview/queue/cancel, mode switch, sign-in/out, focus/Escape recovery, and desktop/390×844/800×360 layout checks. Checked creator link targets, no horizontal overflow and label content within padded bounds. A build interrupted one fixture attempt; it passed after the build completed. Existing page lint debt is unchanged. Physical touch, OS reduced-motion, load and a new full rendered gameplay journey remain unverified.
+
+The owner set a password privately using the hidden local prompt. Only its hash was installed as the production server secret; local secret files are ignored and excluded from commits/releases. No live import, rollback, population reset or score migration is part of this rollout. Exact publication receipt follows.
