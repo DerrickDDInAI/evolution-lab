@@ -1,8 +1,8 @@
 # Immunity
 
-A standalone multiplayer survival game inspired by Enter the Pygame. Each mode supports up to 12 human players sharing a 6,000 × 6,000 world with 24 evolving bots. This repository has its own Git history and does not depend on the Python project.
+An **EvoGoo** multiplayer survival experiment inspired by Enter the Pygame. Each mode supports up to 12 human players sharing a 6,000 × 6,000 world with 24 evolving bots. This repository has its own Git history and does not depend on the Python project.
 
-Live game: https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site/
+Live game: https://evogoo.com/ (also https://www.evogoo.com/). The existing https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site/ address remains available.
 
 ## Play
 

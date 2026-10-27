@@ -309,3 +309,25 @@ Implementation commit: Evolution Lab `1b26ff7` (`Track Motion Hunt detection acc
 Live API checks confirm both modes' public bot populations, history, best-generation records, champion availability, generation, elapsed time and cumulative captures match their pre-deployment checksums/summaries. Survival remained at generation 75 (41.6687 seconds elapsed); Motion Hunt remained at generation 1 (0 seconds). The added Motion Hunt confusion counters are zero and ready to collect during play; Survival has no detection counters. No reset, production fixtures, schema migration, model import or synthetic live data were used. Player-record preservation is covered by source scope and disposable HTTP/D1 checks.
 
 Live browser confirms Movement detection in Motion Hunt's Adaptation panel, completed/live rates, sample counts, empty-state guidance and the existing generation 1. No warnings/errors observed. Screenshot: `/private/tmp/immunity-detection-metrics-live.png`. Multi-generation trend values and real live-counter changes were verified in disposable QA; no production gameplay/contact or learning-quality pass is claimed. Normal viewport restored; owned local preview stopped. Detection history begins with measured play after this release and is not backfilled. This receipt is a separate local documentation commit after publication.
+
+
+## EvoGoo domain and branding — 2026-10-27
+
+User request: adapt the game for the purchased Cloudflare domain evogoo.com and deploy it. EvoGoo is the collection brand; Immunity remains the game title. Reuse the accepted Nursery artwork and layout with a compact EvoGoo inscription, browser/share metadata, canonical domain and seed favicon. Builder review; no new game mechanics, storage keys, schema changes, resets or hosting migration.
+
+Release preparation uses the current hosted version 24 in `/private/tmp/evogoo-release-20261027`. Existing local gate-fix edits match that hosted baseline and remain intact. The existing public Sites project and D1 binding are reused. Both evogoo.com and www.evogoo.com are registered with Sites; Cloudflare received two apex A records, the www CNAME and four ownership TXT records, all DNS-only with five-minute TTL. Certificates are active; final routing/publication verification follows.
+
+PASS: 112 domain tests, TypeScript, production build, five sequential disposable HTTP/D1 fixtures, keyboard mode selection, browser joining/arena entry, desktop and measured 390×844 menu review without horizontal overflow. Metadata resolves to https://evogoo.com. Changed-file lint adds no findings: layout/menu clean, page retains its nine prior findings; full lint still fails with 16 errors and 34 warnings including generated test output. Local gameplay files, hosting manifest and existing SQLite data have unchanged hashes. Physical touch, OS reduced-motion, load and a complete new rendered contact/respawn journey are not established by these checks.
+
+Anonymous identities are browser-origin scoped. The shared database preserves existing scores and learned populations, but visiting evogoo.com does not automatically copy the old chatgpt.site browser identity; no cross-domain identity transfer was implemented.
+
+
+### EvoGoo publication — 2026-10-27
+
+Published version **25** from pushed source `96d87cbc5ec71a15470563a85296e3be72f232b3`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_cdf1795e69e08191ae3d5e59ff57b8ce`. Deployment `appgdep_6ae0fccc2d3c8191880d488cb4ce6684` succeeded, preserving public audience and environment revision 0. Sites now reports https://evogoo.com as the current live URL and the display title is **EvoGoo — Immunity**. Both custom domains report active hostname routing and active TLS.
+
+Live browser checks passed on https://evogoo.com and https://www.evogoo.com: branded menu/artwork, title, canonical metadata, favicon, mode selection and existing Motion Hunt backend data (generation 4, best generation 2). No browser warnings/errors. No production player was joined and no production fixture, schema migration or reset was run. A separate unauthenticated command-line public-state read returned HTTP 403, so no before/after live checksum comparison is claimed for this release. Preservation rests on the unchanged simulation/persistence source and binding, plus visible retained training state.
+
+Additional disposable browser verification: normal movement, sprint/stamina, capture followed by outside respawn, and leave/rejoin with the saved 01:31.42 personal best. The exact instant of contact was not visually captured. Desktop and measured 390×844 menu checks passed; physical touch, OS reduced-motion and load remain unverified. The owned preview was stopped and browser viewport restored. Live screenshot: ignored `outputs/evogoo-live.png`.
+
+The release source is committed/pushed in the existing hosted repository. Local Evolution Lab branding edits and this receipt remain uncommitted alongside the pre-existing gate-fix edits, which were preserved. No identity transfer across browser origins was added.

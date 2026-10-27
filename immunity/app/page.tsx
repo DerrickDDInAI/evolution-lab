@@ -34,7 +34,7 @@ export default function Home(){
   return <main className={'app'+(expanded?' expanded':'')+(!session&&!mode?' choosing':'')+(mode?' in-expedition':'')}>
     {mode&&<TidalPeriphery/>}
     <header className="topbar">
-      <a className="brand" href="/" aria-label="Immunity home">{mode&&<TidalShell lens/>}<svg className="brand-seed" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 3C7 14 3 28 11 38c4 6 14 6 18 0C37 28 33 14 20 3Z"/><path d="M20 7v34M8 27l12 9 12-9M12 18l8 10 8-10"/></svg><span><small>{mode?modeName(mode):"EVOLUTION LAB"}</small>Immunity</span></a>
+      <a className="brand" href="/" aria-label="Immunity — EvoGoo home">{mode&&<TidalShell lens/>}<svg className="brand-seed" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 3C7 14 3 28 11 38c4 6 14 6 18 0C37 28 33 14 20 3Z"/><path d="M20 7v34M8 27l12 9 12-9M12 18l8 10 8-10"/></svg><span><small>{mode?modeName(mode):"EVOGOO"}</small>Immunity</span></a>
       <span className="connection"><i className={online?'status-dot':'status-dot offline'}/>{state?.players.length||0}/12 players</span>
       <nav><button onClick={share}>{copied?'Link copied':<><span className="invite-full">Copy invite link</span><span className="invite-short">Invite</span></>}</button><button ref={helpButton} onClick={()=>{setTraining(false);setHelp(true);}}>Help</button>{session&&<button onClick={()=>{setExpanded(false);setTraining(false);leave();}}>Leave</button>}</nav>
     </header>

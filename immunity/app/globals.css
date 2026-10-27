@@ -34,6 +34,7 @@
 .nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/immunity/nursery-menu.webp') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
 .nursery-scene:focus-visible::after{content:'';position:absolute;inset:5px;border:1px solid #fff2c96b;pointer-events:none}
 .nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;color:#0b2c2e;text-shadow:0 1px 1px #fff8e8,0 0 3px #fff8e8b3}
+.nursery-scene h1 small{position:absolute;bottom:calc(100% + .35cqw);left:0;width:100%;font:700 clamp(8px,.85cqw,15px)/1.2 system-ui;letter-spacing:.22em}
 .nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8}
 /* Recessed lettering follows the painted foreground shell; no floating plaque. */
 .nursery-inscription{position:absolute;left:27%;bottom:2.6%;width:46%;margin:0;padding:0 1cqw;text-align:center;color:#27291f;font-weight:600;font-size:clamp(10px,.86cqw,15px);line-height:1.4;pointer-events:none;text-wrap:balance;text-shadow:0 1px .5px #fffbed,0 -.5px .3px #18201680;transform:perspective(600px) rotateX(16deg);transform-origin:50% 100%;isolation:isolate}
