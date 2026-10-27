@@ -6,7 +6,7 @@ export const MAX_QUEUED_COMMANDS = 360;
 export const MAX_PACKET_COMMANDS = 180;
 export const FIELD = { min: 1200, max: 4800, middle: 3000, doorHalf: 125, wall: 24 };
 export type Obstacle = { x: number; y: number; r: number };
-export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number };
+export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number; carrying?: boolean };
 export type Command = { seq: number; life: number; dt: number; x: number; y: number; dash: boolean };
 export const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 export const inside = (x: number, y: number, inset = 0) => x > FIELD.min + inset && x < FIELD.max - inset && y > FIELD.min + inset && y < FIELD.max - inset;
@@ -90,6 +90,7 @@ export function movePlayer(p:Motion,c:Pick<Command,'x'|'y'|'dash'>,dt:number,obs
   const len=Math.max(1,Math.hypot(c.x,c.y)),boost=c.dash&&p.energy>.08&&(c.x!==0||c.y!==0);
   p.energy=clamp(p.energy+(boost?-.65:.22)*dt,0,1);
   p.vx=c.x/len*(boost?430:255);p.vy=c.y/len*(boost?430:255);
-  moveActor(p,16,dt,obstacles,p.phase);
+  // Seed carriers use the real gate openings; other active actors stay contained.
+  moveActor(p,16,dt,obstacles,p.carrying?'safe':p.phase);
   if(p.phase==='safe'&&inside(p.x,p.y,29)){p.phase='arena';p.runStartedAt=now;}
 }

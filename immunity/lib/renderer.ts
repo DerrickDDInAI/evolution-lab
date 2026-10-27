@@ -24,7 +24,7 @@ export function updatePositions(state:View|null,self:string|null,positions:Map<s
   const entities=[...(state?.bots||[]).map(b=>({...b,key:'b'+b.id,life:-(state?.generation||1)})),...(state?.players||[]).map(p=>({...p,key:'p'+p.id}))];
   for(const e of entities){
     if(e.key==='p'+self)continue;
-    const bot=e.key[0]==='b',phase='phase' in e?e.phase:'arena';
+    const bot=e.key[0]==='b',phase='phase' in e?(e.carrying?'safe':e.phase):'arena';
     let previous=positions.get(e.key);
     if(bot&&previous&&previous.life!==e.life&&'homeX' in e&&Number.isFinite(e.homeX)&&Number.isFinite(e.homeY)){
       previous=trackRemote(undefined,{x:e.homeX!,y:e.homeY!,vx:0,vy:0},-1,e.life,time,0,state?.obstacles);

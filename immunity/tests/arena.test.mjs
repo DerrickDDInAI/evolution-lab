@@ -750,7 +750,7 @@ test('motion collection is personal and cannot complete a mission without reachi
  assert.equal(p.carrying,true);assert.ok(!q.carrying);assert.equal(finished.length,0);assert.equal(p.phase,'arena');
 });
 test('each extraction gate requires a seed and records one success with an old-life barrier',()=>{
- for(const [x,y] of [[3000,1250],[4750,3000],[3000,4750],[1250,3000]]){
+ for(const [x,y] of [[3000,1170],[4830,3000],[3000,4830],[1170,3000]]){
   const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=x;p.y=y;const finished=[];
   missionProgress(a,p,1000,finished);assert.equal(p.phase,'arena');assert.equal(finished.length,0);
   p.carrying=true;missionProgress(a,p,1000,finished);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.life,1);assert.equal(p.scores.bestMs,1000);assert.equal(p.lastDeath.bot,-1);assert.equal(finished.length,1);assert.equal(a.totalTags,0);
@@ -762,7 +762,7 @@ test('motion capture loses cargo and does not replace fastest extraction',()=>{
  advance(a,1200);assert.equal(p.phase,'safe');assert.equal(p.carrying,false);assert.equal(p.scores.bestMs,900);assert.equal(p.lastDeath.bot,0);assert.equal(a.bots[0].fitness,-25,'stationary contact penalizes the experimental pursuit');
 });
 test('motion extraction waits while a visible contact report is being resolved',()=>{
- const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=3000;p.y=4750;p.carrying=true;const finished=[];
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);p.x=3000;p.y=4830;p.carrying=true;const finished=[];
  applyCommands(a,p,[command(1,0,0,0)],1000,finished,false);assert.equal(p.phase,'arena');assert.equal(finished.length,0);
  applyCommands(a,p,[command(2,0,0,0)],1100,finished,true);assert.equal(p.phase,'safe');assert.equal(finished.length,1);
 });
@@ -911,4 +911,35 @@ test('adding detection tracking to an active world marks partial coverage and pr
  delete a.detection;const before=structuredClone(a);upgradeArena(a,100);
  assert.deepEqual(a.detection,emptyDetection(true));const counts=a.detection;delete a.detection;assert.deepEqual(a,before);a.detection=counts;
  a.detection.truePositive=20;upgradeArena(a,200);assert.equal(a.detection.truePositive,20);assert.equal(a.generation,12);
+});
+
+
+test('seed carriers walk through every gate without a wall stall, teleport or death cooldown',()=>{
+ for(const [x,y,dx,dy] of [[3000,1265,0,-1],[4735,3000,1,0],[3000,4735,0,1],[1265,3000,-1,0]]){
+  const a=createArena(0,'motion'),p=runner(a);parkBots(a);a.obstacles=[];
+  Object.assign(p,{x,y,carrying:true,credit:3});const initial={...p},finished=[];let seq=0;
+  // Reach the inner gate threshold without prematurely completing the mission.
+  applyCommands(a,p,[command(++seq,0,dx,dy)],1000,finished);assert.equal(p.phase,'arena');assert.equal(finished.length,0);
+  for(let step=1;step<30&&p.phase==='arena';step++){
+   const before={x:p.x,y:p.y},c=command(++seq,0,dx,dy);
+   applyCommands(a,p,[c],1000+step*1000/60,finished);
+   assert.ok(Math.hypot(p.x-before.x,p.y-before.y)>4,'gate never blocks outward movement');
+   assert.ok(Math.hypot(p.x-before.x,p.y-before.y)<4.26,'extraction must not teleport');
+  }
+  assert.equal(p.phase,'safe');assert.equal(p.life,1);assert.equal(p.carrying,false);assert.equal(p.respawnUntil,0);assert.equal(finished.length,1);
+  const predicted=reconcile(initial,Array.from({length:seq},(_,i)=>command(i+1,0,dx,dy)),[],1500);
+  assert.ok(Math.hypot(predicted.x-p.x,predicted.y-p.y)<.001,'prediction crosses the same gate');
+  const before={x:p.x,y:p.y};applyCommands(a,p,[command(++seq,1,dx,dy)],1501,finished);
+  assert.ok(Math.hypot(p.x-before.x,p.y-before.y)>4,'movement resumes immediately in the new life');
+  assert.equal(finished.length,1);
+  // Turning around starts a fresh mission only after walking back into the arena.
+  for(let i=0;i<35&&p.phase==='safe';i++)applyCommands(a,p,[command(++seq,1,-dx,-dy)],1600+i*1000/60,finished);
+  assert.equal(p.phase,'arena');assert.ok(p.runId);assert.equal(p.carrying,false);
+ }
+});
+test('carrying a seed opens doorways without allowing passage through solid walls',()=>{
+ const a=createArena(0,'motion'),p=runner(a);parkBots(a);a.obstacles=[];
+ Object.assign(p,{x:2400,y:FIELD.min+35,carrying:true,credit:3});
+ applyCommands(a,p,Array.from({length:30},(_,i)=>command(i+1,0,0,-1)),1000,[]);
+ assert.ok(p.y>=FIELD.min+28);assert.equal(p.phase,'arena');assert.equal(p.life,0);
 });

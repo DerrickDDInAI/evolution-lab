@@ -311,6 +311,22 @@ Live API checks confirm both modes' public bot populations, history, best-genera
 Live browser confirms Movement detection in Motion Hunt's Adaptation panel, completed/live rates, sample counts, empty-state guidance and the existing generation 1. No warnings/errors observed. Screenshot: `/private/tmp/immunity-detection-metrics-live.png`. Multi-generation trend values and real live-counter changes were verified in disposable QA; no production gameplay/contact or learning-quality pass is claimed. Normal viewport restored; owned local preview stopped. Detection history begins with measured play after this release and is not backfilled. This receipt is a separate local documentation commit after publication.
 
 
+## Motion Hunt gate freeze fix — 2026-10-24
+
+User reported blocked movement and outside reappearance during extraction. Implemented physical gate traversal for seed carriers, success at the outside edge, in-place completion without death respawn/cooldown, and held-input/visual continuity across successful extraction. Deaths, solid walls, stale-life/contact barriers, score persistence, training and Site identity are preserved. [Details and verification](motion-hunt.md#continuous-extraction-gate-crossing--2026-10-24).
+
+PASS: 112 tests, TypeScript, production build and five sequential HTTP/D1 fixtures in a fresh disposable local database. Browser review confirms pickup, actual south-gate crossing, one saved success, continued movement with a single held key, and immediate return/new mission. All four gates have movement/prediction regression coverage. Physical touch, OS reduced-motion and arbitrary-latency extraction are unverified. Local implementation and source publication status follow.
+
+**Release status:** the fix is applied locally as uncommitted changes. Exact hosted source `549aef2670ba2e7ea7ef2fff81a539b6d2a84abb` passed 112 tests, TypeScript and production build and was pushed by the Sites source helper. Archive-backed saved version **24**: `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_7a8bac77c85c81918da45c3338ce893b`. Automatic approval review rejected the public deployment because this turn did not explicitly authorize a production release. No deployment was started; version 23 remains live. On explicit user approval, deploy this already saved version without rebuilding or creating another version. Local browser screenshot: `/private/tmp/immunity-exit-fixed-browser.png`; browser warnings/errors: none. The disposable preview was stopped. No production data was modified.
+
+
+### Gate fix publication — 2026-10-25
+
+The user explicitly approved deploying saved version 24. Deployed that existing archive-backed version without rebuilding or saving another version: source `549aef2670ba2e7ea7ef2fff81a539b6d2a84abb`, saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_7a8bac77c85c81918da45c3338ce893b`. Native deployment `appgdep_6addd3200730819184e2ec9686e9c188` returned **succeeded** at [the existing public game](https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site). This supersedes the blocked release status above. Public audience, Site/D1 identity and environment revision are preserved.
+
+Read-only before/after live checks confirm identical training-state checksums for both modes: controller, bot population, generation, elapsed time, cumulative captures, history, best generation and champion availability. Survival remains generation 75; Motion Hunt remains generation 4. No production fixtures, player sessions, migrations, model imports or resets were used. Gameplay verification remains the 112-test, typecheck, build, disposable HTTP/D1 and browser evidence recorded above; the production extraction journey was not rerun. The local implementation and this receipt remain uncommitted in Evolution Lab; the exact hosted release source is committed and pushed.
+
+
 ## EvoGoo domain and branding — 2026-10-27
 
 User request: adapt the game for the purchased Cloudflare domain evogoo.com and deploy it. EvoGoo is the collection brand; Immunity remains the game title. Reuse the accepted Nursery artwork and layout with a compact EvoGoo inscription, browser/share metadata, canonical domain and seed favicon. Builder review; no new game mechanics, storage keys, schema changes, resets or hosting migration.
@@ -352,3 +368,9 @@ Local requested changes are committed as `8c487a4` (branding/domain work separat
 Live https://evogoo.com browser checks confirmed creator/contact/repository links, learning descriptions, padded labels, model manager, enabled best/current exports, and configured password entry for both modes. Survival showed generation 77; Motion Hunt showed generation 5. No console warnings/errors. Actual owner-password sign-in and production imports were not exercised; authenticated flows passed only in the disposable preview. No live reset or migration was run. All 11 preservation-snapshot files (gameplay edits, hosting manifest and local SQLite files) retain identical hashes. Owned preview stopped; browser viewport restored. Screenshot: ignored `outputs/evogoo-model-manager-live.png`.
 
 Requested work is committed locally and published through the hosted source repository. These local commits have not been pushed to GitHub. Pre-existing gate-fix edits remain unstaged. Physical touch, OS reduced-motion and load testing remain unverified.
+
+### Remaining-change review — 2026-10-28
+
+The EvoGoo commits through `b633b01` are now pushed to GitHub. Reviewed the remaining nine-file change as one cohesive Motion Hunt extraction fix: physical gate traversal, in-place completion, held-input/visual continuity, regression tests and the original release evidence. No commit-blocking issue found. All seven changed code/test files match published version 26 source `cc181ea2bcbb89af7cd00bafec090dd02246b61e` byte for byte; this commit brings GitHub into line with already deployed behavior and requires no new deployment.
+
+Fresh checks: 112/112 domain tests and TypeScript passed; whitespace passed; affected-file lint has no additional findings compared with HEAD (existing six errors and thirteen warnings remain). Prior exact-source production build, five disposable HTTP/D1 fixtures and browser extraction evidence remain applicable; build/integration/browser checks were not repeated for this Git-only review. Physical touch, reduced-motion and arbitrary-latency extraction remain unverified. No runtime database, model, score or hosting configuration was changed. The user authorized committing and pushing remaining changes that passed review.

@@ -121,7 +121,9 @@ export function missionProgress(a:Arena,p:Player,now:number,finished:FinishedRun
   const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(now-p.runStartedAt)),generation:a.generation,bot:-1,diedAt:now};
   p.scores={bestMs:p.scores.bestMs?Math.min(p.scores.bestMs,run.durationMs):run.durationMs,runs:[run,...p.scores.runs].slice(0,10)};
   p.lastDeath=run;if(p.profileId)finished.push({...run,profileId:p.profileId});
-  respawn(p,now); // Increment life: delayed movement/contact cannot affect the next mission.
+  // Complete where the survivor crossed the gate, without the death teleport or lock.
+  // Keep the life barrier so delayed mission inputs/contact cannot start another run.
+  p.carrying=false;p.phase='safe';p.runStartedAt=null;p.runId=null;p.respawnUntil=0;p.life++;
 }
 export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,finished:FinishedRun[],allowExtraction=true) {
   p.credit=Math.min(MAX_MOVEMENT_CREDIT,p.credit+Math.max(0,(now-p.moveAt)/1000));p.moveAt=now;p.lastSeen=now;

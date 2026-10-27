@@ -39,12 +39,13 @@ export function useArena(help:boolean,zoom:number){
           cancelCollision(canvas.current,hit.event);contact.current=null;localEvent.current=null;blockedContact.current=hit;showNotice(null);
         }
       }
-      if(predicted.current&&predicted.current.life!==auth.life){commands.current=[];clearInput();}
+      const extracted=predicted.current?.life===auth.life-1&&!!predicted.current.carrying&&data.personal?.lastDeath?.bot===-1;
+      if(predicted.current&&predicted.current.life!==auth.life){commands.current=[];if(!extracted)clearInput();}
       commands.current=commands.current.filter(c=>c.seq>auth.ack&&c.life===auth.life);
       sequence.current=Math.max(sequence.current,auth.ack);
       const next=reconcile(auth,commands.current,data.obstacles,Date.now()+offset.current);
       const old=predicted.current?{...predicted.current,x:predicted.current.x+correction.current.x,y:predicted.current.y+correction.current.y}:null;
-      correction.current=correctionFor(old,next,predicted.current?.life===next.life);predicted.current=next;
+      correction.current=extracted&&old?{x:old.x-next.x,y:old.y-next.y}:correctionFor(old,next,predicted.current?.life===next.life);predicted.current=next;
     }
     if(data.personal){
       setScores(data.personal.scores);
@@ -114,7 +115,7 @@ export function useArena(help:boolean,zoom:number){
       let display=predicted.current?{...predicted.current}:null;
       if(display&&world){
         const visual={...display,vx:correction.current.x*60,vy:correction.current.y*60};
-        moveActor(visual,16,1/60,world.obstacles,display.phase);display.x=visual.x;display.y=visual.y;
+        moveActor(visual,16,1/60,world.obstacles,display.carrying?'safe':display.phase);display.x=visual.x;display.y=visual.y;
       }
       updatePositions(world,self,positions.current,time,networkDelay.current);
       const touching=world?predictContact(display,world.bots,positions.current,world.generation,time,Date.now()+offset.current,sequence.current,world.personal?.contactFrame):null;

@@ -1,3 +1,4 @@
+import {FIELD} from './physics';
 export type GameMode = 'survival' | 'motion';
 export const modeName = (mode:GameMode) => mode==='motion'?'Motion Hunt':'Survival';
 export const arenaKey = (mode:GameMode) => mode==='motion'?'motion':'shared';
@@ -21,6 +22,6 @@ export function advanceMenu(previous:MenuSelection,p:MenuPosition,dt:number,ente
   return {mode,elapsed,confirmed:mode&&(enter||elapsed>=MENU_HOLD_MS)?mode:null};
 }
 export function atExit(p:MenuPosition){
-  return (Math.abs(p.x-3000)<=95&&(p.y<=1260||p.y>=4740))||
-    (Math.abs(p.y-3000)<=95&&(p.x<=1260||p.x>=4740));
+  return (Math.abs(p.x-FIELD.middle)<=95&&(p.y<=FIELD.min-28||p.y>=FIELD.max+28))||
+    (Math.abs(p.y-FIELD.middle)<=95&&(p.x<=FIELD.min-28||p.x>=FIELD.max+28));
 }

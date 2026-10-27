@@ -28,10 +28,11 @@ try{
  sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.x',3000,'${p}.y',2600,'${p}.phase','arena','${p}.runStartedAt',${now-8000},'${p}.runId','${crypto.randomUUID()}','${p}.lastSeen',${now},'$.time',${now+60000}) WHERE id='motion'`);
  const command={seq:1,life:0,x:0,y:0,dt:1/60,dash:false};
  const collected=await post('motion',hunt,{action:'input',commands:[command]});assert.equal(collected.status,200);assert.equal(collected.data.players.find(p=>p.id===hunt.id).carrying,true);
- sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.y',4745) WHERE id='motion'`);
- const extracted=await post('motion',hunt,{action:'input',commands:[{...command,seq:2}]});assert.equal(extracted.status,200);
+ sql(`UPDATE arena SET revision=revision+1,state=json_set(state,'${p}.y',4827) WHERE id='motion'`);
+ const extracted=await post('motion',hunt,{action:'input',commands:[{...command,seq:2,y:1}]});assert.equal(extracted.status,200);
  const player=extracted.data.players.find(p=>p.id===hunt.id),run=extracted.data.personal.lastDeath;
  assert.equal(player.phase,'safe');assert.equal(player.life,1);assert.equal(player.carrying,false);assert.equal(run.bot,-1);
+ assert.ok(player.y>4828&&player.y<4832,'walk through the gate instead of teleporting to staging');assert.equal(player.respawnUntil,0);
  assert.equal(extracted.data.personal.scores.bestMs,run.durationMs);
  const duplicate=await post('motion',hunt,{action:'input',commands:[{...command,seq:2},{...command,seq:3,y:-1}]});assert.equal(duplicate.data.personal.scores.runs.length,1);assert.equal(duplicate.data.players.find(p=>p.id===hunt.id).life,1);
  assert.equal((await scores('motion')).runs.filter(r=>r.id===run.id).length,1);assert.equal((await scores('survival')).runs.length,0);
