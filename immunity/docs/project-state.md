@@ -446,3 +446,15 @@ Selected pools now have stronger amber water light, a broad soft halo, a brighte
 ### Brighter pool publication, 2026-10-28
 
 Published version **33** from hosted source `6283ea0f1cd787c42d01d7287c6af093fa0e4d6d`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_aa1fb7c682488191b9ec0d4d430f6ce1`. Deployment `appgdep_6ae269a9aea481919d43f250d94843da` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com confirms the brighter selected pool, retained golden title and roomier painted explanation, with no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-brighter-pools-live.png`.
+
+
+## Unframed world inscriptions, 2026-10-28
+
+Following the user's request for greater immersion, removed both green header/footer washes completely. Retained the branding, tagline, instructions and links directly on the painting with serif text and glyph-only contrast treatment. No background panels replaced the bars. All destinations, controls, scene effects and explanation padding remain.
+
+114 tests, TypeScript, production build and whitespace pass. Desktop/phone visual review, absence of both band pseudo-elements, contact/model dialogs and keyboard entry pass. A bounded disposable contact/respawn/rejoin check retained scores; physical touch, OS reduced-motion visuals and full HTTP fixtures were not rerun. Detailed evidence: [Motion Hunt](motion-hunt.md#unframed-world-inscriptions-2026-10-28). Publication receipt follows.
+
+
+### Unframed menu publication, 2026-10-28
+
+Published version **34** from hosted source `51279970280a66f85486368275f93c1a22035951`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_cd957b1a55548191a9c411db04695f64`. Deployment `appgdep_6ae2713ae03c8191b706dbac33f67385` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com confirms both header/footer backgrounds and pseudo-elements are absent, with retained text and links and no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-unframed-live.png`.
