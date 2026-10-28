@@ -1,24 +1,25 @@
 'use client';
 import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
-import {MENU_PADS,menuZone,modeName,type GameMode,type MenuPosition} from '../lib/game-mode';
-import {arriveAtMenu,confirmedMenuMode,menuExperience,DISCOVERY_STOPS,DISCOVERY_COPY,MODE_COPY,type MenuExperience,type MenuView} from '../lib/menu-experience';
+import {activateMenuSign,menuArtSize,menuPads,menuZone,modeName,type GameMode,type MenuPosition} from '../lib/game-mode';
 import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance,GROUND_TILT} from '../lib/immunity-art';
 
 type Props={onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void};
-const subscribe=(listener:()=>void)=>{addEventListener('popstate',listener);return()=>removeEventListener('popstate',listener);};
-const currentExperience=()=>menuExperience(location.search);
-const serverExperience=():MenuExperience=>'living';
-export function ModeMenu(props:Props){
-  const experience=useSyncExternalStore(subscribe,currentExperience,serverExperience);
-  return <Nursery key={experience} {...props} experience={experience}/>;
-}
-function Nursery({onChoose,paused=false,onModels,experience}:Props&{experience:MenuExperience}){
+const portraitQuery='(max-aspect-ratio: 4/5)';
+const subscribe=(listener:()=>void)=>{const media=matchMedia(portraitQuery);media.addEventListener('change',listener);return()=>media.removeEventListener('change',listener);};
+const isPortrait=()=>matchMedia(portraitQuery).matches;
+const serverPortrait=()=>false;
+const MODE_COPY={
+  survival:{goal:'Outlast the sentinels.',text:'Stay alive while sentinels evolve pursuit and obstacle avoidance.'},
+  motion:{goal:'Collect a seed. Escape.',text:'Collect a seed and escape while sentinels evolve motion detection and pursuit. Stillness is no guarantee.'},
+};
+export function ModeMenu({onChoose,paused=false,onModels}:Props){
+  const portrait=useSyncExternalStore(subscribe,isPortrait,serverPortrait);
   const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null),aboutDialog=useRef<HTMLDialogElement>(null);
-  const position=useRef<MenuPosition>({x:50,y:experience==='discovery'?70:68.5}),previousZone=useRef<GameMode|null>(null);
+  const position=useRef<MenuPosition>({x:50,y:68.5}),previousZone=useRef<GameMode|null>(null);
   const keys=useRef(new Set<string>()),goal=useRef<MenuPosition|null>(null),done=useRef(false),choose=useRef(onChoose);
-  const [view,setView]=useState<MenuView>({mode:null,step:0}),viewRef=useRef<MenuView>({mode:null,step:0});
+  const [mode,setMode]=useState<GameMode|null>(null),selected=useRef<GameMode|null>(null),armed=useRef<GameMode|null>(null);
   const [about,setAbout]=useState(false),blocked=paused||about;
-  const discovering=experience==='discovery'&&view.step<3;
+  const artSize=menuArtSize(portrait),pads=menuPads(portrait);
   useEffect(()=>{choose.current=onChoose;},[onChoose]);
   useEffect(()=>{
     const element=stage.current;
@@ -27,12 +28,12 @@ function Nursery({onChoose,paused=false,onModels,experience}:Props&{experience:M
     let frame=0,last=0,facing=4,travel=0,sceneWidth=1672,sceneHeight=941,actorWidth=180;
     const measure=()=>{const box=element?.getBoundingClientRect();if(box){sceneWidth=box.width;sceneHeight=box.height;}actorWidth=actor.current?.getBoundingClientRect().width||180;};
     const resize=new ResizeObserver(measure);if(element)resize.observe(element);measure();
-    const confirm=()=>{const mode=confirmedMenuMode(viewRef.current,experience,true);if(mode&&!done.current){done.current=true;choose.current(mode);}};
+    const confirm=()=>{const mode=selected.current;if(mode&&!done.current){done.current=true;choose.current(mode);}};
     const clear=()=>{keys.current.clear();goal.current=null;last=0;};
     const down=(e:KeyboardEvent)=>{
       if(blocked||document.hidden||e.target instanceof HTMLButtonElement)return;
       const key=e.key.toLowerCase();
-      if(['w','a','s','d','arrowup','arrowleft','arrowdown','arrowright'].includes(key)){e.preventDefault();if(!e.repeat){keys.current.add(key);goal.current=null;}}
+      if(['w','a','s','d','arrowup','arrowleft','arrowdown','arrowright'].includes(key)){e.preventDefault();keys.current.add(key);goal.current=null;}
       if(key==='enter'&&!e.repeat){e.preventDefault();confirm();}
     };
     const up=(e:KeyboardEvent)=>keys.current.delete(e.key.toLowerCase());
@@ -46,26 +47,23 @@ function Nursery({onChoose,paused=false,onModels,experience}:Props&{experience:M
         let y=Number(k.has('s')||k.has('arrowdown'))-Number(k.has('w')||k.has('arrowup'));
         let distance=Infinity;
         // Correct for the plate aspect ratio so screen-space speed is uniform.
-        if(goal.current){x=(goal.current.x-p.x)*16.72;y=(goal.current.y-p.y)*9.41;distance=Math.hypot(x,y);if(distance<1){goal.current=null;x=0;y=0;}}
-        const len=Math.hypot(x,y),step=Math.min(dt*.34,distance);
-        const nx=Math.max(21,Math.min(79,p.x+(len?x/len*step/16.72:0)));
-        const ny=Math.max(54,Math.min(81,p.y+(len?y/len*step/9.41:0)));
-        dx=(nx-p.x)*16.72;dy=(ny-p.y)*9.41;p.x=nx;p.y=ny;
-        const next=arriveAtMenu(viewRef.current,p,experience,previousZone.current);
-        previousZone.current=menuZone(p);
-        if(next!==viewRef.current){
-          if(next.step!==viewRef.current.step){keys.current.clear();goal.current=null;}
-          viewRef.current=next;setView(next);
-        }
+        if(goal.current){x=(goal.current.x-p.x)*sceneWidth/100;y=(goal.current.y-p.y)*sceneHeight/100;distance=Math.hypot(x,y);if(distance<1){goal.current=null;x=0;y=0;}}
+        const len=Math.hypot(x,y),step=Math.min(dt*Math.min(.34,sceneWidth*.00055),distance);
+        const nx=Math.max(15,Math.min(85,p.x+(len?x/len*step/sceneWidth*100:0)));
+        const ny=Math.max(portrait?48:54,Math.min(72,p.y+(len?y/len*step/sceneHeight*100:0)));
+        dx=(nx-p.x)*sceneWidth/100;dy=(ny-p.y)*sceneHeight/100;p.x=nx;p.y=ny;
+        const zone=menuZone(p,portrait);
+        if(zone&&zone!==previousZone.current){selected.current=zone;armed.current=zone;setMode(zone);}
+        previousZone.current=zone;
       }
       const canvas=actor.current,ctx=canvas?.getContext('2d');
       if(canvas&&ctx){
         canvas.style.left=p.x+'%';canvas.style.top=p.y+'%';
         const moving=Math.hypot(dx,dy)>.01;
-        if(moving){facing=facingDirection(dx*100,dy*100,facing);travel+=menuGaitDistance(dx,dy,sceneWidth,sceneHeight,actorWidth);}
+        if(moving){facing=facingDirection(dx*100,dy*100,facing);travel+=menuGaitDistance(dx*1672/sceneWidth,dy*941/sceneHeight,sceneWidth,sceneHeight,actorWidth);}
         ctx.clearRect(0,0,180,190);
         ctx.fillStyle='#193f3d45';ctx.beginPath();ctx.ellipse(90,170,24,8,0,0,Math.PI*2);ctx.fill();
-        const pose=walkFrame(facing,travel,moving,255,reduced.matches,{x:dx*sceneWidth/1672,y:dy*sceneHeight/941/GROUND_TILT});
+        const pose=walkFrame(facing,travel,moving,255,reduced.matches,{x:dx,y:dy/GROUND_TILT});
         if(!pose||!walkSprite(ctx,art.walk,pose,90,170,156))directionalSprite(ctx,art.directions,true,facing,90,170,156);
       }
       frame=requestAnimationFrame(draw);
@@ -73,66 +71,44 @@ function Nursery({onChoose,paused=false,onModels,experience}:Props&{experience:M
     element?.addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
     frame=requestAnimationFrame(draw);
     return()=>{cancelAnimationFrame(frame);resize.disconnect();element?.removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();};
-  },[blocked,experience]);
+  },[blocked,portrait]);
 
-  function update(next:MenuView){viewRef.current=next;setView(next);}
-  function preview(mode:GameMode){if(!blocked&&!discovering)update({...viewRef.current,mode});}
-  function enter(){const mode=confirmedMenuMode(viewRef.current,experience,true);if(!blocked&&mode&&!done.current){done.current=true;choose.current(mode);}}
+  function preview(next:GameMode){if(!blocked){selected.current=next;setMode(next);}}
+  function confirm(next:GameMode){if(!blocked&&!done.current){done.current=true;choose.current(next);}}
   function walk(e:React.PointerEvent<HTMLDivElement>){
     if(blocked)return;
     const box=e.currentTarget.getBoundingClientRect();
-    goal.current={x:Math.max(21,Math.min(79,(e.clientX-box.left)/box.width*100)),y:Math.max(54,Math.min(81,(e.clientY-box.top)/box.height*100))};
+    goal.current={x:Math.max(15,Math.min(85,(e.clientX-box.left)/box.width*100)),y:Math.max(portrait?48:54,Math.min(72,(e.clientY-box.top)/box.height*100))};
     stage.current?.focus();
   }
-  function approach(mode:GameMode){if(!blocked){preview(mode);goal.current={...MENU_PADS[mode]};stage.current?.focus();}}
-  function stepTo(step:number){
+  function activate(next:GameMode){
     if(blocked)return;
-    keys.current.clear();goal.current=null;previousZone.current=null;
-    position.current={...DISCOVERY_STOPS[step]};update({mode:null,step});stage.current?.focus();
+    const action=activateMenuSign(armed.current,next);armed.current=action.armed;
+    if(action.enter){confirm(action.enter);return;}
+    preview(next);goal.current={...pads[next]};stage.current?.focus();
   }
-  function nextStop(){if(!blocked&&discovering){goal.current={...DISCOVERY_STOPS[view.step+1]};stage.current?.focus();}}
-  function switchExperience(next:MenuExperience){
-    if(blocked)return;
-    const url=new URL(location.href);url.searchParams.set('menu',next);
-    history.pushState(null,'',url);dispatchEvent(new PopStateEvent('popstate'));
-  }
-  const story=discovering?DISCOVERY_COPY[view.step]:null;
-  return <section className={'mode-menu '+(discovering?'is-discovering':'')} aria-labelledby="expedition-title">
+  return <section className="mode-menu" aria-labelledby="expedition-title">
     <div className="nursery-habitat">
       <div className="nursery-collection"><strong>EvoGoo</strong><span>Evolution games &amp; experiments</span></div>
-      <nav className="nursery-comparison" aria-label="Menu experience">
-        <button type="button" aria-pressed={experience==='living'} disabled={blocked} onClick={()=>switchExperience('living')}>Living clearing</button>
-        <button type="button" aria-pressed={experience==='discovery'} disabled={blocked} onClick={()=>switchExperience('discovery')}>Discovery walk</button>
-      </nav>
-      <div ref={stage} className="nursery-scene" tabIndex={0} aria-label={discovering?'Discovery path. Use WASD or arrows to reach the glowing marker, or use the next stop button.':'Choose an expedition. Use WASD or arrows to reach a circle. Read about the mode, then press Enter to continue.'} onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
-        <h1 id="expedition-title">Immunity<small>An EvoGoo experiment</small></h1>
-        <svg className="nursery-ornament" viewBox="0 0 240 24" aria-hidden="true"><path d="M0 8h88q20 0 32 14Q132 8 152 8h88M120 22V1m0 15Q105 0 92 3m28 13Q135 0 148 3"/></svg>
-        {!discovering&&(['survival','motion'] as const).map(m=>{const pad=MENU_PADS[m];return <svg key={m} className={'nursery-pad'+(view.mode===m?' selected':'')} style={{left:pad.x+'%',top:pad.y+'%',width:pad.rX*2+'%',height:pad.rY*2+'%'}} viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true"><circle className="pad-halo" cx="100" cy="100" r="94"/><path className="pad-veins" d="M100 188V100L66 66 46 32M100 145l45-36 20-53M100 116l-43 15-27-21M100 88l26-35-5-30"/></svg>;})}
-        {discovering&&<div className="nursery-waypoint" style={{left:DISCOVERY_STOPS[view.step+1].x+'%',top:DISCOVERY_STOPS[view.step+1].y+'%'}} aria-hidden="true"><span>{view.step+1}</span></div>}
+      <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose a mode. Walk with WASD or arrows. Press Enter to play, or tap a mode sign twice." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
+        <h1 id="expedition-title">Immunity</h1>
+        <svg className="nursery-pools" viewBox={`0 0 ${artSize.width} ${artSize.height}`} preserveAspectRatio="none" aria-hidden="true">
+          {(['survival','motion'] as const).map(m=>{const pad=pads[m],cx=pad.x*artSize.width/100,cy=pad.y*artSize.height/100,rx=pad.rX*artSize.width/100,ry=pad.rY*artSize.height/100;return <g key={m} className={'nursery-pool'+(mode===m?' selected':'')} transform={`rotate(${pad.rotation} ${cx} ${cy})`}><ellipse className="pool-wash" cx={cx} cy={cy} rx={rx} ry={ry}/><ellipse className="pool-rim" cx={cx} cy={cy} rx={rx} ry={ry}/></g>;})}
+        </svg>
         <canvas ref={actor} width={180} height={190} className="nursery-survivor" aria-hidden="true"/>
       </div>
-      {!discovering&&<div className="nursery-experiments" aria-label="Choose a mode">
-        {(['survival','motion'] as const).map(m=><button key={m} type="button" className={'nursery-label '+m+(view.mode===m?' selected':'')} disabled={blocked} aria-pressed={view.mode===m} onPointerEnter={e=>{if(e.pointerType==='mouse')preview(m);}} onFocus={()=>preview(m)} onClick={()=>approach(m)}><strong>{modeName(m)}</strong><span>{MODE_COPY[m].goal}</span></button>)}
-      </div>}
-      <section className="nursery-reading" aria-label="About this expedition">
+      <div className="nursery-experiments" aria-label="Choose a mode">
+        {(['survival','motion'] as const).map(m=><button key={m} type="button" className={'nursery-label '+m+(mode===m?' selected':'')} disabled={blocked} aria-pressed={mode===m} aria-describedby="nursery-input-hint" onPointerEnter={e=>{if(e.pointerType==='mouse')preview(m);}} onFocus={()=>preview(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat){e.preventDefault();confirm(m);}}} onClick={()=>activate(m)}><strong>{modeName(m)}</strong><span>{MODE_COPY[m].goal}</span></button>)}
+      </div>
+      <section className="nursery-reading" aria-label="About this mode">
         <div className="nursery-message" role="status" aria-live="polite" aria-atomic="true">
-          <small>{discovering?`Discovery ${view.step+1} of 3`:view.mode?'Sentinels in training':'A living experiment'}</small>
-          <h2>{story?story.title:view.mode?modeName(view.mode):'Choose an expedition'}</h2>
-          <p>{story?story.text:view.mode?MODE_COPY[view.mode].text:'Play against sentinels that evolve across generations. Choose a mode to discover what they learn.'}</p>
+          <h2>{mode?modeName(mode):'Choose a mode'}</h2>
+          <p>{mode?MODE_COPY[mode].text:'Play against sentinels that evolve across generations. Explore a mode to discover what they learn.'}</p>
         </div>
-        {discovering?<div className="nursery-reading-actions">
-          {view.step>0&&<button type="button" disabled={blocked} onClick={()=>stepTo(view.step-1)}>Back</button>}
-          <button type="button" className="nursery-enter" disabled={blocked} onClick={nextStop}>{story?.next} <span aria-hidden="true">↗</span></button>
-          <button type="button" disabled={blocked} onClick={()=>stepTo(3)}>Skip to modes</button>
-        </div>:<div className="nursery-reading-actions">
-          {view.mode?<button type="button" className="nursery-enter" disabled={blocked} onClick={enter}>Enter {modeName(view.mode)} <span aria-hidden="true">↗</span></button>:<span className="nursery-hint">Walk, click or use Tab to explore a mode.</span>}
-        </div>}
       </section>
       <footer className="nursery-credits">
-      <p className="nursery-instructions">{discovering?'Follow the light or choose the next stop.':'WASD / arrows to walk · Select a mode, then Enter'}</p>
-
         <button type="button" disabled={paused} onClick={()=>{setAbout(true);aboutDialog.current?.showModal();}}>About &amp; contact</button>
-        {experience==='discovery'&&!discovering&&<button type="button" disabled={blocked} onClick={()=>stepTo(0)}>Walk again</button>}
+        <p id="nursery-input-hint" className="nursery-instructions"><span>Walk: WASD / arrows</span><span>Play: Enter or tap a sign twice</span></p>
         <button type="button" disabled={blocked} onClick={onModels}>Models &amp; admin</button>
       </footer>
       <dialog ref={aboutDialog} className="nursery-about" aria-labelledby="nursery-about-title" onClose={()=>setAbout(false)}>

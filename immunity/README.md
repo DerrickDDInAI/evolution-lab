@@ -13,11 +13,9 @@ Choose an expedition, enter a player name, and cross a passage from the safe sho
 | **Survival** | Stay alive as long as possible. | Pursue players, close distance, and avoid obstacles. |
 | **Motion Hunt** | Collect a life-support seed and carry it through an exit. | Detect movement from recent positions, choose a target, and pursue it. |
 
-Move with **WASD** or **arrow keys**; hold **Shift** to sprint. Touch screens have movement and sprint controls. In the menu, walk to a circle, tap a mode, or use **Tab** to preview it. Read its explanation, then use the **Enter** button to continue. Reaching a circle never starts a game automatically.
+Move with **WASD** or **arrow keys**; hold **Shift** to sprint. Touch screens have movement and sprint controls. In the menu, walk to a circle, tap a mode sign, or use **Tab** to preview it. Read its explanation, then press **Enter** or tap the same sign again to play. Reaching a circle never starts a game automatically.
 
 Stillness may help in Motion Hunt, but detection is experimental and physical contact remains dangerous. Capture returns you to the shore; successful extraction lets you keep moving. Each mode has separate training and records.
-
-Try either menu experience: **[Living clearing](https://evogoo.com/?menu=living)** shows one mode explanation at a time; **[Discovery walk](https://evogoo.com/?menu=discovery)** introduces EvoGoo, Immunity and the sentinels along a short, skippable path. Use the switch above the scene to compare them.
 
 ## How evolution works
 

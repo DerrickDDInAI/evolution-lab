@@ -398,3 +398,15 @@ Implemented the user's two requested menu experiences. Living clearing is the de
 ### Menu comparison publication, 2026-10-28
 
 Published version **29** from hosted source `d6c4934000982a856583bdf66c7c0fe96045264b`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_5725abf39fa081919990ebc020c5d9f8`. Deployment `appgdep_6ae24e2f28b88191991a1a43a0245935` succeeded with unchanged public audience and environment revision 1. Both https://evogoo.com/?menu=living and https://evogoo.com/?menu=discovery are available. The production visual check led to a final adjustment that keeps the discovery start above the reading surface; all 114 tests, TypeScript and build passed again, and the revised stop sequence was browser checked. An initial source-upload HTTP 400 was resolved by buffered transfer without changing credentials or source scope. Live checks confirmed variant selection, static Immunity identity, painted surface, explicit mode entry control and no em dashes. No production game was joined. Screenshots are ignored local outputs: `outputs/evogoo-living-clearing-live.png` and `outputs/evogoo-discovery-walk-live.png`.
+
+
+## Living clearing selected and refined, 2026-10-28
+
+Living clearing is now the sole menu, following the user's selection. Discovery walk, comparison switch, experiment subtitle, training eyebrow and bottom entry buttons are removed. The scene fills the viewport width, with a matching portrait composition for phones, higher-contrast peripheral controls, fitted title/sign text and aligned golden pool outlines. Tap a sign to preview, tap it again or press Enter to play. Existing comparison URLs now show the same Living clearing.
+
+114 tests, TypeScript, focused lint and production build pass. Desktop, phone and short-window browser checks, deliberate pointer/keyboard selection, dialog recovery and a disposable Motion Hunt contact/respawn/rejoin flow pass. Original gameplay, hosting and runtime data are preserved. Detailed evidence and limits are in [Motion Hunt](motion-hunt.md#living-clearing-selection-and-responsive-refinement-2026-10-28). Publication receipt follows.
+
+
+### Living clearing publication, 2026-10-28
+
+Published version **30** from hosted source `0180ab407136ee6fadaae13b740bb0062b4b807d`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_56a63ba60f7081919cf9a2d2d04f77ac`. Deployment `appgdep_6ae25b423a5c8191b11ca7634d8e112e` succeeded with unchanged public audience and environment revision 1. Live https://evogoo.com desktop and 390x844 phone review confirms the single clearing, removed secondary copy/entry buttons, readable utility controls, fitted painted labels and aligned selection outlines. No horizontal overflow, em dashes or browser warnings/errors were observed. No production game was joined. Screenshots are ignored local outputs: `outputs/evogoo-living-refined-desktop.png` and `outputs/evogoo-living-refined-phone.png`.
