@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
+for(const name of ['menu-experience','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['menu-experience','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -942,4 +942,24 @@ test('carrying a seed opens doorways without allowing passage through solid wall
  Object.assign(p,{x:2400,y:FIELD.min+35,carrying:true,credit:3});
  applyCommands(a,p,Array.from({length:30},(_,i)=>command(i+1,0,0,-1)),1000,[]);
  assert.ok(p.y>=FIELD.min+28);assert.equal(p.phase,'arena');assert.equal(p.life,0);
+});
+
+const {arriveAtMenu,confirmedMenuMode,menuExperience,DISCOVERY_STOPS}=await import(pathToFileURL(`${out}/menu-experience.mjs`));
+test('menu arrival reveals a mode without a timed launch and requires explicit confirmation',()=>{
+ let view={mode:null,step:0};
+ view=arriveAtMenu(view,{x:34,y:63},'living',null);assert.equal(view.mode,'survival');
+ for(let i=0;i<300;i++)view=arriveAtMenu(view,{x:34,y:63},'living','survival');
+ assert.equal(confirmedMenuMode(view,'living',false),null);
+ assert.equal(confirmedMenuMode(view,'living',true),'survival');
+ const hovered={...view,mode:'motion'};
+ assert.equal(arriveAtMenu(hovered,{x:34,y:63},'living','survival'),hovered,'standing in a circle does not overwrite an intentional preview');
+});
+test('discovery reveals stops in order and cannot enter a mode before choices',()=>{
+ let view={mode:null,step:0};
+ assert.equal(arriveAtMenu(view,DISCOVERY_STOPS[3],'discovery',null),view);
+ assert.equal(confirmedMenuMode({mode:'survival',step:1},'discovery',true),null);
+ for(let i=1;i<=3;i++){view=arriveAtMenu(view,DISCOVERY_STOPS[i],'discovery',null);assert.equal(view.step,i);assert.equal(view.mode,null);}
+ view=arriveAtMenu(view,{x:66,y:63},'discovery',null);assert.equal(view.mode,'motion');
+ assert.equal(confirmedMenuMode(view,'discovery',true),'motion');
+ assert.equal(menuExperience('?menu=discovery'),'discovery');assert.equal(menuExperience('?menu=unknown'),'living');
 });

@@ -1,35 +1,46 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
-import {advanceMenu,MENU_HOLD_MS,MENU_PADS,modeName,type GameMode,type MenuPosition,type MenuSelection} from '../lib/game-mode';
+import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
+import {MENU_PADS,menuZone,modeName,type GameMode,type MenuPosition} from '../lib/game-mode';
+import {arriveAtMenu,confirmedMenuMode,menuExperience,DISCOVERY_STOPS,DISCOVERY_COPY,MODE_COPY,type MenuExperience,type MenuView} from '../lib/menu-experience';
 import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance,GROUND_TILT} from '../lib/immunity-art';
 
-export function ModeMenu({onChoose,paused=false,onModels}:{onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void}){
-  const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null);
-  const position=useRef<MenuPosition>({x:50,y:68.5}),selection=useRef<MenuSelection>({mode:null,elapsed:0});
+type Props={onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void};
+const subscribe=(listener:()=>void)=>{addEventListener('popstate',listener);return()=>removeEventListener('popstate',listener);};
+const currentExperience=()=>menuExperience(location.search);
+const serverExperience=():MenuExperience=>'living';
+export function ModeMenu(props:Props){
+  const experience=useSyncExternalStore(subscribe,currentExperience,serverExperience);
+  return <Nursery key={experience} {...props} experience={experience}/>;
+}
+function Nursery({onChoose,paused=false,onModels,experience}:Props&{experience:MenuExperience}){
+  const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null),aboutDialog=useRef<HTMLDialogElement>(null);
+  const position=useRef<MenuPosition>({x:50,y:experience==='discovery'?70:68.5}),previousZone=useRef<GameMode|null>(null);
   const keys=useRef(new Set<string>()),goal=useRef<MenuPosition|null>(null),done=useRef(false),choose=useRef(onChoose);
-  const [display,setDisplay]=useState({mode:null as GameMode|null,elapsed:0});
+  const [view,setView]=useState<MenuView>({mode:null,step:0}),viewRef=useRef<MenuView>({mode:null,step:0});
+  const [about,setAbout]=useState(false),blocked=paused||about;
+  const discovering=experience==='discovery'&&view.step<3;
   useEffect(()=>{choose.current=onChoose;},[onChoose]);
   useEffect(()=>{
     const element=stage.current;
-    if(!paused&&!element?.parentElement?.contains(document.activeElement))element?.focus();
+    if(!blocked&&!element?.parentElement?.contains(document.activeElement))element?.focus();
     const art=immunityArt(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     let frame=0,last=0,facing=4,travel=0,sceneWidth=1672,sceneHeight=941,actorWidth=180;
     const measure=()=>{const box=element?.getBoundingClientRect();if(box){sceneWidth=box.width;sceneHeight=box.height;}actorWidth=actor.current?.getBoundingClientRect().width||180;};
     const resize=new ResizeObserver(measure);if(element)resize.observe(element);measure();
-    const confirm=(mode:GameMode)=>{if(!done.current){done.current=true;choose.current(mode);}};
-    const clear=()=>{keys.current.clear();goal.current=null;selection.current={mode:null,elapsed:0};last=0;};
+    const confirm=()=>{const mode=confirmedMenuMode(viewRef.current,experience,true);if(mode&&!done.current){done.current=true;choose.current(mode);}};
+    const clear=()=>{keys.current.clear();goal.current=null;last=0;};
     const down=(e:KeyboardEvent)=>{
-      if(paused||document.hidden||e.target instanceof HTMLButtonElement)return;
+      if(blocked||document.hidden||e.target instanceof HTMLButtonElement)return;
       const key=e.key.toLowerCase();
-      if(['w','a','s','d','arrowup','arrowleft','arrowdown','arrowright'].includes(key)){e.preventDefault();keys.current.add(key);goal.current=null;}
-      if(key==='enter'&&!e.repeat){const next=advanceMenu(selection.current,position.current,0,true);if(next.confirmed){e.preventDefault();confirm(next.confirmed);}}
+      if(['w','a','s','d','arrowup','arrowleft','arrowdown','arrowright'].includes(key)){e.preventDefault();if(!e.repeat){keys.current.add(key);goal.current=null;}}
+      if(key==='enter'&&!e.repeat){e.preventDefault();confirm();}
     };
     const up=(e:KeyboardEvent)=>keys.current.delete(e.key.toLowerCase());
     const draw=(now:number)=>{
       const dt=last?Math.min(50,now-last):0;last=now;
       const p=position.current;
       let dx=0,dy=0;
-      if(!paused&&!document.hidden&&document.hasFocus()&&element?.contains(document.activeElement)&&!done.current){
+      if(!blocked&&!document.hidden&&document.hasFocus()&&element?.contains(document.activeElement)&&!done.current){
         const k=keys.current;
         let x=Number(k.has('d')||k.has('arrowright'))-Number(k.has('a')||k.has('arrowleft'));
         let y=Number(k.has('s')||k.has('arrowdown'))-Number(k.has('w')||k.has('arrowup'));
@@ -40,10 +51,13 @@ export function ModeMenu({onChoose,paused=false,onModels}:{onChoose:(mode:GameMo
         const nx=Math.max(21,Math.min(79,p.x+(len?x/len*step/16.72:0)));
         const ny=Math.max(54,Math.min(81,p.y+(len?y/len*step/9.41:0)));
         dx=(nx-p.x)*16.72;dy=(ny-p.y)*9.41;p.x=nx;p.y=ny;
-        const next=advanceMenu(selection.current,p,dt);selection.current=next;
-        if(next.confirmed)confirm(next.confirmed);
-      }else selection.current={mode:null,elapsed:0};
-      setDisplay({mode:selection.current.mode,elapsed:selection.current.elapsed});
+        const next=arriveAtMenu(viewRef.current,p,experience,previousZone.current);
+        previousZone.current=menuZone(p);
+        if(next!==viewRef.current){
+          if(next.step!==viewRef.current.step){keys.current.clear();goal.current=null;}
+          viewRef.current=next;setView(next);
+        }
+      }
       const canvas=actor.current,ctx=canvas?.getContext('2d');
       if(canvas&&ctx){
         canvas.style.left=p.x+'%';canvas.style.top=p.y+'%';
@@ -59,43 +73,75 @@ export function ModeMenu({onChoose,paused=false,onModels}:{onChoose:(mode:GameMo
     element?.addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
     frame=requestAnimationFrame(draw);
     return()=>{cancelAnimationFrame(frame);resize.disconnect();element?.removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();};
-  },[paused]);
+  },[blocked,experience]);
+
+  function update(next:MenuView){viewRef.current=next;setView(next);}
+  function preview(mode:GameMode){if(!blocked&&!discovering)update({...viewRef.current,mode});}
+  function enter(){const mode=confirmedMenuMode(viewRef.current,experience,true);if(!blocked&&mode&&!done.current){done.current=true;choose.current(mode);}}
   function walk(e:React.PointerEvent<HTMLDivElement>){
-    if(paused)return;
-    const box=e.currentTarget.getBoundingClientRect();goal.current={x:Math.max(21,Math.min(79,(e.clientX-box.left)/box.width*100)),y:Math.max(54,Math.min(81,(e.clientY-box.top)/box.height*100))};
+    if(blocked)return;
+    const box=e.currentTarget.getBoundingClientRect();
+    goal.current={x:Math.max(21,Math.min(79,(e.clientX-box.left)/box.width*100)),y:Math.max(54,Math.min(81,(e.clientY-box.top)/box.height*100))};
     stage.current?.focus();
   }
-  function approach(mode:GameMode){if(!paused){goal.current=MENU_PADS[mode];stage.current?.focus();}}
-  return <section className="mode-menu" aria-labelledby="expedition-title" aria-describedby="nursery-purpose">
+  function approach(mode:GameMode){if(!blocked){preview(mode);goal.current={...MENU_PADS[mode]};stage.current?.focus();}}
+  function stepTo(step:number){
+    if(blocked)return;
+    keys.current.clear();goal.current=null;previousZone.current=null;
+    position.current={...DISCOVERY_STOPS[step]};update({mode:null,step});stage.current?.focus();
+  }
+  function nextStop(){if(!blocked&&discovering){goal.current={...DISCOVERY_STOPS[view.step+1]};stage.current?.focus();}}
+  function switchExperience(next:MenuExperience){
+    if(blocked)return;
+    const url=new URL(location.href);url.searchParams.set('menu',next);
+    history.pushState(null,'',url);dispatchEvent(new PopStateEvent('popstate'));
+  }
+  const story=discovering?DISCOVERY_COPY[view.step]:null;
+  return <section className={'mode-menu '+(discovering?'is-discovering':'')} aria-labelledby="expedition-title">
     <div className="nursery-habitat">
-    <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose an expedition. Move with WASD or arrows into a floor circle. Stay for 0.85 seconds or press Enter." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)){keys.current.clear();goal.current=null;selection.current={mode:null,elapsed:0};}}}>
-      <h1 id="expedition-title"><small>EvoGoo</small>Immunity</h1>
-      <svg className="nursery-ornament" viewBox="0 0 240 24" aria-hidden="true"><path d="M0 8h88q20 0 32 14Q132 8 152 8h88M120 22V1m0 15Q105 0 92 3m28 13Q135 0 148 3"/></svg>
-      {(['survival','motion'] as const).map(m=>{const pad=MENU_PADS[m],selected=display.mode===m;return <svg key={m} className={'nursery-pad'+(selected?' selected':'')} style={{left:pad.x+'%',top:pad.y+'%',width:pad.rX*2+'%',height:pad.rY*2+'%'}} viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true">
-        <circle className="pad-halo" cx="100" cy="100" r="94"/><path className="pad-veins" d="M100 188V100L66 66 46 32M100 145l45-36 20-53M100 116l-43 15-27-21M100 88l26-35-5-30M66 66l-30 8m109 35 30 12M100 165l-30-10"/>
-        <circle className="pad-progress" cx="100" cy="100" r="94" pathLength="100" strokeDasharray={`${selected?Math.min(100,display.elapsed/MENU_HOLD_MS*100):0} 100`}/>
-      </svg>;})}
-      <canvas ref={actor} width={180} height={190} className="nursery-survivor" aria-hidden="true"/>
-      <div className="sr-only" role="status">{display.mode?`${modeName(display.mode)} selected. Stay to confirm or press Enter.`:'Choose Survival on the left or Motion Hunt on the right.'}</div>
-    </div>
-    <p className="nursery-instructions">Move to choose <span>·</span> Hold 0.85s <span>·</span> Enter to confirm</p>
-    <div className="nursery-experiments" aria-label="Expeditions and what the sentinels learn">
-      {(['survival','motion'] as const).map(m=><article key={m} className={'nursery-specimen '+m}><button className={'nursery-label '+m+(display.mode===m?' selected':'')} disabled={paused} onPointerDown={e=>e.stopPropagation()} onClick={()=>approach(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat&&!paused){e.preventDefault();e.stopPropagation();if(!done.current){done.current=true;choose.current(m);}}}} aria-describedby={`learning-${m}`} aria-label={`${modeName(m)}. ${m==='survival'?'Survive the sentinels.':'Collect the seed. Sentinels learn to sense movement. Reach an exit.'} Click to walk there, or press Enter to choose.`}>
-        <strong>{modeName(m)}</strong><span>{m==='survival'?'Survive the sentinels':'Collect a seed. Find an exit.'}</span>
-      </button>
-        <p className="nursery-note" id={`learning-${m}`}><strong>{m==='survival'?'Survival · learning to chase':'Motion Hunt · learning to notice movement'}</strong><span>{m==='survival'?'Sentinels evolve pursuit and obstacle avoidance. Stay alive as they adapt.':'Sentinels learn to detect motion from recent positions, then pursue. Stillness may help; it is no guarantee.'}</span></p>
-      </article>)}
-    </div>
-      <p id="nursery-purpose" className="nursery-inscription"><small>A living experiment</small><strong>How skilled can the sentinels become?</strong><span>They learn by hunting you.<br/>Every survivor shapes the next generation.</span></p>
-    <footer className="nursery-credits">
-      <div className="nursery-maker"><span>Created by</span><strong>Derrick Van Frausum</strong></div>
-      <nav aria-label="Creator and project links">
-        <a href="https://github.com/DerrickDDInAI/evolution-lab" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-        <a href="mailto:info@evogoo.com">Business inquiries</a>
-        <a href="mailto:contact@evogoo.com">Contact &amp; feedback</a>
-        <button type="button" onClick={onModels}>Models &amp; admin</button>
+      <div className="nursery-collection"><strong>EvoGoo</strong><span>Evolution games &amp; experiments</span></div>
+      <nav className="nursery-comparison" aria-label="Menu experience">
+        <button type="button" aria-pressed={experience==='living'} disabled={blocked} onClick={()=>switchExperience('living')}>Living clearing</button>
+        <button type="button" aria-pressed={experience==='discovery'} disabled={blocked} onClick={()=>switchExperience('discovery')}>Discovery walk</button>
       </nav>
-    </footer>
+      <div ref={stage} className="nursery-scene" tabIndex={0} aria-label={discovering?'Discovery path. Use WASD or arrows to reach the glowing marker, or use the next stop button.':'Choose an expedition. Use WASD or arrows to reach a circle. Read about the mode, then press Enter to continue.'} onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
+        <h1 id="expedition-title">Immunity<small>An EvoGoo experiment</small></h1>
+        <svg className="nursery-ornament" viewBox="0 0 240 24" aria-hidden="true"><path d="M0 8h88q20 0 32 14Q132 8 152 8h88M120 22V1m0 15Q105 0 92 3m28 13Q135 0 148 3"/></svg>
+        {!discovering&&(['survival','motion'] as const).map(m=>{const pad=MENU_PADS[m];return <svg key={m} className={'nursery-pad'+(view.mode===m?' selected':'')} style={{left:pad.x+'%',top:pad.y+'%',width:pad.rX*2+'%',height:pad.rY*2+'%'}} viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true"><circle className="pad-halo" cx="100" cy="100" r="94"/><path className="pad-veins" d="M100 188V100L66 66 46 32M100 145l45-36 20-53M100 116l-43 15-27-21M100 88l26-35-5-30"/></svg>;})}
+        {discovering&&<div className="nursery-waypoint" style={{left:DISCOVERY_STOPS[view.step+1].x+'%',top:DISCOVERY_STOPS[view.step+1].y+'%'}} aria-hidden="true"><span>{view.step+1}</span></div>}
+        <canvas ref={actor} width={180} height={190} className="nursery-survivor" aria-hidden="true"/>
+      </div>
+      {!discovering&&<div className="nursery-experiments" aria-label="Choose a mode">
+        {(['survival','motion'] as const).map(m=><button key={m} type="button" className={'nursery-label '+m+(view.mode===m?' selected':'')} disabled={blocked} aria-pressed={view.mode===m} onPointerEnter={e=>{if(e.pointerType==='mouse')preview(m);}} onFocus={()=>preview(m)} onClick={()=>approach(m)}><strong>{modeName(m)}</strong><span>{MODE_COPY[m].goal}</span></button>)}
+      </div>}
+      <section className="nursery-reading" aria-label="About this expedition">
+        <div className="nursery-message" role="status" aria-live="polite" aria-atomic="true">
+          <small>{discovering?`Discovery ${view.step+1} of 3`:view.mode?'Sentinels in training':'A living experiment'}</small>
+          <h2>{story?story.title:view.mode?modeName(view.mode):'Choose an expedition'}</h2>
+          <p>{story?story.text:view.mode?MODE_COPY[view.mode].text:'Play against sentinels that evolve across generations. Choose a mode to discover what they learn.'}</p>
+        </div>
+        {discovering?<div className="nursery-reading-actions">
+          {view.step>0&&<button type="button" disabled={blocked} onClick={()=>stepTo(view.step-1)}>Back</button>}
+          <button type="button" className="nursery-enter" disabled={blocked} onClick={nextStop}>{story?.next} <span aria-hidden="true">↗</span></button>
+          <button type="button" disabled={blocked} onClick={()=>stepTo(3)}>Skip to modes</button>
+        </div>:<div className="nursery-reading-actions">
+          {view.mode?<button type="button" className="nursery-enter" disabled={blocked} onClick={enter}>Enter {modeName(view.mode)} <span aria-hidden="true">↗</span></button>:<span className="nursery-hint">Walk, click or use Tab to explore a mode.</span>}
+        </div>}
+      </section>
+      <footer className="nursery-credits">
+      <p className="nursery-instructions">{discovering?'Follow the light or choose the next stop.':'WASD / arrows to walk · Select a mode, then Enter'}</p>
+
+        <button type="button" disabled={paused} onClick={()=>{setAbout(true);aboutDialog.current?.showModal();}}>About &amp; contact</button>
+        {experience==='discovery'&&!discovering&&<button type="button" disabled={blocked} onClick={()=>stepTo(0)}>Walk again</button>}
+        <button type="button" disabled={blocked} onClick={onModels}>Models &amp; admin</button>
+      </footer>
+      <dialog ref={aboutDialog} className="nursery-about" aria-labelledby="nursery-about-title" onClose={()=>setAbout(false)}>
+        <form method="dialog"><button type="submit" aria-label="Close about and contact">Close</button></form>
+        <small>EvoGoo</small><h2 id="nursery-about-title">Games shaped by evolution</h2>
+        <p>Immunity is one game and experiment in the EvoGoo collection.</p>
+        <p>Created by <strong>Derrick Van Frausum</strong></p>
+        <nav aria-label="Creator and project links"><a href="https://github.com/DerrickDDInAI/evolution-lab" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="mailto:info@evogoo.com">Business inquiries <span>info@evogoo.com</span></a><a href="mailto:contact@evogoo.com">Contact &amp; feedback <span>contact@evogoo.com</span></a></nav>
+      </dialog>
     </div>
   </section>;
 }

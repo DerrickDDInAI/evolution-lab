@@ -386,3 +386,15 @@ The user requested removal of menu Help and a more diegetic interface while reta
 ### Diegetic menu publication — 2026-10-28
 
 Published version **27** from hosted source `d696a3443ed1dbcc007ed6e5cd85c0e67f4709cf`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_51c088671fc0819198734b2f7cd103a4`. Deployment `appgdep_6ae1fe37c2208191b2fcf4230408b968` succeeded with unchanged public audience and environment revision 1. Live https://evogoo.com shows the shell layout without menu Help, correct repository/email destinations, and the functioning model dialog with Survival generation 77. Escape returns focus to Models & admin. Desktop and phone appearance reviewed; no console warnings/errors. No live import or gameplay fixture was run. All eleven preservation hashes still match. Local screenshots: ignored `outputs/evogoo-diegetic-live.png` and `outputs/evogoo-diegetic-phone-live.png`.
+
+
+## Living clearing and Discovery walk comparison, 2026-10-28
+
+Implemented the user's two requested menu experiences. Living clearing is the default; `?menu=discovery` opens a skippable three-stop introduction. The in-menu switch and query URLs allow direct comparison. EvoGoo is identified as the collection, Immunity as one experiment, and Survival/Motion Hunt as its modes. Both use one painted information surface, explicit entry, quiet About/contact and model controls. No em dashes appear in app text.
+
+114 tests, TypeScript, production build and focused lint pass. Desktop/phone/short-window layouts, menu controls and modal recovery were browser checked, alongside a disposable Motion Hunt entry/contact/respawn flow. Gameplay, learned state, hosting and original runtime files remain unchanged. Detailed checks and limitations are recorded in [Motion Hunt](motion-hunt.md#two-menu-experiences-for-comparison-2026-10-28). Publication receipt follows.
+
+
+### Menu comparison publication, 2026-10-28
+
+Published version **29** from hosted source `d6c4934000982a856583bdf66c7c0fe96045264b`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_5725abf39fa081919990ebc020c5d9f8`. Deployment `appgdep_6ae24e2f28b88191991a1a43a0245935` succeeded with unchanged public audience and environment revision 1. Both https://evogoo.com/?menu=living and https://evogoo.com/?menu=discovery are available. The production visual check led to a final adjustment that keeps the discovery start above the reading surface; all 114 tests, TypeScript and build passed again, and the revised stop sequence was browser checked. An initial source-upload HTTP 400 was resolved by buffered transfer without changing credentials or source scope. Live checks confirmed variant selection, static Immunity identity, painted surface, explicit mode entry control and no em dashes. No production game was joined. Screenshots are ignored local outputs: `outputs/evogoo-living-clearing-live.png` and `outputs/evogoo-discovery-walk-live.png`.
