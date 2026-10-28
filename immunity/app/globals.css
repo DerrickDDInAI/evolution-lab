@@ -22,92 +22,28 @@
 .arena-shell:has(.spawn-status) .mission-hud{top:92px}
 @media(max-width:650px){.arena-shell:has(.spawn-status) .mission-hud{top:82px}}
 
-/* Expedition Nursery: an uncropped art plate with live text, actor and pad overlays. */
+/* Expedition Nursery: engraved shell notes and shore tokens inhabit the painted clearing. */
 .app.choosing{padding:0;min-height:0;background:#244e4d}
 .choosing .arena-shell{border:0;border-radius:0;min-height:0;box-shadow:none}
-.choosing .topbar{position:absolute;right:20px;top:16px;height:auto;z-index:14}
-.choosing .topbar .brand,.choosing .connection,.choosing .topbar nav button:first-child{display:none}
-.choosing .topbar nav button{background:#fff5dce6;border:1px solid #e4cfac;color:#244b48;box-shadow:0 2px 12px #163c3c25}
-.choosing .world,.choosing .arena-status,.choosing .generation-clock,.choosing .view-controls{visibility:hidden}
-.mode-menu{position:absolute;z-index:12;inset:0;display:grid;place-items:center;overflow:hidden;background:#2c5754}
-.mode-menu::before{content:'';position:absolute;inset:-20px;background:url('/immunity/nursery-menu.webp') center/cover;filter:blur(14px) brightness(.65)}
-.nursery-scene{position:relative;width:min(100vw,177.68dvh);aspect-ratio:1672/941;flex-shrink:0;container-type:inline-size;background:url('/immunity/nursery-menu.webp') center/100% 100%;outline:none;touch-action:none;color:#153f42;font-family:Georgia,'Times New Roman',serif;isolation:isolate}
-.nursery-scene:focus-visible::after{content:'';position:absolute;inset:5px;border:1px solid #fff2c96b;pointer-events:none}
-.nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia,serif;letter-spacing:.55cqw;text-transform:uppercase;color:#0b2c2e;text-shadow:0 1px 1px #fff8e8,0 0 3px #fff8e8b3}
-.nursery-scene h1 small{position:absolute;bottom:calc(100% + .35cqw);left:0;width:100%;font:700 clamp(8px,.85cqw,15px)/1.2 system-ui;letter-spacing:.22em}
-.nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8}
-/* Recessed lettering follows the painted foreground shell; no floating plaque. */
-.nursery-inscription{position:absolute;left:27%;bottom:2.6%;width:46%;margin:0;padding:0 1cqw;text-align:center;color:#27291f;font-weight:600;font-size:clamp(10px,.86cqw,15px);line-height:1.4;pointer-events:none;text-wrap:balance;text-shadow:0 1px .5px #fffbed,0 -.5px .3px #18201680;transform:perspective(600px) rotateX(16deg);transform-origin:50% 100%;isolation:isolate}
-.nursery-inscription small{display:block;margin-bottom:.25cqw;font:700 clamp(8px,.58cqw,10px)/1.4 Georgia,serif;letter-spacing:.17em;text-transform:uppercase;color:#303025}
-.nursery-inscription strong{display:block;margin-bottom:.25cqw;font:600 clamp(12px,1.15cqw,20px)/1.3 Georgia,serif}.nursery-inscription span{display:block}
-.nursery-label{position:absolute;z-index:4;top:21.8%;width:20%;height:9.7%;min-height:0;padding:0;gap:.6cqw;display:flex;flex-direction:column;border:0;border-radius:45%;font-family:Georgia,serif;color:#0b2c2e;text-shadow:0 1px 1px #fff7e5,0 0 3px #fff7e5cc;transition:filter .15s}
-.nursery-label.survival{left:23%;transform:rotate(-5deg)}.nursery-label.motion{left:57%;transform:rotate(4deg)}
-.nursery-label strong{font-size:1.9cqw;font-weight:600;letter-spacing:.08cqw;text-transform:uppercase;white-space:nowrap}
-.nursery-label span{font-size:1.08cqw;font-weight:600;color:#201f18;white-space:nowrap}
-.nursery-label:hover,.nursery-label.selected{background:transparent;border:0;filter:drop-shadow(0 0 6px #fff3bb)}
-.nursery-label:focus-visible{outline:2px solid #b47e36;outline-offset:4px;background:#fff1ce66}
+.choosing :is(.world,.arena-status,.generation-clock,.view-controls,.field-tools-toggle){visibility:hidden}
 .nursery-pad{position:absolute;z-index:1;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
 .pad-halo{fill:#f7c45700;stroke:#ffedb700;stroke-width:3}.pad-veins{fill:none;stroke:#ffe3a0;stroke-width:1.8;opacity:0;stroke-linecap:round;stroke-linejoin:round}.pad-progress{fill:none;stroke:#fff0b3;stroke-width:7;transform:rotate(-90deg);transform-origin:center;filter:drop-shadow(0 0 4px #ff9900)}
 .nursery-pad.selected .pad-halo{fill:#ffc34224;stroke:#ffd68a;filter:drop-shadow(0 0 7px #ffb73b)}.nursery-pad.selected .pad-veins{opacity:1;filter:drop-shadow(0 0 3px #ff9c22)}
 .nursery-survivor{position:absolute;left:50%;top:68.5%;z-index:3;width:10.75%;height:auto;transform:translate(-50%,-89.47%);pointer-events:none;filter:drop-shadow(-8px 9px 5px #193c3b33)}
-.nursery-instructions{position:absolute;left:28%;top:80.5%;width:44%;margin:0;text-align:center;color:#25291f;font-weight:600;text-shadow:0 1px 1px #fff9e5,0 0 4px #fff9e5;font-size:.9cqw;letter-spacing:.025cqw;white-space:nowrap}.nursery-instructions span{padding:0 .25cqw}
-.nursery-touch-hint{position:absolute;left:0;right:0;bottom:1%;margin:0;text-align:center;font:600 10px system-ui;color:#fffae9;text-shadow:0 1px 2px #092627,0 0 4px #092627;opacity:0}.nursery-scene:focus-visible .nursery-touch-hint{opacity:1}
-@media(max-aspect-ratio:1/1){
- .nursery-scene{width:100vw;margin-top:-250px}
- .nursery-scene h1{top:7%;left:15%;width:70%;font-size:5cqw;letter-spacing:1cqw}
- .nursery-ornament{top:16%;left:37.5%;width:25%}
- .nursery-inscription{top:calc(104% + 90px);bottom:auto;left:4%;width:92%;padding:16px 18px 14px;transform:none;border-radius:50% 50% 20px 20px / 20px 20px 16px 16px;font-size:13px;line-height:1.5}
- .nursery-inscription::before{content:'';position:absolute;z-index:-1;inset:0;border-radius:inherit;background:url('/immunity/nursery-menu.webp') center bottom / 700% 1800%;box-shadow:inset 0 1px 1px #fff6df80;mask-image:radial-gradient(ellipse 75% 90% at 50% 60%,#000 52%,#000b 75%,transparent 100%)}
- .nursery-inscription small{font-size:9px;margin-bottom:6px}
- .nursery-inscription strong{font-size:18px;margin-bottom:7px}
- .nursery-label{top:104%;height:75px;width:43%;border:1px solid #e2d0ad;background:linear-gradient(140deg,#fff4dff5,#dfe7d8f5);border-radius:28px 10px;gap:7px;box-shadow:0 5px 20px #183e3c33;text-shadow:none}
- .nursery-label.survival{left:4%;transform:none}.nursery-label.motion{left:53%;transform:none}
- .nursery-label strong{font-size:4cqw;letter-spacing:.1cqw}.nursery-label span{font-size:2.6cqw}
- .nursery-label:hover,.nursery-label.selected{border:1px solid #ffd591;background:#fff0d1;box-shadow:0 0 20px #ffc15b55;filter:none}
- .nursery-instructions{top:calc(104% + 255px);left:0;width:100%;font-size:3.1cqw;color:#fff5db;text-shadow:0 1px 4px #173c3b}
- .nursery-touch-hint,.nursery-scene:focus-visible .nursery-touch-hint{top:calc(104% + 282px);bottom:auto;font-size:2.8cqw;opacity:1}
- .nursery-survivor{width:13%}.choosing .topbar{top:12px;right:12px}
-}
-@media(max-height:500px) and (min-aspect-ratio:1/1){
- .nursery-inscription{left:19%;width:62%;bottom:1.2%;font-size:10px;line-height:1.4}
- .nursery-inscription::before{content:'';position:absolute;z-index:-1;inset:-7px -14px -8px;background:url('/immunity/nursery-menu.webp') center bottom / 700% 1800%;mask-image:radial-gradient(ellipse 65% 140% at 50% 100%,#000 70%,transparent 100%)}
- .nursery-inscription small{font-size:8px;margin-bottom:1px}.nursery-inscription strong{font-size:11px;margin-bottom:2px}
- .nursery-instructions{top:78%;left:15%;width:70%;font-size:10px}
- .nursery-touch-hint,.nursery-scene:focus-visible .nursery-touch-hint{top:82%;bottom:auto;font-size:9px;opacity:1}
-}
-@media(prefers-reduced-motion:reduce){.nursery-label{transition:none}}
+.mode-menu{position:absolute;inset:0;z-index:12;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(#193c4166,#17393655),url('/immunity/nursery-menu.webp') center/cover fixed}.nursery-habitat{position:relative;margin:auto;flex-shrink:0;font-family:Georgia,serif;color:#213e39;width:min(100%,177.68dvh);container-type:inline-size;isolation:isolate}.nursery-scene{outline:none;touch-action:none;isolation:isolate;width:100%;aspect-ratio:1672/941;background:url('/immunity/nursery-menu.webp') center/100% 100%;position:relative}.nursery-scene h1{position:absolute;left:32%;top:12.5%;width:36%;margin:0;text-align:center;font:400 2.45cqw/1.2 Georgia;letter-spacing:.55cqw;text-transform:uppercase;text-shadow:0 1px 2px #fff8e8}.nursery-scene h1 small{position:absolute;bottom:calc(100% + .35cqw);left:0;width:100%;font:700 .85cqw/1.2 system-ui;letter-spacing:.22em}.nursery-experiments{position:absolute;inset:0;pointer-events:none}.nursery-specimen{display:contents}.nursery-label{z-index:4;position:absolute;top:21.8%;width:20%;height:9.7%;padding:.55cqw 1.4cqw;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.35cqw;background:none;border:0;font-family:Georgia;color:#153a35;pointer-events:auto;text-shadow:0 1px 2px #fff8df}.nursery-label.survival{left:23%;transform:rotate(-5deg)}.nursery-label.motion{left:57%;transform:rotate(4deg)}.nursery-label strong{font-size:1.65cqw;text-transform:uppercase}.nursery-label span{font-size:.92cqw;text-wrap:balance}.nursery-note{position:absolute;top:44%;width:21%;padding:2.3cqw 2.2cqw 2.5cqw;margin:0;background:url('/immunity/nursery-relic.svg') center/100% 100%;filter:drop-shadow(0 5px 9px #18383245);font-size:clamp(12px,.92cqw,16px);line-height:1.55;text-align:center;text-wrap:pretty;pointer-events:auto;text-shadow:0 1px #fff8e9}.survival .nursery-note{left:2%;transform:rotate(-3deg)}.motion .nursery-note{right:2%;transform:rotate(3deg)}.nursery-note strong{display:block;margin-bottom:.65cqw;font-weight:normal;font-size:1.15em;font-style:italic}.nursery-note span{display:block}.nursery-inscription{position:absolute;bottom:3.4%;left:31%;width:38%;text-align:center;margin:0;line-height:1.3;font-size:.85cqw;text-shadow:0 1px #fff8df;color:#27291f}.nursery-inscription small{display:block;letter-spacing:.17em;text-transform:uppercase;font-size:.6cqw;margin-bottom:.25cqw}.nursery-inscription strong{display:block;font-size:1.1cqw;margin-bottom:.25cqw}.nursery-instructions{position:absolute;top:80.5%;left:28%;width:44%;text-align:center;margin:0;font-size:.85cqw;text-shadow:0 1px 3px #fff8df}.nursery-credits{font-size:clamp(11px,.85cqw,15px);text-align:center}.nursery-maker{position:absolute;bottom:5%;left:3%;width:22%;padding:2.5cqw 1.5cqw;background:url('/immunity/nursery-relic.svg') center/100% 100%;transform:rotate(2deg);text-shadow:0 1px #fff8e9;filter:drop-shadow(0 5px 8px #163a3845)}.nursery-maker span{display:block;font-size:.85em;font-style:italic;margin-bottom:.5em}.nursery-maker strong{font-weight:normal;font-size:1.15em}.nursery-credits nav{position:absolute;bottom:3%;right:2%;width:25%;display:grid;grid-template-columns:1fr 1fr;gap:.4cqw}.nursery-credits :is(a,button){min-height:44px;padding:1cqw 1.1cqw;display:flex;align-items:center;justify-content:center;background:url('/immunity/nursery-relic.svg') center/100% 100%;font:inherit;color:#24453d;text-decoration:none;filter:drop-shadow(0 3px 4px #14363544);border:0;text-shadow:0 1px #fff8e9}.nursery-credits :is(a,button):nth-child(odd){transform:rotate(-3deg)}.nursery-credits :is(a,button):nth-child(even){transform:rotate(3deg)}
+@media(max-width:900px),(max-aspect-ratio:4/3),(max-height:600px){.mode-menu{align-items:flex-start;background:linear-gradient(#234a4b00,#204741 75%),url('/immunity/nursery-menu.webp') center top/auto 800px no-repeat}.nursery-habitat{width:min(100%,900px);margin:0 auto;padding-bottom:max(25px,env(safe-area-inset-bottom))}.nursery-scene h1{top:10%;font-size:5cqw;left:15%;width:70%}.nursery-scene h1 small{font-size:2cqw}.nursery-instructions{position:relative;top:auto;left:auto;width:auto;padding:8px 16px 18px;font-size:11px;color:#fff6da;text-shadow:0 1px 3px #12352e}.nursery-experiments{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px;pointer-events:auto}.nursery-specimen{display:flex;flex-direction:column;background:url('/immunity/nursery-relic.svg') center/100% 100%;padding:25px 17px 30px;filter:drop-shadow(0 5px 12px #163a3845)}.nursery-specimen.survival{transform:rotate(-2deg)}.nursery-specimen.motion{transform:rotate(2deg)}.nursery-label{position:static;width:100%;height:auto;min-height:66px;padding:0 0 12px;transform:none!important;text-shadow:0 1px #fff8e9}.nursery-label strong{font-size:clamp(14px,3.8cqw,23px)}.nursery-label span{font-size:12px;line-height:1.4}.nursery-note{position:static;width:auto;padding:12px 0 0;background:none;filter:none;font-size:12px;transform:none!important;line-height:1.55;border-top:1px solid #627d6b40}.nursery-note strong{font-size:12px;margin-bottom:8px}.nursery-inscription{position:relative;left:auto;bottom:auto;width:92%;margin:22px auto 0;padding:26px 25px;background:url('/immunity/nursery-relic.svg') center/100% 100%;font-size:12px;line-height:1.5}.nursery-inscription small{font-size:9px}.nursery-inscription strong{font-size:17px;margin:6px 0}.nursery-credits{font-size:12px;padding:14px 22px 0}.nursery-maker{position:relative;left:auto;bottom:auto;transform:none;background:none;filter:none;width:auto;padding:14px;color:#fff1d1;text-shadow:0 1px #183832}.nursery-maker span{display:inline;margin-right:5px}.nursery-credits nav{position:relative;right:auto;bottom:auto;width:100%;max-width:480px;margin:6px auto;gap:8px}.nursery-credits :is(a,button){min-height:50px;padding:12px}}
 
-/* EvoGoo menu: keep the painting, with readable notes and credits below it. */
-.mode-menu{display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;overflow-x:hidden;background:#173d3c}
-.mode-menu::before{position:fixed;pointer-events:none}
-.nursery-scene{width:min(100%,calc((100dvh - 158px)*1.7768));margin:auto auto 0}
-.nursery-label{padding:.55cqw 1.4cqw;gap:.35cqw;box-sizing:border-box}
-.nursery-label strong{font-size:1.65cqw;letter-spacing:.04cqw}
-.nursery-label span{font-size:.92cqw;white-space:normal;text-wrap:balance;line-height:1.3}
-.nursery-inscription{left:31%;width:38%;bottom:3.4%;font-size:.76cqw;line-height:1.3;padding:0 1.2cqw}
-.nursery-inscription small{font-size:.55cqw;margin-bottom:.2cqw}
-.nursery-inscription strong{font-size:1.04cqw;margin-bottom:.22cqw}
-.nursery-touch-hint{display:none}
-.nursery-footer{position:relative;z-index:1;flex-shrink:0;width:100%;padding:12px max(20px,calc((100% - 1100px)/2)) 10px;background:#153938f2;color:#e7efda;border-top:1px solid #b7c9a633;font:12px/1.5 system-ui;box-sizing:border-box}
-.nursery-learning{display:grid;grid-template-columns:1fr 1fr;gap:32px}
-.nursery-learning p{margin:0}.nursery-learning strong,.nursery-learning span{display:block}.nursery-learning strong{color:#f5dfad;font-size:13px;margin-bottom:3px}.nursery-learning span{color:#d3e1d7}
-.nursery-credits{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;border-top:1px solid #b7c9a622;padding-top:5px;font-size:11px}
-.nursery-credits nav{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px}.nursery-credits a,.nursery-credits button{color:#f7e7c5;min-height:32px;display:inline-flex;align-items:center;padding:4px 0;font:inherit;text-underline-offset:4px}.nursery-credits a:hover,.nursery-credits button:hover{text-decoration:underline}.nursery-credits :is(a,button):focus-visible{outline:2px solid #ffda85;outline-offset:4px}
-@media(max-aspect-ratio:1/1), (max-height:600px) and (max-width:1000px){
- .mode-menu{padding-top:68px}.nursery-scene{width:100%;margin:0 0 334px}
- .nursery-label{top:104%;width:43%;border:1px solid #e2d0ad;background:linear-gradient(140deg,#fff4dff5,#dfe7d8f5);border-radius:28px 10px;text-shadow:none;height:112px;padding:14px 16px;gap:8px}.nursery-label strong{font-size:clamp(14px,3.8cqw,22px)}.nursery-label span{font-size:clamp(11px,2.85cqw,15px);line-height:1.4}
- .nursery-label.survival{left:4%;transform:none}.nursery-label.motion{left:53%;transform:none}
- .nursery-inscription{top:calc(104% + 132px);left:6%;width:88%;bottom:auto;padding:18px 20px;transform:none;border-radius:50% 50% 20px 20px / 20px 20px 16px 16px;font-size:12px;line-height:1.5}
- .nursery-inscription::before{content:'';position:absolute;z-index:-1;inset:0;border-radius:inherit;background:url('/immunity/nursery-menu.webp') center bottom / 700% 1800%;mask-image:radial-gradient(ellipse 75% 90% at 50% 60%,#000 52%,#000b 75%,transparent 100%)}
- .nursery-inscription small{font-size:9px;margin-bottom:5px}.nursery-inscription strong{font-size:16px;margin-bottom:6px}
- .nursery-instructions{top:calc(104% + 294px);font-size:11px;left:4%;width:92%;color:#fff5db;text-shadow:0 1px 4px #173c3b;white-space:normal;line-height:1.5}
- .nursery-footer{padding:16px 20px 20px}.nursery-learning{grid-template-columns:1fr;gap:14px}.nursery-credits{display:block;margin-top:14px;padding-top:12px}.nursery-credits nav{margin-top:8px;gap:4px 16px}.nursery-credits a,.nursery-credits button{min-height:44px}
-}
-@media(max-height:600px) and (min-width:1001px){
- .nursery-scene{width:min(100%,1066px);margin:50px auto 0}
- .nursery-inscription::before{display:none}.nursery-inscription{left:31%;width:38%;bottom:3.4%;font-size:.76cqw;line-height:1.3}.nursery-inscription small{font-size:.55cqw}.nursery-inscription strong{font-size:1.04cqw}.nursery-instructions{top:80.5%;font-size:.9cqw}
- .nursery-credits{flex-wrap:wrap}
-}
+.nursery-scene:focus-visible{outline:1px solid #fff2c978;outline-offset:-5px}
+.nursery-ornament{position:absolute;left:42.5%;top:17.5%;width:15%;height:3%;fill:none;stroke:#5f6c54;stroke-width:.8;pointer-events:none}
+.nursery-label{border-radius:45%;min-height:0;transition:filter .18s}
+.nursery-label:hover,.nursery-label.selected{background:transparent;border-color:transparent;filter:drop-shadow(0 0 6px #fff3bb)}
+.nursery-label:focus-visible{outline:2px solid #825728;outline-offset:3px}
+.nursery-credits :is(a,button){border-radius:45%;transition:filter .18s}
+.nursery-credits :is(a,button):hover{background-image:url('/immunity/nursery-relic.svg');border-color:transparent;text-decoration:underline;text-underline-offset:4px;filter:drop-shadow(0 0 7px #fff0b5)}
+.nursery-credits :is(a,button):focus-visible{outline:2px solid #fff3c5;outline-offset:3px;text-decoration:underline;text-underline-offset:4px}
+.nursery-inscription{pointer-events:none;text-wrap:balance}
+@media(max-width:900px),(max-aspect-ratio:4/3),(max-height:600px){.nursery-survivor{width:13%}.nursery-ornament{top:17%;left:37.5%;width:25%}.nursery-label{min-height:66px}.nursery-specimen:has(.nursery-label.selected){filter:drop-shadow(0 0 12px #ffd88799)}}
+@media(prefers-reduced-motion:reduce){.nursery-label,.nursery-credits :is(a,button){transition:none}}
 
 /* Tidal Lens: opaque reading membranes inside fine, translucent shell edges. */
 .in-expedition{--ink:#102e32;--pearl:#fff3d9;--subtle:#d0e1da;--gold:#ffda8b;--aqua:#95e5df;position:relative;height:100dvh;min-height:600px;padding:0;background:#244e49;isolation:isolate;color:var(--pearl)}

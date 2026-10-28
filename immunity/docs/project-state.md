@@ -374,3 +374,15 @@ Requested work is committed locally and published through the hosted source repo
 The EvoGoo commits through `b633b01` are now pushed to GitHub. Reviewed the remaining nine-file change as one cohesive Motion Hunt extraction fix: physical gate traversal, in-place completion, held-input/visual continuity, regression tests and the original release evidence. No commit-blocking issue found. All seven changed code/test files match published version 26 source `cc181ea2bcbb89af7cd00bafec090dd02246b61e` byte for byte; this commit brings GitHub into line with already deployed behavior and requires no new deployment.
 
 Fresh checks: 112/112 domain tests and TypeScript passed; whitespace passed; affected-file lint has no additional findings compared with HEAD (existing six errors and thirteen warnings remain). Prior exact-source production build, five disposable HTTP/D1 fixtures and browser extraction evidence remain applicable; build/integration/browser checks were not repeated for this Git-only review. Physical touch, reduced-motion and arbitrary-latency extraction remain unverified. No runtime database, model, score or hosting configuration was changed. The user authorized committing and pushing remaining changes that passed review.
+
+
+## Diegetic menu refinement — 2026-10-28
+
+The user requested removal of menu Help and a more diegetic interface while retaining the footer text. Replaced the footer band with shell learning notes, a maker inscription and shore tokens for GitHub, business inquiries, contact/feedback and Models & admin. The existing painting, movement selectors and expedition Help remain. Responsive shells scroll at narrow/short sizes. Design and verification evidence is in [Motion Hunt](motion-hunt.md#nursery-as-an-inhabited-place--2026-10-28).
+
+112 tests, TypeScript and production build pass; changed-file lint adds no findings. Desktop, phone and short-landscape browser checks pass, including pointer/keyboard selection, model-dialog focus recovery and a disposable Survival contact/respawn/rejoin journey. No physical touch, OS reduced-motion or new HTTP integration suite was run. Gameplay, hosting identity and original runtime state are preserved. Publication receipt follows.
+
+
+### Diegetic menu publication — 2026-10-28
+
+Published version **27** from hosted source `d696a3443ed1dbcc007ed6e5cd85c0e67f4709cf`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_51c088671fc0819198734b2f7cd103a4`. Deployment `appgdep_6ae1fe37c2208191b2fcf4230408b968` succeeded with unchanged public audience and environment revision 1. Live https://evogoo.com shows the shell layout without menu Help, correct repository/email destinations, and the functioning model dialog with Survival generation 77. Escape returns focus to Models & admin. Desktop and phone appearance reviewed; no console warnings/errors. No live import or gameplay fixture was run. All eleven preservation hashes still match. Local screenshots: ignored `outputs/evogoo-diegetic-live.png` and `outputs/evogoo-diegetic-phone-live.png`.

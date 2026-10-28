@@ -36,11 +36,11 @@ export default function Home(){
   const status=!online?'Connecting…':!session?mode?modeName(mode):'Choose an expedition':contact.current?'Contact':active?motion?(Math.hypot(predicted.current?.vx||0,predicted.current?.vy||0)>8?'Moving · experimental hunt':'Still · detection may vary'):'In arena':'Safe outside';
   return <main className={'app'+(expanded?' expanded':'')+(!session&&!mode?' choosing':'')+(mode?' in-expedition':'')}>
     {mode&&<TidalPeriphery/>}
-    <header className="topbar">
+    {mode&&<header className="topbar">
       <a className="brand" href="/" aria-label="Immunity — EvoGoo home">{mode&&<TidalShell lens/>}<svg className="brand-seed" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 3C7 14 3 28 11 38c4 6 14 6 18 0C37 28 33 14 20 3Z"/><path d="M20 7v34M8 27l12 9 12-9M12 18l8 10 8-10"/></svg><span><small>{mode?modeName(mode):"EVOGOO"}</small>Immunity</span></a>
       <span className="connection"><i className={online?'status-dot':'status-dot offline'}/>{state?.players.length||0}/12 players</span>
       <nav><button onClick={share}>{copied?'Link copied':<><span className="invite-full">Copy invite link</span><span className="invite-short">Invite</span></>}</button><button ref={helpButton} onClick={()=>{setTraining(false);setHelp(true);}}>Help</button>{session&&<button onClick={()=>{setExpanded(false);setTraining(false);leave();}}>Leave</button>}</nav>
-    </header>
+    </header>}
     <section className="arena-shell" aria-label="Immunity survival arena">
       <canvas ref={canvas} tabIndex={0} className="world" aria-label="Shared Immunity arena. Move with WASD or arrow keys. Hold Shift to sprint."/>
       <div className="arena-status"><i/>{status}{mode&&!session&&<small>Choose a name · begin on the shore</small>}</div>
