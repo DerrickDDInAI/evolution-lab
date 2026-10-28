@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 150" preserveAspectRatio="none">
+<defs>
+ <linearGradient id="pigment" x2="0" y2="1"><stop stop-color="#102f29" stop-opacity=".98"/><stop offset=".52" stop-color="#173c32" stop-opacity=".94"/><stop offset=".8" stop-color="#315244" stop-opacity=".72"/><stop offset="1" stop-color="#436253" stop-opacity="0"/></linearGradient>
+ <filter id="grain" x="-5%" y="-30%" width="110%" height="170%"><feTurbulence type="fractalNoise" baseFrequency=".035 .12" numOctaves="3" seed="11" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="20" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="1.4"/></filter>
+</defs>
+<path fill="url(#pigment)" filter="url(#grain)" d="M-30-30H1630V110C1490 127 1460 89 1320 112S1110 86 980 101 806 79 695 90 533 109 401 102 202 137 80 118L-30 132Z"/>
+<path fill="#66806a" opacity=".12" filter="url(#grain)" d="M-30 93Q140 126 310 105T590 100 930 92 1230 107 1630 99V109Q1440 103 1300 119T980 104 690 105 400 115 110 131L-30 117Z"/>
+</svg>

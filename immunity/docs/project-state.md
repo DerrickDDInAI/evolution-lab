@@ -410,3 +410,15 @@ Living clearing is now the sole menu, following the user's selection. Discovery 
 ### Living clearing publication, 2026-10-28
 
 Published version **30** from hosted source `0180ab407136ee6fadaae13b740bb0062b4b807d`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_56a63ba60f7081919cf9a2d2d04f77ac`. Deployment `appgdep_6ae25b423a5c8191b11ca7634d8e112e` succeeded with unchanged public audience and environment revision 1. Live https://evogoo.com desktop and 390x844 phone review confirms the single clearing, removed secondary copy/entry buttons, readable utility controls, fitted painted labels and aligned selection outlines. No horizontal overflow, em dashes or browser warnings/errors were observed. No production game was joined. Screenshots are ignored local outputs: `outputs/evogoo-living-refined-desktop.png` and `outputs/evogoo-living-refined-phone.png`.
+
+
+## Painterly clearing details, 2026-10-28
+
+Refined the selected Living clearing following user feedback: textured pigment edges blend the header/footer into the painting with more breathing room under the tagline; the reference's botanical title rule is restored; explanations omit the repeated mode name; golden seed motes replace the selected-name underline. Animation pauses behind dialogs and has a static reduced-motion fallback. No selection rules or gameplay logic changed.
+
+114 tests, TypeScript, focused lint and build pass. Desktop/phone appearance, animated selection, dialog recovery and a disposable Survival contact/respawn/rejoin with saved-score continuity passed. Physical touch, OS reduced-motion visuals and full HTTP fixtures remain unverified in this refinement. See [Motion Hunt](motion-hunt.md#painterly-clearing-details-2026-10-28) for evidence. Publication receipt follows.
+
+
+### Painterly detail publication, 2026-10-28
+
+Published version **31** from hosted source `cd62882e9ca664b0b138f01af50e7c4bf3325434`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_c80d6e808c588191bba646f1910752b0`. Deployment `appgdep_6ae261b618d48191a9bf8e81fd65cda2` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com desktop and 390x844 phone checks confirmed the painted edges, restored ornament, explanation without repeated heading, no selected-name underline and golden pool particles. No horizontal overflow, em dashes or browser warnings/errors. No production game was joined. Ignored screenshots: `outputs/evogoo-painterly-clearing-live.png` and `outputs/evogoo-painterly-clearing-phone.png`.
