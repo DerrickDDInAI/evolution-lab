@@ -13,7 +13,7 @@ for(const name of modules){
 }
 copyFileSync('lib/admin-password.mjs',`${out}/admin-password.mjs`);
 const load=name=>import(pathToFileURL(`${out}/${name}.mjs`));
-const {createArena,advance,join,snapshot,upgradeArena,ROUND}=await load('arena');
+const {createArena,advance,join,snapshot,upgradeArena,resetTraining,ROUND}=await load('arena');
 const {checkpoint,parseTrainingArtifact,queueTraining,trainingBoundary,MAX_IMPORT_BYTES}=await load('training-checkpoints');
 const {breed}=await load('evolution');
 const {fitnessPlot,trainingMetrics}=await load('training-metrics');
@@ -122,4 +122,28 @@ test('history-controller checkpoints preserve three outputs and reject legacy Mo
  const evolved={...file,genomes,evolution:e};assert.deepEqual(parseTrainingArtifact(evolved,'motion'),evolved);
  a.motionHistory={old:{life:0,samples:[{at:0,x:100,y:100}]}};
  queueTraining(a,file,'import','motion-import',0);trainingBoundary(a,100,[]);assert.deepEqual(a.motionHistory,{});
+});
+
+for(const mode of ['survival','motion'])test(`${mode} admin reset restarts training and preserves lives, scores, terrain and a recoverable population`,()=>{
+ const a=createArena(0,mode),p=active(a);p.lastSeen=100;
+ finish(a,100);a.bots[0].genome.genes[0].weight=4.321;a.bots[0].fitness=99;
+ p.carrying=true;p.runStartedAt=80;p.runId='active-run';p.contactFrames=[{id:'old-population'}];
+ if(mode==='motion'){a.motionHistory={old:{life:0,samples:[]}};a.detection={truePositive:10,trueNegative:20,falsePositive:3,falseNegative:4};}
+ const players=structuredClone(a.players).map(p=>({...p,contactFrames:[]})),terrain=structuredClone(a.obstacles),before=checkpoint(a,200),branch=a.training.branch;
+ const writes=resetTraining(a,200);
+ assert.equal(a.generation,1);assert.equal(a.elapsed,0);assert.equal(a.totalTags,0);assert.equal(a.roundTags,0);assert.equal(a.species,1);
+ assert.deepEqual(a.history,[]);assert.equal(a.champion,null);assert.equal(a.bestModel,undefined);assert.equal(a.bestGeneration,null);
+ assert.deepEqual(a.players,players);assert.deepEqual(a.obstacles,terrain);
+ assert.equal(a.bots.length,24);assert.ok(a.bots.every(b=>b.fitness===0&&b.tags===0&&b.genome.fitness===0&&b.spawnWait===3));
+ assert.notDeepEqual(a.bots.map(b=>b.genome),before.genomes);
+ assert.deepEqual(writes[0],{slot:'rollback',artifact:before});assert.deepEqual(writes[1],{slot:'latest',artifact:checkpoint(a,200)});
+ assert.equal(a.training.branch,branch+1);assert.equal(a.training.rollbackGeneration,before.generation);assert.equal(a.training.checkpointGeneration,1);assert.equal(a.training.events.at(-1).kind,'reset');
+ assert.deepEqual(upgradeArena(structuredClone(a),300).history,[]);
+ if(mode==='motion'){assert.deepEqual(a.motionHistory,{});assert.deepEqual(a.detection,createArena(0,mode).detection);}
+ queueTraining(a,writes[0].artifact,'rollback','recover',300);trainingBoundary(a,300,[]);
+ assert.deepEqual(a.bots.map(b=>b.genome),before.genomes);assert.deepEqual(a.evolution,before.evolution);
+});
+test('reset rejects a queued change without changing any world state',()=>{
+ const a=createArena(0);queueTraining(a,checkpoint(a,0),'import','queued',0);const before=structuredClone(a);
+ assert.throws(()=>resetTraining(a,100),/Cancel the queued/);assert.deepEqual(a,before);
 });

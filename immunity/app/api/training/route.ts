@@ -1,9 +1,9 @@
 import {env} from 'cloudflare:workers';
-import {createArena,upgradeArena,type Arena} from '../../../lib/arena';
+import {createArena,upgradeArena,resetTraining,type Arena} from '../../../lib/arena';
 import {arenaKey,type GameMode} from '../../../lib/game-mode';
 import {MAX_IMPORT_BYTES,parseTrainingArtifact,queueTraining,trainingSummary} from '../../../lib/training-checkpoints';
 import {adminConfigured,adminSession,requireAdmin,requireSameOrigin,loginAdmin,logoutAdmin,sessionCookie,AdminError} from '../../../lib/admin-auth';
-import {readCheckpoint} from '../../../lib/training-store';
+import {readCheckpoint,checkpointStatements} from '../../../lib/training-store';
 import {boundedJson,discardRequestBody,trainingJson as json,trainingFailure} from '../../../lib/training-http';
 export const dynamic='force-dynamic';
 const config=()=>env as unknown as {DB:D1Database;IMMUNITY_ADMIN_PASSWORD_HASH?:string};
@@ -28,7 +28,7 @@ export async function POST(request:Request){try{
   }
   await requireAdmin(db,request,hash);
   const input=await boundedJson(request,MAX_IMPORT_BYTES+2048),mode=modeFrom(input.mode);
-  if(!['preview','import','rollback','cancel'].includes(action||''))throw new AdminError('Unknown training action.',400);
+  if(!['preview','import','rollback','cancel','reset'].includes(action||''))throw new AdminError('Unknown training action.',400);
   let artifact;
   if(action==='preview'||action==='import'){
     if(JSON.stringify(input.artifact??null).length>MAX_IMPORT_BYTES)throw new AdminError('The file is too large (maximum 512 KiB).',413);
@@ -39,6 +39,15 @@ export async function POST(request:Request){try{
   for(let attempt=0;attempt<5;attempt++){
     const row=await read(db,mode);if(!row)throw new AdminError('Enter this mode once before changing its training.',409);
     const a:Arena=upgradeArena(JSON.parse(row.state),Date.now());
+    if(action==='reset'){
+      if(input.generation!==a.generation||input.branch!==a.training?.branch)throw new AdminError('Training has changed. Refresh and confirm the reset again.',409);
+      let writes;try{writes=resetTraining(a,Date.now());}catch(error){throw new AdminError(error instanceof Error?error.message:'Cannot reset training.',409);}
+      // The fresh population and both archive slots share one guarded transaction.
+      a.commitId=operationId;
+      const result=await db.batch([db.prepare('UPDATE arena SET state=?,revision=revision+1 WHERE id=? AND revision=?').bind(JSON.stringify(a),arenaKey(mode),row.revision),...checkpointStatements(db,mode,writes,operationId)]);
+      if(result[0].meta.changes===1)return json({training:trainingSummary(a),message:`${mode==='motion'?'Motion Hunt':'Survival'} training restarted at generation 1. The previous population is saved in the pre-change backup. Player scores are preserved.`});
+      continue;
+    }
     if(action==='cancel'){
       if(!a.training?.pending||a.training.pending.id!==input.pendingId)throw new AdminError('That queued change has already changed or completed. Refresh the training panel.',409);
       a.training.pending=null;

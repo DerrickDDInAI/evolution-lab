@@ -22,7 +22,7 @@ const artifactSchema=z.object({
   evolution:z.object({seed:z.number().int().min(0).max(0xffffffff),nextNode:id.min(13),splits:z.record(id.min(13))}).strict(),
 }).strict();
 export type TrainingArtifact=z.infer<typeof artifactSchema>;
-export type TrainingEvent={branch:number;generation:number;sourceGeneration:number;kind:'import'|'rollback';at:number};
+export type TrainingEvent={branch:number;generation:number;sourceGeneration:number;kind:'import'|'rollback'|'reset';at:number};
 export type PendingTraining={id:string;kind:'import'|'rollback';artifact:TrainingArtifact;queuedAt:number};
 export type TrainingState={branch:number;events:TrainingEvent[];pending:PendingTraining|null;checkpointGeneration:number|null;rollbackGeneration:number|null};
 export type TrainingWrite={slot:'latest'|'rollback';artifact:TrainingArtifact};

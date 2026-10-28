@@ -458,3 +458,12 @@ Following the user's request for greater immersion, removed both green header/fo
 ### Unframed menu publication, 2026-10-28
 
 Published version **34** from hosted source `51279970280a66f85486368275f93c1a22035951`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_cd957b1a55548191a9c411db04695f64`. Deployment `appgdep_6ae2713ae03c8191b706dbac33f67385` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com confirms both header/footer backgrounds and pseudo-elements are absent, with retained text and links and no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-unframed-live.png`.
+
+
+## Per-mode admin generation reset, 2026-10-28
+
+Implemented the user's reset button for each mode in the menu model manager and in-game archive. Signed-in administrators review the selected mode/current generation, then confirm an immediate restart at generation 1 with untrained bots. Fitness history, champions and best model clear; scores, identities, active runs, terrain and the other mode remain. The previous population is saved as the pre-change backup, atomically with the reset and fresh checkpoint. Pending changes must be cancelled first; stale/duplicate confirmations are rejected. [Behavior and recovery limits](training-checkpoints.md#per-mode-administrator-reset--2026-10-28).
+
+Reset-only snapshot in `/private/tmp/evogoo-reset-qa-20261028`: 117 tests, TypeScript, production build, extended authenticated HTTP/D1 fixture for both resets and all five gameplay fixtures pass. Browser checks cover sign-in/out, mode selection, cancellation, keyboard confirmation, successful reset feedback, measured 390×844 layout without overflow and dialog recovery. Existing arena lint debt remains; reset controls/endpoint/tests add no findings. The shared checkout, including concurrent behavior-film work, subsequently passes 123 tests and TypeScript. Eight original hosting/runtime files retain their preservation hashes. Physical touch, OS reduced-motion, load and a new full rendered gameplay journey were not checked. Screenshots are ignored `outputs/admin-reset-preview.jpg` and `outputs/admin-reset-phone.jpg`.
+
+Reset changes are committed locally under the user's 2026-10-28 commit request and remain unpublished; concurrent film work is preserved separately. No normal local or production training was reset. Next step: review/release only under separate publication authorization; never run destructive fixtures against existing runtime data or production.

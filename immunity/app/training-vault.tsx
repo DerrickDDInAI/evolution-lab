@@ -10,6 +10,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
   const mode=motion?'motion':'survival';
   const [status,setStatus]=useState<Status|null>(null),[password,setPassword]=useState(''),[preview,setPreview]=useState<Preview|null>(null);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[confirmRollback,setConfirmRollback]=useState(false);
+  const [confirmReset,setConfirmReset]=useState<{generation:number;branch:number}|null>(null);
   const artifact=useRef<unknown>(null),fileInput=useRef<HTMLInputElement>(null);
   const refresh=useCallback(async()=>{
     const response=await fetch(`/api/training?mode=${mode}`,{cache:'no-store'});
@@ -57,7 +58,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
           <label htmlFor="training-password">Administrator password</label><input id="training-password" type="password" autoComplete="current-password" value={password} maxLength={256} onChange={e=>setPassword(e.target.value)} required disabled={busy}/>
           <button className="vault-button" disabled={busy||!online||!password} type="submit">{busy?'Signing in…':'Sign in'}</button>
         </form>:<>
-          <div className="vault-session"><span>Administrator · expires {status.expires?new Date(status.expires).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'soon'}</span><button disabled={busy} onClick={()=>void run(async()=>{await action('logout');artifact.current=null;setPreview(null);setConfirmRollback(false);setMessage('Signed out.');})}>Sign out</button></div>
+          <div className="vault-session"><span>Administrator · expires {status.expires?new Date(status.expires).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'soon'}</span><button disabled={busy} onClick={()=>void run(async()=>{await action('logout');artifact.current=null;setPreview(null);setConfirmRollback(false);setConfirmReset(null);setMessage('Signed out.');})}>Sign out</button></div>
           <label htmlFor="training-file">Import model or checkpoint</label><input ref={fileInput} id="training-file" type="file" accept=".json,application/json" disabled={busy||!!t?.pending||!online} onChange={e=>{
             const file=e.target.files?.[0];artifact.current=null;setPreview(null);if(!file)return;
             void run(async()=>{
@@ -74,6 +75,16 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
           {t?.rollbackGeneration&&<div className="vault-rollback"><p>Pre-change backup: population prepared for generation {t.rollbackGeneration}.</p><button className="vault-button" disabled={busy||!online} onClick={()=>void download('rollback')}>Download backup</button>
             {!confirmRollback?<button className="vault-button" disabled={busy||!online||!!t.pending} onClick={()=>setConfirmRollback(true)}>Restore pre-change backup…</button>:<><p>Restore this population at the next boundary? The population it replaces will become the new backup.</p><button className="vault-button" disabled={busy||!online||!!t.pending} onClick={()=>void run(async()=>{const result=await action('rollback',{rollbackGeneration:t.rollbackGeneration});setMessage(result.message);setConfirmRollback(false);})}>Queue rollback</button><button className="vault-button" disabled={busy} onClick={()=>setConfirmRollback(false)}>Keep current training</button></>}
           </div>}
+          <div className="vault-rollback">
+            <h4>Reset {motion?'Motion Hunt':'Survival'} training</h4>
+            <p>Start again at generation 1 with 24 untrained bots. Clears this mode’s fitness history and best model. Player scores and the other mode’s training are preserved.</p>
+            {!confirmReset?<button className="vault-button" disabled={busy||!online||!status.generation||!!t?.pending} onClick={()=>{setConfirmRollback(false);setConfirmReset({generation:status.generation!,branch:t!.branch});}}>Reset generation…</button>:<div role="group" aria-label="Confirm generation reset">
+              <p>Reset {motion?'Motion Hunt':'Survival'} from generation {confirmReset.generation} to 1 now? The current population will replace the pre-change backup. Download any existing backup you want to keep first.</p>
+              <button className="vault-button" disabled={busy||!online||!!t?.pending} onClick={()=>void run(async()=>{const expected=confirmReset;setConfirmReset(null);const result=await action('reset',expected);artifact.current=null;setPreview(null);if(fileInput.current)fileInput.current.value='';setMessage(result.message);})}>Confirm reset to generation 1</button>
+              <button className="vault-button" disabled={busy} onClick={()=>setConfirmReset(null)}>Keep current generation</button>
+            </div>}
+            {t?.pending&&<p>Cancel the queued training change before resetting.</p>}
+          </div>
         </>}
     </details>
     <button className="vault-refresh" disabled={busy} onClick={()=>void run(refresh)}>Refresh model status</button>{busy&&<p role="status">Working…</p>}{message&&<p className="vault-notice" role="status">{message}</p>}{error&&<p className="vault-error" role="alert">{error}</p>}

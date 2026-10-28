@@ -18,6 +18,7 @@ async function boundary(concurrent=false){
 try{
  const status=await api('/api/training');assert.equal(status.data.configured,true);assert.equal(status.data.authenticated,false);
  assert.equal((await admin('import',{artifact:{}})).status,401);assert.equal((await api('/api/training/export?kind=rollback')).status,401);
+ assert.equal((await admin('reset',{generation:1,branch:1})).status,401);
  assert.equal((await api('/api/training?action=login',{password},{Origin:'https://foreign.example'})).status,403);
  assert.equal((await admin('login',{password:'wrong test-only password'})).status,401);
  const login=await admin('login',{password});assert.equal(login.status,200,JSON.stringify(login.data));cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);
@@ -48,10 +49,37 @@ try{
  assert.equal((await admin('rollback',{rollbackGeneration:applied.training.rollbackGeneration})).status,200);
  const restored=await boundary();assert.equal(restored.training.branch,before.training.branch+2);assert.equal(restored.training.events.at(-1).kind,'rollback');assert.deepEqual(readState().bots.map(b=>b.genome),backup.data.genomes);assert.deepEqual(readState().evolution,backup.data.evolution);
  const queued=await admin('import',{artifact:file});assert.equal(queued.status,200);assert.equal((await admin('cancel',{pendingId:'stale'})).status,409);assert.equal((await admin('cancel',{pendingId:queued.data.training.pending.id})).status,200);assert.equal((await world()).data.training.pending,null);
+ // Reset is immediate, mode-scoped, recoverable and guarded against duplicate/stale confirmations.
+ const motionJoined=await api('/api/arena',{mode:'motion',action:'join',name:'Reset test',profileToken});assert.equal(motionJoined.status,200);
+ try{
+  for(const mode of ['survival','motion']){
+   const key=mode==='motion'?'motion':'shared';
+   const stored=id=>sql(`SELECT revision,state FROM arena WHERE id='${id}'`)[0].results;
+   const own=()=>JSON.parse(stored(key)[0].state),otherKey=mode==='motion'?'shared':'motion';
+   const beforeReset=own(),other=stored(otherKey),otherLatest=stored(`${otherKey}:training:latest`),otherBackup=stored(`${otherKey}:training:rollback`);
+   const currentFile=(await api(`/api/training/export?mode=${mode}&kind=current`)).data;
+   const pendingReset=await admin('import',{mode,artifact:currentFile});assert.equal(pendingReset.status,200);
+   const confirmation={mode,generation:beforeReset.generation,branch:beforeReset.training.branch};
+   assert.equal((await admin('reset',confirmation)).status,409,'pending imports must be cancelled first');
+   assert.equal((await admin('cancel',{mode,pendingId:pendingReset.data.training.pending.id})).status,200);
+   assert.equal((await admin('reset',{mode})).status,409,'a reviewed generation and branch are required');
+   assert.equal((await api('/api/training?action=reset',confirmation,{Origin:'https://foreign.example'})).status,403);
+   const resets=await Promise.all([admin('reset',confirmation),admin('reset',confirmation)]);
+   assert.deepEqual(resets.map(r=>r.status).sort(),[200,409]);
+   const afterReset=own();assert.equal(afterReset.generation,1);assert.equal(afterReset.elapsed,0);assert.deepEqual(afterReset.history,[]);assert.equal(afterReset.bestModel,undefined);assert.equal(afterReset.champion,null);assert.equal(afterReset.training.branch,beforeReset.training.branch+1);
+   assert.deepEqual(afterReset.players,beforeReset.players.map(p=>({...p,contactFrames:[]})));assert.deepEqual(afterReset.obstacles,beforeReset.obstacles);
+   const recovery=await api(`/api/training/export?mode=${mode}&kind=rollback`),latest=await api(`/api/training/export?mode=${mode}&kind=checkpoint`);
+   assert.equal(recovery.status,200);assert.deepEqual(recovery.data.genomes,beforeReset.bots.map(b=>({...b.genome,fitness:0})));assert.deepEqual(recovery.data.evolution,beforeReset.evolution);
+   assert.equal(latest.status,200);assert.equal(latest.data.generation,1);assert.deepEqual(latest.data.genomes,afterReset.bots.map(b=>b.genome));
+   assert.equal((await api(`/api/training/export?mode=${mode}&kind=champion`)).status,409);
+   assert.deepEqual(stored(otherKey),other);assert.deepEqual(stored(`${otherKey}:training:latest`),otherLatest);assert.deepEqual(stored(`${otherKey}:training:rollback`),otherBackup);
+   assert.equal((await admin('reset',confirmation)).status,409,'replaying a successful reset must preserve its backup');
+  }
+ }finally{await api('/api/arena',{mode:'motion',action:'leave'},{Authorization:'Bearer '+motionJoined.data.session.token});}
  assert.equal((await admin('logout')).status,200);assert.equal((await admin('import',{artifact:file})).status,401);
  const again=await admin('login',{password});assert.equal(again.status,200);cookie=again.headers.get('set-cookie').split(';')[0];
  sql("UPDATE arena SET revision=revision+1,state=json_set(state,'$.sessions[0].expires',0) WHERE id='immunity:admin-auth:v1'");assert.equal((await admin('preview',{artifact:file})).status,401);
  // Persistent limiter survives separate requests/worker invocations; do this last.
  await admin('login',{password:'wrong test-only password'});await admin('login',{password:'wrong test-only password'});assert.equal((await admin('login',{password})).status,429);
- console.log('PASS: public exports, private data exclusion, authenticated preview/import, concurrent queue CAS, boundary swap, backup/rollback, mode/player preservation, cancellation, session expiry/logout and persistent login throttling.');
+ console.log('PASS: exports, authenticated imports, concurrent queue/boundary changes, backup/rollback, confirmed mode-specific resets, duplicate/stale reset rejection, archive/player/mode preservation, cancellation, expiry/logout and login throttling.');
 }finally{if(session)await api('/api/arena',{action:'leave'},{Authorization:'Bearer '+session.token});}

@@ -1,5 +1,5 @@
 import {MOTION_CONTROLLER,observePlayers,motionDecision,type MotionHistory} from './motion-observation';
-import {emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
+import {checkpoint,emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
 import {RESOURCE,MOTION_THRESHOLD,atExit,type GameMode} from './game-mode';
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
 import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, type Motion, type Command, type Obstacle } from './physics';
@@ -25,6 +25,24 @@ export function createArena(now:number,mode:GameMode='survival'):Arena {
   a.bots=Array.from({length:POPULATION},(_,id)=>({id,x:0,y:0,vx:0,vy:0,fitness:0,tags:0,genome:createGenome(evolution,mode==='motion'?3:2)}));
   for(const b of a.bots)spawnBot(a,b);
   return a;
+}
+/** Explicit administrator reset. Persist the returned backup/checkpoint with the world CAS. */
+export function resetTraining(a:Arena,now:number):TrainingWrite[]{
+  if(a.training?.pending)throw new Error('Cancel the queued training change before resetting.');
+  const backup=checkpoint(a,now),previous=a.training||emptyTraining(),fresh=createArena(now,a.mode||'survival');
+  const branch=previous.branch+1;
+  a.time=now;a.generation=1;a.elapsed=0;a.totalTags=0;a.roundTags=0;a.species=1;
+  a.bots=fresh.bots.map(b=>{
+    const old=a.bots.find(other=>other.id===b.id);
+    b.homeX=old?.homeX;b.homeY=old?.homeY;spawnBot(a,b);return b;
+  });
+  a.evolution=fresh.evolution;a.history=[];a.bestGeneration=null;a.champion=null;delete a.bestModel;
+  a.collisions=[];
+  // Old frames describe the replaced population, including a possible generation 1.
+  for(const p of a.players)p.contactFrames=[];
+  if(a.mode==='motion'){a.motionHistory={};a.detection=emptyDetection();}
+  a.training={branch,events:[...previous.events,{branch,generation:1,sourceGeneration:backup.generation,kind:'reset' as const,at:now}].slice(-40),pending:null,checkpointGeneration:1,rollbackGeneration:backup.generation};
+  return [{slot:'rollback',artifact:backup},{slot:'latest',artifact:checkpoint(a,now)}];
 }
 // Upgrade an existing live world without discarding its trained genomes or generation history.
 export function upgradeArena(raw:any,now:number):Arena {

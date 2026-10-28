@@ -53,3 +53,14 @@ Motion Hunt now uses `immunity-motion-history-v1` archives with three outputs (s
 ## Menu model manager — 2026-10-27
 
 The menu now provides **Models & admin** with a mode selector, best-model export, current-generation export, and administrator sign-in/import. Automatic boundary checkpoints remain under a disclosure. Current export uses the same v2 checkpoint contract and captures all saved active genomes plus evolution state, with fitness reset for a fresh-generation resume. It never exports player data or writes the arena. The owner configured the hosted password hash privately; deployments preserve the existing authentication/session protections. Local integration and browser evidence are recorded in project state.
+
+
+## Per-mode administrator reset — 2026-10-28
+
+Accepted user request: add a generation reset for each mode. In **Models & admin**, select Survival or Motion Hunt, sign in, and choose **Reset generation…**. Review the named mode and current generation, then choose **Confirm reset to generation 1** or **Keep current generation**. The in-game Training archive exposes the same controls.
+
+A confirmed reset takes effect immediately, including while training is paused. It starts generation 1 with 24 untrained bots, clears elapsed training time, fitness/detection history, champions and the best-model record, and marks a new training branch. Player identities, active lives/runs, scores, cargo, terrain and the other mode remain. Issued contact frames are invalidated because they refer to the old population; fresh bots receive the normal spawn warm-up. Cancel a pending import/rollback before resetting.
+
+The current population/evolution state is saved in the pre-change backup, replacing the previous backup, and the fresh generation becomes the latest checkpoint. Download an existing backup before confirming if you wish to retain it. Recovery uses the existing boundary-based rollback flow and restores the population/evolution state; cleared fitness history and best-model records are not restored. World, backup and checkpoint writes share one revision/commit-marker guarded transaction. Reset requires the existing admin session and same-origin protections, plus the reviewed generation and branch; stale or duplicate confirmations fail without overwriting the recovery backup.
+
+Verification: the isolated reset snapshot passes 117 domain/security tests, TypeScript, production build, the extended authenticated HTTP/D1 fixture (both modes, pending/stale/duplicate rejection, backups and preservation), and all five gameplay fixtures. Changed files add no lint findings; arena retains its existing two errors and eleven warnings. Browser checks cover signed-out protection, sign-in, both mode controls, cancellation, keyboard confirmation, successful reset feedback and phone layout. The developer database and hosted training were not reset. Publication, physical touch, OS reduced-motion and load testing are outside this check.
