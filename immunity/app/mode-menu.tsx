@@ -93,7 +93,8 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
       <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose a mode. Walk with WASD or arrows. Press Enter to play, or tap a mode sign twice." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
         <h1 id="expedition-title">Immunity<svg className="nursery-ornament" viewBox="0 0 300 30" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"><path d="M3 8H119Q140 8 150 26Q160 8 181 8H297"/><path d="M18 13H117Q139 13 150 28Q161 13 183 13H282"/><path d="M124 3Q142 3 147 18M176 3Q158 3 153 18M150 2V25"/></g></svg></h1>
         <svg className={"nursery-pools"+(blocked?" paused":"")} viewBox={`0 0 ${artSize.width} ${artSize.height}`} preserveAspectRatio="none" aria-hidden="true">
-          {(['survival','motion'] as const).map(m=>{const pad=pads[m],cx=pad.x*artSize.width/100,cy=pad.y*artSize.height/100,rx=pad.rX*artSize.width/100,ry=pad.rY*artSize.height/100;return <g key={m} className={'nursery-pool'+(mode===m?' selected':'')} transform={`rotate(${pad.rotation} ${cx} ${cy})`}><ellipse className="pool-wash" cx={cx} cy={cy} rx={rx} ry={ry}/><ellipse className="pool-rim" cx={cx} cy={cy} rx={rx} ry={ry}/>{Array.from({length:14},(_,i)=>{const angle=i*Math.PI*2/14;return <g key={i} transform={`translate(${cx+Math.cos(angle)*rx*.9} ${cy+Math.sin(angle)*ry*.85})`}><circle className="pool-mote" r={2+i%3*.6} style={{'--mote-x':`${Math.cos(angle)*23}px`,'--mote-y':`${-30-Math.abs(Math.sin(angle))*25}px`,animationDelay:`${-i*.31}s`,animationDuration:`${3.5+i%4*.35}s`} as CSSProperties}/></g>;})}</g>;})}
+          <defs><radialGradient id="nursery-pool-light"><stop offset="0" stopColor="#ffe9a3" stopOpacity=".18"/><stop offset=".72" stopColor="#ffd66b" stopOpacity=".25"/><stop offset="1" stopColor="#ffc447" stopOpacity=".52"/></radialGradient></defs>
+          {(['survival','motion'] as const).map(m=>{const pad=pads[m],cx=pad.x*artSize.width/100,cy=pad.y*artSize.height/100,rx=pad.rX*artSize.width/100,ry=pad.rY*artSize.height/100;return <g key={m} className={'nursery-pool'+(mode===m?' selected':'')} transform={`rotate(${pad.rotation} ${cx} ${cy})`}><ellipse className="pool-wash" cx={cx} cy={cy} rx={rx} ry={ry}/><ellipse className="pool-halo" cx={cx} cy={cy} rx={rx} ry={ry}/><ellipse className="pool-rim" cx={cx} cy={cy} rx={rx} ry={ry}/>{Array.from({length:14},(_,i)=>{const angle=i*Math.PI*2/14;return <g key={i} transform={`translate(${cx+Math.cos(angle)*rx*.9} ${cy+Math.sin(angle)*ry*.85})`}><circle className="pool-mote" r={3+i%3*.8} style={{'--mote-x':`${Math.cos(angle)*23}px`,'--mote-y':`${-30-Math.abs(Math.sin(angle))*25}px`,animationDelay:`${-i*.31}s`,animationDuration:`${3.5+i%4*.35}s`} as CSSProperties}/></g>;})}</g>;})}
         </svg>
         <canvas ref={actor} width={180} height={190} className="nursery-survivor" aria-hidden="true"/>
       </div>
@@ -103,7 +104,7 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
       <section className="nursery-reading" aria-label="About this mode">
         <div className="nursery-message" role="status" aria-live="polite" aria-atomic="true">
           {!mode&&<h2>Choose a mode</h2>}
-          <p>{mode?MODE_COPY[mode].text:'Play against sentinels that evolve across generations. Explore a mode to discover what they learn.'}</p>
+          <p>{mode?MODE_COPY[mode].text:'Sentinels evolve across generations. Explore a mode to see what they learn.'}</p>
         </div>
       </section>
       <footer className="nursery-credits">

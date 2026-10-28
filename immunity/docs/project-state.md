@@ -434,3 +434,15 @@ The title above a selected pool now turns gold and emits the same rising seed pa
 ### Golden title publication, 2026-10-28
 
 Published version **32** from hosted source `62bf225ced4903a281fa13949ae02ca59b1c92fa`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_fec575cdc1348191a6466d2b52c42bc7`. Deployment `appgdep_6ae2665432248191b91a53303e7467cd` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com walking selection shows the matching golden title and rising title particles, with no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-golden-titles-live.png`.
+
+
+## Brighter pools and padded explanations, 2026-10-28
+
+Selected pools now have stronger amber water light, a broad soft halo, a brighter rim and larger seed motes. Only light opacity breathes, so the circle stays aligned. Explanation text has more padding inside an enlarged desktop paint wash and real insets on portrait layouts; short screens scroll to retain spacing. Title effects and selection behavior remain.
+
+114 tests, TypeScript, focused lint, build and whitespace pass. Desktop, 390px/320px phones and 1000x400 scrolling layout were reviewed without overflow or footer overlap. Modal pause and a bounded local entry/contact/respawn/rejoin with saved records pass. Physical touch, OS reduced-motion visuals and full HTTP fixtures were not repeated. Evidence: [Motion Hunt](motion-hunt.md#brighter-pools-and-padded-explanations-2026-10-28). Publication receipt follows.
+
+
+### Brighter pool publication, 2026-10-28
+
+Published version **33** from hosted source `6283ea0f1cd787c42d01d7287c6af093fa0e4d6d`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_aa1fb7c682488191b9ec0d4d430f6ce1`. Deployment `appgdep_6ae269a9aea481919d43f250d94843da` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com confirms the brighter selected pool, retained golden title and roomier painted explanation, with no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-brighter-pools-live.png`.
