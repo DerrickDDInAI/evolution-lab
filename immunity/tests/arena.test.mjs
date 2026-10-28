@@ -5,13 +5,13 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
+for(const name of ['behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
-const {inside,movePlayer,moveBody,bodyClear}=await import(pathToFileURL(`${out}/physics.mjs`));
+const {inside,movePlayer,moveBody,bodyClear,playerObstacles}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
 const {createEffects,updateEffects,cancelEffect,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
 const {trackRemote,projectBot,remoteAge,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
@@ -20,6 +20,45 @@ const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
 function runner(a,now=0){const p=join(a,'one','secret','Runner',now,'profile');p.phase='arena';p.x=3000;p.y=3000;p.runStartedAt=now;p.runId='run-one';return p;}
 function parkBots(a){for(const b of a.bots){b.spawnWait=0;b.x=1800;b.y=1800;for(const g of b.genome.genes)g.weight=0;}}
+test('players are solid without damage in both modes and prediction matches sprint blocking',()=>{
+ for(const mode of ['survival','motion'])for(const safe of [false,true]){
+  const a=createArena(0,mode);a.obstacles=[];parkBots(a);const p=runner(a),other=join(a,'two','other','Other',0);
+  p.x=2800;p.y=safe?4950:3200;p.phase=safe?'safe':'arena';p.runStartedAt=safe?null:0;
+  other.x=3000;other.y=p.y;other.phase=p.phase;other.runStartedAt=p.runStartedAt;
+  const initial=structuredClone(p),stationary=structuredClone(other),finished=[];
+  const commands=Array.from({length:60},(_,i)=>({...command(i+1,0,1,0),dash:true}));
+  const predicted=reconcile(initial,commands,playerObstacles(a.obstacles,a.players,p.id),1000);
+  applyCommands(a,p,commands,1000,finished);
+  assert.equal(p.x,predicted.x);assert.equal(p.y,predicted.y);assert.ok(p.x>2967&&p.x<=2968.001);
+  assert.ok(Math.hypot(p.x-other.x,p.y-other.y)>=32);assert.equal(p.vx,0);
+  assert.deepEqual(other,stationary,'contact must not push the other player');
+  assert.equal(p.life,initial.life);assert.deepEqual(p.scores,initial.scores);assert.equal(p.tags,0);assert.equal(a.totalTags,0);assert.equal(finished.length,0);assert.equal(a.collisions.length,0);
+  a.players=a.players.filter(v=>v.id!==other.id);applyCommands(a,p,[command(61,0,1,0)],1100,finished);assert.ok(p.x>2968,'a departed player must stop blocking');
+ }
+});
+test('players slide around another survivor and cannot tunnel through one on a long command',()=>{
+ const obstacles=playerObstacles([],[{id:'one',x:2800,y:3200},{id:'two',x:3000,y:3200}],'one');
+ const p={x:2800,y:3200,vx:0,vy:0,energy:1,phase:'arena',runStartedAt:0,respawnUntil:0};
+ movePlayer(p,{x:1,y:0,dash:false},2,obstacles,2000);assert.ok(p.x<=2968.001);assert.ok(bodyClear(p,16,obstacles));
+ for(let i=0;i<60;i++)movePlayer(p,{x:1,y:1,dash:false},1/60,obstacles,2100);
+ assert.ok(p.x>3000&&p.y>3232);assert.ok(bodyClear(p,16,obstacles));
+});
+test('twelve joins and an occupied respawn keep player bodies separate',()=>{
+ const a=createArena(0);a.obstacles=[];parkBots(a);
+ for(let i=0;i<12;i++)join(a,String(i),'token'+i,'Player',0);
+ for(const p of a.players)assert.ok(bodyClear(p,16,playerObstacles([],a.players,p.id)));
+ const p=a.players[0],other=a.players[1];p.phase='arena';p.runStartedAt=0;p.x=3000;p.y=4700;
+ other.x=3000;other.y=4950;a.bots[0].x=p.x;a.bots[0].y=p.y;advance(a,100);
+ assert.equal(p.life,1);assert.equal(p.phase,'safe');assert.ok(bodyClear(p,16,playerObstacles([],a.players,p.id)));
+});
+test('remote player extrapolation is blocked by survivors without blocking sentinel pursuit',async()=>{
+ const {updatePositions}=await import(pathToFileURL(`${out}/renderer.mjs`));
+ const a=createArena(0);a.obstacles=[];parkBots(a);const p=runner(a),other=join(a,'two','other','Other',0);
+ p.x=2800;p.y=3200;p.vx=430;other.x=3000;other.y=3200;
+ const positions=new Map();updatePositions(snapshot(a),null,positions,0,.5);
+ assert.ok(positions.get('p'+p.id).x<=2968.001);
+ assert.equal(playerObstacles([],a.players,p.id).length,1,'self must never block its own movement');
+});
 test('new players spawn outside, safe contact does not kill, and training waits for entry',()=>{
  const a=createArena(0),p=join(a,'one','secret','Runner',0,'profile');assert.equal(p.phase,'safe');assert.equal(p.runStartedAt,null);assert.ok(!inside(p.x,p.y));
  a.bots[0].x=p.x;a.bots[0].y=p.y;advance(a,200);assert.equal(p.tags,0);assert.equal(a.elapsed,0);assert.equal(p.scores.runs.length,0);

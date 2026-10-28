@@ -7,7 +7,7 @@ import {predictContact,contactResult,type LocalContact} from '../lib/contact-pre
 import type {ContactReply} from '../lib/contact-report';
 import type {CollisionEvent} from '../lib/collision-effects';
 import {renderArena,releaseRenderer,updatePositions,cancelCollision,type View} from '../lib/renderer';
-import {moveActor,movePlayer,MAX_QUEUED_COMMANDS,MAX_PACKET_COMMANDS,type Command} from '../lib/physics';
+import {moveActor,movePlayer,playerObstacles,MAX_QUEUED_COMMANDS,MAX_PACKET_COMMANDS,type Command} from '../lib/physics';
 import {reconcile,type PredictedPlayer} from '../lib/prediction';
 import {correctionFor,decayCorrection,type Correction} from '../lib/net-motion';
 import type {Scores,Run} from '../lib/arena';
@@ -43,7 +43,7 @@ export function useArena(help:boolean,zoom:number){
       if(predicted.current&&predicted.current.life!==auth.life){commands.current=[];if(!extracted)clearInput();}
       commands.current=commands.current.filter(c=>c.seq>auth.ack&&c.life===auth.life);
       sequence.current=Math.max(sequence.current,auth.ack);
-      const next=reconcile(auth,commands.current,data.obstacles,Date.now()+offset.current);
+      const next=reconcile(auth,commands.current,playerObstacles(data.obstacles,data.players,auth.id),Date.now()+offset.current);
       const old=predicted.current?{...predicted.current,x:predicted.current.x+correction.current.x,y:predicted.current.y+correction.current.y}:null;
       correction.current=extracted&&old?{x:old.x-next.x,y:old.y-next.y}:correctionFor(old,next,predicted.current?.life===next.life);predicted.current=next;
     }
@@ -106,7 +106,7 @@ export function useArena(help:boolean,zoom:number){
         accumulator-=1/60;
         if(!contact.current&&sessionRef.current&&predicted.current&&view.current&&!document.hidden&&commands.current.length<MAX_QUEUED_COMMANDS){
           const command={...input,seq:++sequence.current,life:predicted.current.life,dt:1/60};commands.current.push(command);
-          movePlayer(predicted.current,command,command.dt,view.current.obstacles,Date.now()+offset.current);taps.current.clear();
+          movePlayer(predicted.current,command,command.dt,playerObstacles(view.current.obstacles,view.current.players,predicted.current.id),Date.now()+offset.current);taps.current.clear();
           if(signature!==previousInput){previousInput=signature;wake.current();}
         }
       }
@@ -115,7 +115,7 @@ export function useArena(help:boolean,zoom:number){
       let display=predicted.current?{...predicted.current}:null;
       if(display&&world){
         const visual={...display,vx:correction.current.x*60,vy:correction.current.y*60};
-        moveActor(visual,16,1/60,world.obstacles,display.carrying?'safe':display.phase);display.x=visual.x;display.y=visual.y;
+        moveActor(visual,16,1/60,playerObstacles(world.obstacles,world.players,display.id),display.carrying?'safe':display.phase);display.x=visual.x;display.y=visual.y;
       }
       updatePositions(world,self,positions.current,time,networkDelay.current);
       const touching=world?predictContact(display,world.bots,positions.current,world.generation,time,Date.now()+offset.current,sequence.current,world.personal?.contactFrame):null;

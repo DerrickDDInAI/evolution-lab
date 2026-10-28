@@ -6,6 +6,11 @@ export const MAX_QUEUED_COMMANDS = 360;
 export const MAX_PACKET_COMMANDS = 180;
 export const FIELD = { min: 1200, max: 4800, middle: 3000, doorHalf: 125, wall: 24 };
 export type Obstacle = { x: number; y: number; r: number };
+export const PLAYER_RADIUS=16;
+// Survivors block movement like rocks, without pushing or dealing damage.
+export function playerObstacles(obstacles:Obstacle[],players:ReadonlyArray<{id:string;x:number;y:number}>,self:string):Obstacle[]{
+  return [...obstacles,...players.filter(p=>p.id!==self).map(p=>({x:p.x,y:p.y,r:PLAYER_RADIUS}))];
+}
 export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number; carrying?: boolean };
 export type Command = { seq: number; life: number; dt: number; x: number; y: number; dash: boolean };
 export const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));

@@ -6,6 +6,8 @@ Implementation reference for contributors. For setup and play instructions, see 
 
 `lib/physics.ts` supplies the same swept-circle collision, sliding, wall, and boundary rules to players, bots, remote prediction, and display corrections. Body radius and desired speed are actor parameters. The solver checks the whole movement segment, so a long frame cannot skip through a rock. Snapshots publish actual post-collision velocities.
 
+Survivors have radius 16. `playerObstacles` adds every other player as a stationary circular obstacle for authoritative command replay, local prediction/reconciliation, display corrections and remote survivor extrapolation. Both modes and the shore use this rule. Contact stops or slides the mover without pushing, damage, capture events or score changes. Join and death-respawn placement resolve occupied positions. Sentinels retain their existing pursuit/contact rules. HTTP snapshots can differ from current remote positions during latency; this does not provide simultaneous lockstep physics.
+
 Players predict their own movement at 60 Hz. The server replays sequenced commands with a time budget capped at three seconds; acknowledgements prevent duplicate movement and life counters reject inputs sent before a death. Bots simulate at 30 Hz. Remote actors extrapolate bounded movement and ease corrections without teleporting on ordinary packets. A generation transition starts each displayed bot at its fixed home, including when a late snapshot already places it farther away.
 
 New clients negotiate `visible-v1` contact handling. A server overlap with an older player position is **not** a death: that was the source of unseen kills during delayed updates. The browser detects overlap using the exact positions drawn, then submits the contact to the server. Newly introduced bot tracks have 250 ms of visual exposure before contact is eligible. The server validates the issued frame, life, acknowledged input, obstacle clearance, bounded projection/correction and overlap. It then commits the death, score and outside respawn atomically. Reports are private, expire, and are idempotent. The recorded time ends at the validated contact rather than including network confirmation delay. Older tabs retain the previous collision protocol until refreshed or upgraded.
@@ -27,6 +29,8 @@ The best two genomes survive each generation. Compatibility groups share selecti
 - `lib/game-mode.ts`, `app/mode-menu.tsx`: mode identity, objective constants and survivor-controlled selection.
 - `lib/arena.ts`: world simulation, generations, private frame history, deaths and spawns.
 - `lib/physics.ts`: shared movement and collision solver.
+- `lib/behavior-film.ts`, `lib/film-store.ts`, `app/api/film/route.ts`: sampled anonymous highlights, immutable commit-guarded archives and authenticated reads.
+- `app/film-studio.tsx`, `lib/film-renderer.ts`: chronological replay, video export and replay-data download using the existing arena artwork.
 - `lib/training-metrics.ts`, `app/training-organ.tsx`: public training summaries, fitness trends and accessible details.
 - `lib/evolution.ts`: neural activation, topology mutation, compatibility and breeding.
 - `lib/motion-observation.ts`: bounded position histories and experimental attention/steering observations.

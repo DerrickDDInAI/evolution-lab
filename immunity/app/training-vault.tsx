@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {FilmStudio} from './film-studio';
 import {Download,LockKeyhole} from 'lucide-react';
 import type {View} from '../lib/renderer';
 import type {GameMode} from '../lib/game-mode';
@@ -59,6 +60,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
           <button className="vault-button" disabled={busy||!online||!password} type="submit">{busy?'Signing in…':'Sign in'}</button>
         </form>:<>
           <div className="vault-session"><span>Administrator · expires {status.expires?new Date(status.expires).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'soon'}</span><button disabled={busy} onClick={()=>void run(async()=>{await action('logout');artifact.current=null;setPreview(null);setConfirmRollback(false);setConfirmReset(null);setMessage('Signed out.');})}>Sign out</button></div>
+          <FilmStudio key={mode} mode={mode}/>
           <label htmlFor="training-file">Import model or checkpoint</label><input ref={fileInput} id="training-file" type="file" accept=".json,application/json" disabled={busy||!!t?.pending||!online} onChange={e=>{
             const file=e.target.files?.[0];artifact.current=null;setPreview(null);if(!file)return;
             void run(async()=>{

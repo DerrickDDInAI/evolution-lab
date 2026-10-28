@@ -5,7 +5,7 @@ import {readFileSync,mkdirSync,writeFileSync,copyFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/training-tests');mkdirSync(out,{recursive:true});
-const modules=['motion-observation','training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http'];
+const modules=['film-store','behavior-film','motion-observation','training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http'];
 for(const name of modules){
  let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
  for(const dep of modules)code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
@@ -146,4 +146,69 @@ for(const mode of ['survival','motion'])test(`${mode} admin reset restarts train
 test('reset rejects a queued change without changing any world state',()=>{
  const a=createArena(0);queueTraining(a,checkpoint(a,0),'import','queued',0);const before=structuredClone(a);
  assert.throws(()=>resetTraining(a,100),/Cancel the queued/);assert.deepEqual(a,before);
+});
+
+const {recordFilm,finishFilm,filmFrame,filmSummary,orderedFilm,FILM_MAX_FRAMES}=await load('behavior-film');
+const {filmStatements,filmKey,listFilm}=await load('film-store');
+function observed(mode='survival'){
+ const a=createArena(0,mode),p=active(a);p.x=3000;p.y=3200;p.vx=100;
+ for(const b of a.bots){b.x=3000;b.y=3000;b.spawnWait=0;}
+ return {a,p};
+}
+test('real-session recorder keeps bounded windows, records positions without identities and never mutates training',()=>{
+ const {a,p}=observed();
+ for(let i=0;i<225;i++){a.elapsed=i*.2;p.x=3000+i;recordFilm(a,i*200);}
+ assert.ok(a.film.ring.length<=FILM_MAX_FRAMES);assert.ok(a.film.best.length<=FILM_MAX_FRAMES);assert.ok(Object.keys(a.film.slots).length<=12);
+ const before=structuredClone(a);delete before.film;
+ recordFilm(a,45000);const after=structuredClone(a);delete after.film;assert.deepEqual(after,before);
+ const writes=[];finishFilm(a,45000,writes);assert.equal(a.film,undefined);assert.equal(writes.length,1);
+ const clip=writes[0];assert.ok(filmSummary('',clip).duration<=10);assert.equal(clip.generation,1);assert.equal(clip.mode,'survival');
+ assert.ok(clip.frames.every(f=>f.players.every(v=>v[1]===3000+f.t/200)));
+ const text=JSON.stringify(clip);for(const secret of ['Test runner','private-profile','secret','runner','contactFrames','scores','genome','slots'])assert.ok(!text.includes(secret),secret);
+ assert.ok(!('film' in snapshot(a)));clip.obstacles[0].r=999;assert.notEqual(a.obstacles[0].r,999);
+});
+test('confirmed capture outranks other windows and stores observed contact before the respawn',()=>{
+ const {a,p}=observed();
+ for(let i=0;i<60;i++){a.elapsed=i*.2;p.x=3200+i;recordFilm(a,i*200);}
+ const b=a.bots[0];recordFilm(a,12000,{player:p,bot:b,x:3500,y:3200,bx:3520,by:3200});
+ for(let i=60;i<225;i++){a.elapsed=i*.2;p.x=3800;recordFilm(a,i*200);}
+ const writes=[];finishFilm(a,45000,writes);const frames=writes[0].frames,event=frames.find(f=>f.capture);
+ assert.ok(event);assert.deepEqual(event.players.find(v=>v[0]===event.capture.survivor).slice(1),[3500,3200]);assert.deepEqual(event.bots[0].slice(1,3),[3520,3200]);
+ assert.ok(frames.every((f,i)=>!i||f.t>frames[i-1].t));
+});
+test('films survive serialization, separate lives/modes/branches, and cannot span imports or resets',()=>{
+ const {a,p}=observed('motion');recordFilm(a,0);a.elapsed=.3;p.x+=20;recordFilm(a,300);
+ const restored=JSON.parse(JSON.stringify(a));assert.deepEqual(restored.film,a.film);
+ const original=restored.film.ring[0].players[0][0];restored.players[0].life++;restored.elapsed=.6;recordFilm(restored,600);
+ assert.notEqual(restored.film.ring.at(-1).players[0][0],original);
+ restored.training??={branch:1};restored.training.branch=2;restored.elapsed=.9;recordFilm(restored,900);assert.equal(restored.film.ring.length,1);assert.equal(restored.film.branch,2);
+ assert.ok(!('film' in snapshot(restored)));const before=restored.film;restored.generation=3;recordFilm(restored,1000);assert.notEqual(restored.film,before);
+});
+test('completed generations emit immutable highlights before breeding and imports; paused training emits none',()=>{
+ const {a,p}=observed();a.training??={branch:1};
+ a.elapsed=44;p.contactMode='visible-v1';recordFilm(a,0);a.elapsed=44.3;recordFilm(a,300);
+ const writes=[],training=[];a.elapsed=ROUND-.001;advance(a,100,[],training,writes);
+ assert.equal(writes.length,1);assert.equal(writes[0].generation,1);assert.equal(writes[0].branch,1);assert.equal(a.generation,2);assert.equal(writes[0].partial,true);
+ const empty=createArena(0);const no=[];advance(empty,100,[],[],no);assert.equal(no.length,0);assert.equal(empty.film,undefined);
+ const serialized=JSON.stringify(writes[0]);a.bots[0].x=4000;assert.equal(JSON.stringify(writes[0]),serialized);
+});
+test('replay interpolation does not join separate lives or interpolate long observation gaps; chronology survives resets',()=>{
+ const {a}=observed();recordFilm(a,0);a.elapsed=.2;a.players[0].x+=40;recordFilm(a,200);const writes=[];finishFilm(a,200,writes);const clip=writes[0];
+ assert.equal(filmFrame(clip,.1).players[0][1],3020);
+ clip.frames[1].players[0][0]=99;assert.equal(filmFrame(clip,.1).players[0][1],3000);
+ clip.frames[1].t=1000;assert.equal(filmFrame(clip,.5),clip.frames[0]);
+ assert.deepEqual(orderedFilm([{generation:1,createdAt:200},{generation:77,createdAt:100}]).map(v=>v.generation),[77,1]);
+});
+test('highlight writes are immutable and guarded by the winning world commit; listing is mode-isolated and paginated',async()=>{
+ const {DatabaseSync}=await import('node:sqlite'),sql=new DatabaseSync(':memory:');
+ sql.exec('CREATE TABLE arena(id TEXT PRIMARY KEY,revision INTEGER NOT NULL,state TEXT NOT NULL)');
+ const db={prepare(query){return {bind(...args){return {run(){return sql.prepare(query).run(...args);},async all(){return {results:sql.prepare(query).all(...args)};}};}};}};
+ const {a}=observed();recordFilm(a,0);a.elapsed=.2;recordFilm(a,200);const writes=[];finishFilm(a,200,writes);const clip=writes[0];
+ sql.prepare('INSERT INTO arena VALUES(?,0,?)').run('shared',JSON.stringify({commitId:'winner'}));
+ for(const s of filmStatements(db,'survival',[clip],'loser'))s.run();assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM arena').get().n,1);
+ for(const s of filmStatements(db,'survival',[clip],'winner'))s.run();const saved=sql.prepare('SELECT state FROM arena WHERE id=?').get(filmKey(clip)).state;
+ const changed=structuredClone(clip);changed.frames[0].bots[0][1]=0;for(const s of filmStatements(db,'survival',[changed],'winner'))s.run();assert.equal(sql.prepare('SELECT state FROM arena WHERE id=?').get(filmKey(clip)).state,saved);
+ for(let i=1;i<55;i++){const item={...clip,createdAt:i*1000,generation:i};for(const s of filmStatements(db,'survival',[item],'winner'))s.run();}
+ const page=await listFilm(db,'survival');assert.equal(page.clips.length,50);assert.ok(page.before);const older=await listFilm(db,'survival',page.before);assert.equal(older.clips.length,5);assert.equal(older.before,null);
+ assert.equal((await listFilm(db,'motion')).clips.length,0);assert.equal(new Set([...page.clips,...older.clips].map(c=>c.id)).size,55);sql.close();
 });

@@ -1,5 +1,5 @@
 import {GROUND_TILT,SURVIVOR_SIZE,visibleGround,immunityArt,ready,sprite,groundEllipse,depthOrder,overlaps,actorPose,directionalSprite,sprintFrame,sprintSprite,walkFrame,walkSprite,type ActorPose} from './immunity-art';
-import { FIELD, walls, clamp } from './physics';
+import { FIELD, walls, clamp, playerObstacles } from './physics';
 import {createEffects,updateEffects,cancelEffect,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline,type CollisionEvent} from './collision-effects';
 import {trackRemote,type Track} from './net-motion';
 import type { snapshot } from './arena';
@@ -29,19 +29,21 @@ export function updatePositions(state:View|null,self:string|null,positions:Map<s
     if(bot&&previous&&previous.life!==e.life&&'homeX' in e&&Number.isFinite(e.homeX)&&Number.isFinite(e.homeY)){
       previous=trackRemote(undefined,{x:e.homeX!,y:e.homeY!,vx:0,vy:0},-1,e.life,time,0,state?.obstacles);
     }
-    const track=trackRemote(previous,e,state?.simulationTime??state?.serverTime??0,e.life,time,oneWay,state?.obstacles,bot?13:16,phase);
+    const blockers=state&&!bot?playerObstacles(state.obstacles,state.players,String(e.id)):state?.obstacles;
+    const track=trackRemote(previous,e,state?.simulationTime??state?.serverTime??0,e.life,time,oneWay,blockers,bot?13:16,phase);
     positions.set(e.key,track);
   }
 }
-export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null,pendingContact=false){
-  const rect=canvasSize(canvas),dpr=Math.min(devicePixelRatio||1,1.5);
-  if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);}
+export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null,pendingContact=false,film?:{width:number;height:number;camera:{x:number;y:number}}){
+  const rect=canvasSize(canvas),dpr=film?1:Math.min(devicePixelRatio||1,1.5);
+  const width=film?.width??rect.width,height=film?.height??rect.height;
+  if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);}
   const effects=rect.effects,reducedMotion=rect.motion?.matches||false;
   if(state)updateEffects(effects,[...(localEvent?[localEvent]:[]),...(state.collisions||[])],time,Math.max(state.serverTime,localEvent?.at||0));
   const heldImpact=impactCamera(effects,self,time,reducedMotion),ctx=canvas.getContext('2d')!;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  const w=rect.width,h=rect.height,me=state?.players.find(p=>p.id===self);
-  const camera=heldImpact||(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
+  const w=width,h=height,me=state?.players.find(p=>p.id===self);
+  const camera=film?.camera||heldImpact||(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
   const sx=(x:number)=>(x-camera.x)*zoom+w/2,sy=(y:number)=>(y-camera.y)*zoom*GROUND_TILT+h/2;
   const bounds=visibleGround(camera,zoom,w,h),art=immunityArt();
   const visible=(x:number,y:number,pad=220)=>sx(x)>-pad&&sx(x)<w+pad&&sy(y)>-pad&&sy(y)<h+pad;

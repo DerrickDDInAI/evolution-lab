@@ -1,8 +1,9 @@
+import {recordFilm,finishFilm,type FilmCapture,type FilmClip} from './behavior-film';
 import {MOTION_CONTROLLER,observePlayers,motionDecision,type MotionHistory} from './motion-observation';
 import {checkpoint,emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
 import {RESOURCE,MOTION_THRESHOLD,atExit,type GameMode} from './game-mode';
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
-import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, type Motion, type Command, type Obstacle } from './physics';
+import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, playerObstacles, type Motion, type Command, type Obstacle } from './physics';
 import {matchesContact,type ContactFrame,type ContactReport,type ContactReply} from './contact-report';
 import type {CollisionEvent} from './collision-effects';
 import {bestCompletedGeneration,emptyDetection,recordDetection,type DetectionCounts,type TrainingSample} from './training-metrics';
@@ -12,7 +13,7 @@ export type Run={id:string;durationMs:number;generation:number;bot:number;diedAt
 export type Scores={bestMs:number;runs:Run[]};
 export type Player=Motion & {id:string;token:string;profileId:string;name:string;lastSeen:number;tags:number;life:number;ack:number;moveAt:number;credit:number;runId:string|null;scores:Scores;lastDeath:Run|null;carrying?:boolean;contactMode?:'visible-v1';contactFrames?:ContactFrame[]};
 export type Bot={id:number;x:number;y:number;vx:number;vy:number;fitness:number;tags:number;genome:Genome;homeX?:number;homeY?:number;spawnWait?:number};
-export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState;motionController?:string;motionHistory?:MotionHistory;detection?:DetectionCounts};
+export type Arena={version:2;mode?:GameMode;time:number;generation:number;elapsed:number;totalTags:number;species:number;players:Player[];bots:Bot[];obstacles:Obstacle[];history:TrainingSample[];bestGeneration?:TrainingSample|null;champion:Genome|null;evolution:Evolution;roundTags:number;collisions?:CollisionEvent[];commitId?:string;bestModel?:TrainingArtifact;training?:TrainingState;motionController?:string;motionHistory?:MotionHistory;detection?:DetectionCounts;film?:FilmCapture};
 export type FinishedRun=Run & {profileId:string};
 function obstacles(e:Evolution):Obstacle[]{
   return Array.from({length:60},()=>({x:FIELD.min+180+random(e)*3240,y:FIELD.min+180+random(e)*3240,r:35+random(e)*60}))
@@ -37,7 +38,7 @@ export function resetTraining(a:Arena,now:number):TrainingWrite[]{
     b.homeX=old?.homeX;b.homeY=old?.homeY;spawnBot(a,b);return b;
   });
   a.evolution=fresh.evolution;a.history=[];a.bestGeneration=null;a.champion=null;delete a.bestModel;
-  a.collisions=[];
+  a.collisions=[];delete a.film;
   // Old frames describe the replaced population, including a possible generation 1.
   for(const p of a.players)p.contactFrames=[];
   if(a.mode==='motion'){a.motionHistory={};a.detection=emptyDetection();}
@@ -51,7 +52,7 @@ export function upgradeArena(raw:any,now:number):Arena {
   if(raw.mode==='motion'&&raw.motionController!==MOTION_CONTROLLER){
     const fresh=createArena(now,'motion');
     Object.assign(raw,{motionController:MOTION_CONTROLLER,motionHistory:{},detection:emptyDetection(),time:now,generation:1,elapsed:0,totalTags:0,species:1,bots:fresh.bots,evolution:fresh.evolution,history:[],bestGeneration:null,champion:null,roundTags:0,collisions:[],training:emptyTraining()});
-    delete raw.bestModel;
+    delete raw.bestModel;delete raw.film;
     for(const p of raw.players)p.contactFrames=[];
   }
   if(raw.mode==='motion')raw.detection??=emptyDetection(raw.elapsed>0);
@@ -81,12 +82,13 @@ export function spawnBot(a:Arena,b:Bot) {
   ensureHome(a,b);b.x=b.homeX!;b.y=b.homeY!;b.vx=0;b.vy=0;b.spawnWait=SPAWN_WARMUP;
 }
 export const botReady=(b:Pick<Bot,'spawnWait'>)=>(b.spawnWait??0)<=0;
-export function respawn(p:Player,now:number,dead=true) {
+export function respawn(p:Player,now:number,dead=true,obstacles:Obstacle[]=[]) {
   // Return to the nearest door's outside staging area; first joins use the south door.
   const distances=[Math.abs(p.y-FIELD.min),Math.abs(p.x-FIELD.max),Math.abs(p.y-FIELD.max),Math.abs(p.x-FIELD.min)];
   const side=dead?distances.indexOf(Math.min(...distances)):2;
   const points=[[3000,1050],[4950,3000],[3000,4950],[1050,3000]];
   p.carrying=false;[p.x,p.y]=points[side];p.vx=0;p.vy=0;p.energy=1;p.phase='safe';p.runStartedAt=null;p.runId=null;p.respawnUntil=dead?now+1200:0;
+  moveActor(p,16,0,obstacles,'safe');
   if(dead)p.life++;
 }
 export function join(a:Arena,id:string,token:string,name:string,now:number,profileId='',scores:Scores={bestMs:0,runs:[]}) {
@@ -94,6 +96,7 @@ export function join(a:Arena,id:string,token:string,name:string,now:number,profi
   const p:Player={id,token,profileId,name,x:3000,y:4950,vx:0,vy:0,energy:1,phase:'safe',runStartedAt:null,respawnUntil:0,lastSeen:now,tags:0,life:0,ack:0,moveAt:now,credit:.25,runId:null,scores,lastDeath:null};
   // Slight spacing keeps new players distinguishable at the shared staging door.
   p.x+=a.players.filter(p=>p.phase==='safe').length%5*34-68;
+  moveActor(p,16,0,playerObstacles(a.obstacles,a.players,p.id),'safe');
   a.players.push(p);return p;
 }
 function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?:{generation:number;x:number;y:number;bx:number;by:number;at?:number;moving?:boolean}) {
@@ -103,6 +106,7 @@ function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?
   // Modern clients commit only a validated contact against an issued frame.
   if(p.contactMode==='visible-v1'&&!observed)return;
   const contact={life:p.life,x:observed?.x??p.x,y:observed?.y??p.y,bx:observed?.bx??b.x,by:observed?.by??b.y};
+  if(!observed||observed.generation===a.generation)recordFilm(a,now,{player:p,bot:b,...contact});
   const endedAt=observed?.at??now;
   const run:Run={id:p.runId||crypto.randomUUID(),durationMs:Math.max(0,Math.round(endedAt-p.runStartedAt)),generation:observed?.generation??a.generation,bot:b.id,diedAt:endedAt};
   p.scores={bestMs:a.mode==='motion'?p.scores.bestMs:Math.max(p.scores.bestMs,run.durationMs),runs:[run,...p.scores.runs].slice(0,10)};p.lastDeath=run;p.tags++;
@@ -112,7 +116,7 @@ function kill(a:Arena,p:Player,b:Bot,now:number,finished:FinishedRun[],observed?
     b.fitness+=rewarded?50:-25;
     if(rewarded){b.tags++;a.roundTags++;}
   }
-  a.totalTags++;respawn(p,now);
+  a.totalTags++;respawn(p,now,true,playerObstacles(a.obstacles,a.players,p.id));
   a.collisions=[...(a.collisions||[]).filter(e=>now-e.at<5000),{id:crypto.randomUUID(),playerId:p.id,bot:b.id,...contact,respawnX:p.x,respawnY:p.y,at:now}].slice(-24);
 }
 // Keep a bounded, private history of frames issued to each player for contact validation.
@@ -144,6 +148,7 @@ export function missionProgress(a:Arena,p:Player,now:number,finished:FinishedRun
   p.carrying=false;p.phase='safe';p.runStartedAt=null;p.runId=null;p.respawnUntil=0;p.life++;
 }
 export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,finished:FinishedRun[],allowExtraction=true) {
+  const blockers=playerObstacles(a.obstacles,a.players,p.id);
   p.credit=Math.min(MAX_MOVEMENT_CREDIT,p.credit+Math.max(0,(now-p.moveAt)/1000));p.moveAt=now;p.lastSeen=now;
   for(const c of commands){
     if(c.seq<=p.ack)continue;
@@ -151,7 +156,7 @@ export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,fin
     p.ack=c.seq;
     if(c.life!==p.life||c.dt>p.credit+1e-7)continue;
     p.credit=Math.max(0,p.credit-c.dt);
-    const wasSafe=p.phase==='safe';movePlayer(p,c,c.dt,a.obstacles,now);
+    const wasSafe=p.phase==='safe';movePlayer(p,c,c.dt,blockers,now);
     if(wasSafe&&p.phase==='arena')p.runId=crypto.randomUUID();
     if(p.phase==='arena'){
       const bot=a.bots.find(b=>botReady(b)&&Math.hypot(p.x-b.x,p.y-b.y)<=29);
@@ -161,12 +166,12 @@ export function applyCommands(a:Arena,p:Player,commands:Command[],now:number,fin
   }
   if(!commands.length){p.vx=0;p.vy=0;}
 }
-export function advance(a:Arena,now:number,finished:FinishedRun[]=[],trainingWrites:TrainingWrite[]=[]) {
+export function advance(a:Arena,now:number,finished:FinishedRun[]=[],trainingWrites:TrainingWrite[]=[],filmWrites:FilmClip[]=[]) {
   a.players=a.players.filter(p=>now-p.lastSeen<15000);
   let remaining=Math.min(MAX_MOVEMENT_CREDIT,Math.max(0,(now-a.time)/1000));a.time=now;
-  while(remaining>1e-7){const dt=Math.min(1/30,remaining);remaining-=dt;step(a,dt,now,finished,trainingWrites);}
+  while(remaining>1e-7){const dt=Math.min(1/30,remaining);remaining-=dt;step(a,dt,now,finished,trainingWrites,filmWrites);}
 }
-function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites:TrainingWrite[]) {
+function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites:TrainingWrite[],filmWrites:FilmClip[]) {
   const active=a.players.filter(p=>p.phase==='arena');
   if(!active.length){for(const b of a.bots){b.vx=0;b.vy=0;}return;}
   a.elapsed+=dt;
@@ -218,7 +223,9 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
     if(after<=29)kill(a,target,b,now,finished);
   }
   if(!a.players.some(p=>p.phase==='arena'))for(const b of a.bots){b.vx=0;b.vy=0;}
+  recordFilm(a,now);
   if(a.elapsed>=ROUND){
+    finishFilm(a,now,filmWrites);
     for(const b of a.bots)b.genome.fitness=b.fitness;
     const result=breed(a.bots.map(b=>b.genome),a.evolution);
     a.history.push({branch:a.training?.branch||1,generation:a.generation,fitness:result.best.fitness,meanFitness:a.bots.reduce((sum,b)=>sum+b.fitness,0)/a.bots.length,tags:a.roundTags,...(a.mode==='motion'&&a.detection?{detection:{...a.detection}}:{})});

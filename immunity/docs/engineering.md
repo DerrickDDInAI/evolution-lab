@@ -40,6 +40,8 @@ The separate [training import fixture](training-checkpoints.md#verification) req
 
 These are HTTP checks and controlled SQLite fixtures, not rendered-browser tests, realistic network fault simulation, 12-player load testing or evidence of production D1 behavior.
 
+`ARENA_TEST_URL=http://127.0.0.1:5173 node tests/player-collision.mjs` separately checks both modes' sprint/head-on blocking, sliding and unchanged lives/scores against the same disposable preview. `tests/behavior-film.mjs` additionally requires `IMMUNITY_TEST_PASSWORD` and fresh fixture worlds; it checks automatic recording, confirmed capture, private authenticated archives and immutable generation clips. Run credentialed fixtures without browser sign-ins or other fixture activity: the training-import fixture deliberately expires its session and exercises the login limiter.
+
 ## Experience review
 
 For affected UI behavior, the builder (or named reviewer) walks the complete task: join safely, cross a door, move/sprint, observe a visible touch, confirm a stopped timer and outside respawn, rejoin and inspect saved scores. Check feedback and the next action during joining, disconnection, rejected/pending contact, session expiry and recovery. Use disposable data when simulating interruptions. Check keyboard focus, narrow/touch layouts and reduced motion where affected. Record build/revision, browser/device, expected/observed results and explicit gaps in the current handoff. A screenshot alone does not establish behavior.
