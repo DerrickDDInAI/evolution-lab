@@ -97,8 +97,8 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
         </svg>
         <canvas ref={actor} width={180} height={190} className="nursery-survivor" aria-hidden="true"/>
       </div>
-      <div className="nursery-experiments" aria-label="Choose a mode">
-        {(['survival','motion'] as const).map(m=><button key={m} type="button" className={'nursery-label '+m+(mode===m?' selected':'')} disabled={blocked} aria-pressed={mode===m} aria-describedby="nursery-input-hint" onPointerEnter={e=>{if(e.pointerType==='mouse')preview(m);}} onFocus={()=>preview(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat){e.preventDefault();confirm(m);}}} onClick={()=>activate(m)}><strong>{modeName(m)}</strong><span>{MODE_COPY[m].goal}</span></button>)}
+      <div className={"nursery-experiments"+(blocked?" paused":"")} aria-label="Choose a mode">
+        {(['survival','motion'] as const).map(m=><button key={m} type="button" className={'nursery-label '+m+(mode===m?' selected':'')} disabled={blocked} aria-pressed={mode===m} aria-describedby="nursery-input-hint" onPointerEnter={e=>{if(e.pointerType==='mouse')preview(m);}} onFocus={()=>preview(m)} onKeyDown={e=>{if(e.key==='Enter'&&!e.repeat){e.preventDefault();confirm(m);}}} onClick={()=>activate(m)}><strong>{modeName(m)}<svg className="title-motes" viewBox="0 0 200 32" preserveAspectRatio="none" aria-hidden="true">{Array.from({length:7},(_,i)=><g key={i} transform={`translate(${14+i*28} ${20+i%3*3})`}><circle className="pool-mote" r={1.4+i%3*.3} style={{'--mote-x':`${(i%3-1)*9}px`,'--mote-y':`${-25-i%3*6}px`,animationDelay:`${-i*.53}s`,animationDuration:`${3.5+i%4*.35}s`} as CSSProperties}/></g>)}</svg></strong><span>{MODE_COPY[m].goal}</span></button>)}
       </div>
       <section className="nursery-reading" aria-label="About this mode">
         <div className="nursery-message" role="status" aria-live="polite" aria-atomic="true">

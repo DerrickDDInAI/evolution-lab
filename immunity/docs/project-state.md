@@ -422,3 +422,15 @@ Refined the selected Living clearing following user feedback: textured pigment e
 ### Painterly detail publication, 2026-10-28
 
 Published version **31** from hosted source `cd62882e9ca664b0b138f01af50e7c4bf3325434`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_c80d6e808c588191bba646f1910752b0`. Deployment `appgdep_6ae261b618d48191a9bf8e81fd65cda2` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com desktop and 390x844 phone checks confirmed the painted edges, restored ornament, explanation without repeated heading, no selected-name underline and golden pool particles. No horizontal overflow, em dashes or browser warnings/errors. No production game was joined. Ignored screenshots: `outputs/evogoo-painterly-clearing-live.png` and `outputs/evogoo-painterly-clearing-phone.png`.
+
+
+## Golden mode titles, 2026-10-28
+
+The title above a selected pool now turns gold and emits the same rising seed particles as the circle. Selecting another mode restores the previous title's green color and stops its particles. Goal text stays dark, particles pause behind dialogs, and reduced-motion styling keeps them still. Reuses existing selection behavior; no gameplay logic changed.
+
+114 tests, TypeScript, focused lint and build pass. Desktop/phone browser review, walking selection, modal pause and a bounded local entry/contact/respawn/rejoin with retained records pass. Physical touch, OS reduced-motion visuals and full HTTP fixtures were not rerun. Details are in [Motion Hunt](motion-hunt.md#golden-mode-titles-2026-10-28). Publication receipt follows.
+
+
+### Golden title publication, 2026-10-28
+
+Published version **32** from hosted source `62bf225ced4903a281fa13949ae02ca59b1c92fa`; saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_fec575cdc1348191a6466d2b52c42bc7`. Deployment `appgdep_6ae2665432248191b91a53303e7467cd` succeeded with public audience and environment revision 1 unchanged. Live https://evogoo.com walking selection shows the matching golden title and rising title particles, with no browser warnings/errors. No production game was joined. Screenshot: ignored `outputs/evogoo-golden-titles-live.png`.

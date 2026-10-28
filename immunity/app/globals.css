@@ -39,8 +39,12 @@
 .nursery-experiments{position:absolute;inset:0;pointer-events:none}
 .nursery-label{position:absolute;z-index:4;top:21.8%;width:20%;height:9.7%;min-height:44px;padding:.55cqw 1.4cqw;display:flex;flex-direction:column;gap:.4cqw;align-items:center;justify-content:center;background:none;border:0;border-radius:45%;font-family:Georgia,serif;color:#102f28;pointer-events:auto;text-shadow:0 1px 2px #fff8df;transition:filter .18s}
 .nursery-label.survival{left:23%;transform:rotate(-5deg)}.nursery-label.motion{left:57%;transform:rotate(4deg)}
-.nursery-label strong{font-size:clamp(14px,1.65cqw,32px);text-transform:uppercase}.nursery-label span{font-size:clamp(11px,.92cqw,17px);line-height:1.35;text-wrap:balance}
+.nursery-label strong{position:relative;transition:color .4s,text-shadow .4s;font-size:clamp(14px,1.65cqw,32px);text-transform:uppercase}.nursery-label span{font-size:clamp(11px,.92cqw,17px);line-height:1.35;text-wrap:balance}
 .nursery-label:hover,.nursery-label.selected{background:none}
+.nursery-label.selected strong{color:#926019;text-shadow:0 1px 1px #fff5ce,0 0 10px #e6b45465}
+.title-motes{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;opacity:0;transition:opacity .35s}
+.nursery-label.selected .title-motes{opacity:1}
+.nursery-label.selected .pool-mote{animation-play-state:running}.nursery-experiments.paused .pool-mote{animation-play-state:paused}
 .nursery-label:focus-visible{outline:2px solid #825728;outline-offset:3px}
 .nursery-pools{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
 .nursery-pool{opacity:0;transition:opacity .2s}.nursery-pool.selected{opacity:1}
@@ -79,7 +83,7 @@
  .nursery-credits button{grid-row:2}.nursery-credits button:first-child{justify-self:start}.nursery-credits button:last-child{justify-self:end}
  .nursery-instructions{grid-column:1/-1;grid-row:1;font-size:11px;margin:0;gap:0 8px}
 }
-@media(prefers-reduced-motion:reduce){.nursery-label,.nursery-pool{transition:none}.pool-mote{animation:none;opacity:.55}}
+@media(prefers-reduced-motion:reduce){.nursery-label,.nursery-label strong,.title-motes,.nursery-pool{transition:none}.pool-mote{animation:none;opacity:.55}}
 
 /* Tidal Lens: opaque reading membranes inside fine, translucent shell edges. */
 .in-expedition{--ink:#102e32;--pearl:#fff3d9;--subtle:#d0e1da;--gold:#ffda8b;--aqua:#95e5df;position:relative;height:100dvh;min-height:600px;padding:0;background:#244e49;isolation:isolate;color:var(--pearl)}
