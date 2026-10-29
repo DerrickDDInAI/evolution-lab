@@ -15,6 +15,7 @@ Start with [AGENTS.md](../AGENTS.md) and [project state](project-state.md). Read
 | Two-mode survivor menu, Motion Hunt collection/extraction rules and verification | [Motion Hunt](motion-hunt.md) |
 | Controller inputs, fitness, networking and persistence | [Architecture and learning](architecture.md) |
 | Choosing checks, integration precautions, CI and skill availability | [Engineering](engineering.md) |
+| Reproducing local player/sentinel capacity tests and interpreting their limits | [Capacity measurements](performance.md) |
 | Starting a focused product, research, implementation or testing chat | [Chat starters](agents/chat-starters.md) |
 
 Update the owning page when meaningful knowledge changes. Link evidence and date reviews; distinguish implementation facts from proposals and accepted decisions. Re-read before editing shared pages. Create a new topic page only when a substantial outcome needs it, and add its link here.

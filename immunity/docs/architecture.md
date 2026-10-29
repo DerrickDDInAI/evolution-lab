@@ -14,7 +14,7 @@ New clients negotiate `visible-v1` contact handling. A server overlap with an ol
 
 This is a casual training experiment, not a cheat-resistant competitive server. Visible-contact detection relies on the browser reporting contacts; modified clients could withhold reports. The server still validates submitted contacts and movement, owns bot evolution and durable scores, and keeps player identities private. A competitive version needs a persistent room server, synchronized input history and stronger replay verification.
 
-Transport is serialized HTTP polling with a 60 ms interval plus network latency. It is not a WebSocket room. Smoothing removes position snaps, but cannot eliminate delayed information or connection outages. The 12-player cap is enforced; maximum-load performance is not established.
+Transport is serialized HTTP polling with a 60 ms interval plus network latency. It is not a WebSocket room. Smoothing removes position snaps, but cannot eliminate delayed information or connection outages. The 12-player cap is enforced; [local load evidence](performance.md#repaired-local-results-2026-10-29) covers both modes at that cap. Hosted, WAN and physical-device limits remain unverified.
 
 ## Learning
 
@@ -28,6 +28,7 @@ The best two genomes survive each generation. Compatibility groups share selecti
 
 - `lib/game-mode.ts`, `app/mode-menu.tsx`: mode identity, objective constants and survivor-controlled selection.
 - `lib/arena.ts`: world simulation, generations, private frame history, deaths and spawns.
+- `lib/arena-write-queue.ts`: bounded per-mode write tickets with request-owned waiting and abandoned-request leases; database guards remain authoritative.
 - `lib/physics.ts`: shared movement and collision solver.
 - `lib/behavior-film.ts`, `lib/film-store.ts`, `app/api/film/route.ts`: sampled anonymous highlights, immutable commit-guarded archives and authenticated reads.
 - `app/film-studio.tsx`, `lib/film-renderer.ts`: chronological replay, video export and replay-data download using the existing arena artwork.
@@ -43,5 +44,7 @@ The best two genomes survive each generation. Compatibility groups share selecti
 - `db/schema.ts`, `drizzle/`: persistent arena and personal run records.
 
 D1 compare-and-swap revisions serialize world updates. A unique commit marker guards score inserts in the same transaction, so failed retries cannot create duplicate scores. Session tokens stay in session storage and anonymous score identities in local storage; only hashes are persisted server-side. Clearing browser storage creates a new identity. Frame histories, identity hashes and private records are excluded from public world snapshots.
+
+Within one Worker isolate, arena POSTs and administrator training operations take a FIFO turn per mode through `lib/arena-write-queue.ts`. Shared state contains only numeric ticket/lease metadata, never cached arenas, shared promises or request I/O objects. At most 64 writes are pending per mode. Each caller waits on its own short timer, times out after five seconds in the queue, and has a ten-second active lease so abandoned requests cannot permanently lock the mode. Failed/completed operations release their ticket; stale leases are reaped on subsequent activity and idle queues are removed. Every operation still reads fresh D1 state and uses the existing revision/commit-marker guards; those remain necessary for other isolates, migration writers and an unusually slow operation outliving its lease. This local coordination prevents repeated conflict losses from starving a player until their 15-second session expires. It does not create a globally synchronized room or establish distributed capacity.
 
 Motion Hunt uses the `motion` arena row; Survival retains `shared`. Mode-specific anonymous profile hashes separate records without a schema migration; `bot = -1` represents an extraction, and only successful extractions contribute to its fastest time. World transitions and run inserts share the existing atomic commit guard. See [Motion Hunt implementation and verification](motion-hunt.md).

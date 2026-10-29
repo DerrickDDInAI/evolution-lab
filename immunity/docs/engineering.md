@@ -1,6 +1,6 @@
 # Engineering and verification
 
-The [README](../README.md#development) owns installation, build, database migration and preview commands; the [module map](architecture.md#modules) owns architecture facts. [AGENTS.md](../AGENTS.md) owns development rules. This page explains check selection and limits.
+The [README](../README.md#run-locally) owns installation, build, database migration and preview commands; the [module map](architecture.md#modules) owns architecture facts. [AGENTS.md](../AGENTS.md) owns development rules. This page explains check selection and limits.
 
 ## Routine checks
 
@@ -9,7 +9,7 @@ Run from the `immunity/` game directory with Node.js >=22.13 (setup reviewed wit
 | Command | Evidence and limits |
 | --- | --- |
 | `npm run verify` | Runs `npm test` and `npm run typecheck`, stopping on failure. No browser, D1 or deployment validation. |
-| `npm test` | Node tests transpile domain modules into ignored `.sites-runtime/tests/`. Covers movement, collision, contact, evolution, timing, privacy and reconciliation rules; transpilation alone is not type checking. |
+| `npm test` | Node tests transpile domain modules into ignored `.sites-runtime/tests/`. Covers movement, collision, contact, evolution, timing, privacy and reconciliation rules, bounded write coordination/leases, and the built preview's inspector/secret/argument regression checks; transpilation alone is not type checking. |
 | `node --test --test-name-pattern='visible contact' tests/arena.test.mjs` | Focused domain regression selection; choose the matching test name and confirm it actually ran. |
 | `npm run typecheck` | TypeScript static checks, no incremental output. Excludes `examples/` per the existing config. |
 | `npm run lint` | Existing ESLint rules; currently fails. See dated baseline in project state and separate existing findings from introduced ones. |
@@ -17,6 +17,8 @@ Run from the `immunity/` game directory with Node.js >=22.13 (setup reviewed wit
 | `npm run test:integration` | Ordered local HTTP/D1 checks described below. Requires a running prepared preview. |
 
 Documentation-only changes need local-link/anchor review, source-backed facts, consistency and `git diff --check`. For code changes choose the relevant checks; do not describe a unit pass as a browser or production pass.
+
+For [capacity tests](performance.md), use the built `npm start` preview with its default disabled inspector. The pinned Wrangler CLI's `--inspector-port 0` still creates a leaking headless inspector, so invoking that CLI directly invalidates long-run capacity measurements. The built launcher uses the existing programmatic API's `dev.inspector: false` and owns runtime disposal. `--inspect` is reserved for interactive debugging; use `npm run dev` for source watching. Keep test worlds and administrator credentials disposable.
 
 ## Local integration checks
 

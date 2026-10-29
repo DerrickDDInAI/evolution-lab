@@ -4,6 +4,7 @@ import {MOTION_CONTROLLER,MOTION_INPUTS} from '../../../lib/motion-observation';
 import {type TrainingWrite} from '../../../lib/training-checkpoints';
 import {checkpointStatements} from '../../../lib/training-store';
 import {arenaKey,modeProfile,type GameMode} from '../../../lib/game-mode';
+import {withArenaWrite,ArenaWriteQueueFull} from '../../../lib/arena-write-queue';
 import { env } from 'cloudflare:workers';
 import { createArena,upgradeArena,advance,applyCommands,join,snapshot,rememberContactFrame,confirmContact,type Arena,type Scores,type Run,type FinishedRun } from '../../../lib/arena';
 import {validContactReport,type ContactReply} from '../../../lib/contact-report';
@@ -69,6 +70,7 @@ export async function POST(request:Request){
   const token=input.action==='join'?crypto.randomUUID():bearer;
   const hash=await digest(token),profileId=input.action==='leave'?'':await digest(modeProfile(input.profileToken,mode)),id=crypto.randomUUID();
   try{
+    return await withArenaWrite(arenaKey(mode),async()=>{
     const db=await database();
     let row=await read(db,mode);
     if(!row)await db.prepare("INSERT OR IGNORE INTO arena (id,revision,state) VALUES (?,0,?)").bind(arenaKey(mode),JSON.stringify(createArena(Date.now(),mode))).run();
@@ -111,5 +113,6 @@ export async function POST(request:Request){
       if(result[0].meta.changes===1)return json({...snapshot(a,hash),...(contactReply?{contactReply}:{}),...(input.action==='join'?{session:{id,token}}:{})});
     }
     return json({error:'Arena busy. Reconnecting…'},503);
-  }catch(error){console.error('Arena update failed',error instanceof Error?error.message:'database failure');return json({error:'The arena is temporarily unavailable. Please retry.'},503);}
+    });
+  }catch(error){if(error instanceof ArenaWriteQueueFull)return json({error:error.message},503);console.error('Arena update failed',error instanceof Error?error.message:'database failure');return json({error:'The arena is temporarily unavailable. Please retry.'},503);}
 }

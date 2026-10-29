@@ -1,6 +1,7 @@
 import {env} from 'cloudflare:workers';
 import {createArena,upgradeArena,resetTraining,type Arena} from '../../../lib/arena';
 import {arenaKey,type GameMode} from '../../../lib/game-mode';
+import {withArenaWrite,ArenaWriteQueueFull} from '../../../lib/arena-write-queue';
 import {MAX_IMPORT_BYTES,parseTrainingArtifact,queueTraining,trainingSummary} from '../../../lib/training-checkpoints';
 import {adminConfigured,adminSession,requireAdmin,requireSameOrigin,loginAdmin,logoutAdmin,sessionCookie,AdminError} from '../../../lib/admin-auth';
 import {readCheckpoint,checkpointStatements} from '../../../lib/training-store';
@@ -29,6 +30,7 @@ export async function POST(request:Request){try{
   await requireAdmin(db,request,hash);
   const input=await boundedJson(request,MAX_IMPORT_BYTES+2048),mode=modeFrom(input.mode);
   if(!['preview','import','rollback','cancel','reset'].includes(action||''))throw new AdminError('Unknown training action.',400);
+  return await withArenaWrite(arenaKey(mode),async()=>{
   let artifact;
   if(action==='preview'||action==='import'){
     if(JSON.stringify(input.artifact??null).length>MAX_IMPORT_BYTES)throw new AdminError('The file is too large (maximum 512 KiB).',413);
@@ -65,4 +67,5 @@ export async function POST(request:Request){try{
     if(result.meta.changes===1)return json({training:trainingSummary(a),message:action==='cancel'?'Queued change cancelled.':'Queued for the next generation boundary. Training waits for active players.'});
   }
   throw new AdminError('The arena is busy. Please retry.',503);
-}catch(error){return trainingFailure(error);}finally{await discardRequestBody(request);}}
+  });
+}catch(error){return trainingFailure(error instanceof ArenaWriteQueueFull?new AdminError(error.message,503):error);}finally{await discardRequestBody(request);}}

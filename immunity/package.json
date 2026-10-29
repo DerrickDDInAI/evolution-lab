@@ -12,7 +12,7 @@
     "start": "node --import ./scripts/sites-env.mjs scripts/start-preview.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --test tests/arena.test.mjs tests/training.test.mjs",
+    "test": "node --test tests/arena.test.mjs tests/training.test.mjs tests/preview.test.mjs tests/arena-write-queue.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "verify": "npm test && npm run typecheck",
     "test:integration": "node scripts/test-integration.mjs",

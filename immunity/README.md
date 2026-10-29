@@ -23,7 +23,7 @@ Stillness may help in Motion Hunt, but detection is experimental and physical co
 
 Each arena has 24 sentinels. After 45 seconds of active simulation, selection and mutation produce the next generation. Training pauses when nobody is inside. Open **Adaptation** to inspect fitness, generations and Motion Hunt detection measurements.
 
-This is a **NEAT-inspired** experiment, not a claim of consistently improving AI. Changing human opponents affect fitness, and higher fitness alone does not establish better performance. The game supports up to 12 players per arena; maximum-load performance is still unverified.
+This is a **NEAT-inspired** experiment, not a claim of consistently improving AI. Changing human opponents affect fitness, and higher fitness alone does not establish better performance. The game supports up to 12 players per arena. [Local load checks](docs/performance.md#repaired-local-results-2026-10-29) cover twelve players in each mode simultaneously; hosted, WAN and physical-device capacity remain unverified.
 
 ## Run locally
 
@@ -44,6 +44,8 @@ npm start -- --port 5173
 ```
 
 Open **http://127.0.0.1:5173**. For development with live rebuilds, use `npm run dev -- --port 5173 --hostname 127.0.0.1` instead of `npm start`.
+
+The built preview keeps the inspector disabled for sustained runs. For interactive debugging, opt in with `npm start -- --port 5173 --inspect`; `--inspector-port` chooses its port but does not enable it on its own. The launcher keeps local D1 state and loads an existing ignored `.dev.vars`. See [capacity measurements](docs/performance.md#instability-repair-investigation-2026-10-29) for the pinned preview inspector bug and retest evidence.
 
 ## Checks
 
