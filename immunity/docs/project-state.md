@@ -507,3 +507,11 @@ Current twelve-player/24-sentinel settings are unchanged and locally validated a
 ### Repair release authorized, 2026-10-29
 
 The owner explicitly requested committing, pushing and deploying the tested fixes. Release preparation reuses the reviewed application/runner hashes and the 136-test, build, isolated integration, browser and load evidence above. The existing public Site identity, D1 binding, administrator secret, production scores and learned populations are retained. No schema change or production fixture is required. The exact committed game source will be built and packaged in a separate hosted-source checkout; publication receipt follows after success.
+
+### Repair publication, 2026-10-29
+
+Fix commit `5f6399eb991595d2f563a683a83ffd83229ba9c7` is pushed to GitHub `main`. Published version **36** from hosted source `c8f77c971401acdcb8cb4964cc323b9214f38abe`, whose tree exactly matches that commit's `immunity/` tree. The clean release checkout passed all 136 tests, TypeScript and the production build. Its archive excludes local runtime data, secrets, dependencies, ignored evidence and the disposable browser timing overlay.
+
+Saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_725b3c2e55e88191983db46408813e79`; deployment `appgdep_6ae3c69429088191b1a1a3332e4f7618` succeeded with environment revision 1 and public access unchanged. Native URL: https://pursuit-lab-derrick.amber-sugar-8860.chatgpt.site. The canonical https://evogoo.com opens the branded mode menu in the browser. A separate command-line HTTP probe received 403; no backend health claim is inferred from it. No production game was joined, load test run, administrator reset/import performed or database fixture applied. All ten protected original local runtime/hosting/secret-file hashes still match after publication.
+
+The earlier five-minute simultaneous local test retained twelve players per mode at 24 sentinels, with two transient busy responses out of 39,826 updates. Publication does not validate hosted capacity, distributed isolates, WAN or physical phones. Configured caps remain unchanged. This receipt is a documentation-only follow-up; it does not change the published application.
