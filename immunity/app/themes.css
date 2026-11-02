@@ -1,0 +1,138 @@
+/* Painted controls are shared by all worlds; scenery and actors keep their own theme. */
+.in-expedition .topbar nav button.appearance-button{display:inline-flex}
+.appearance-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px}
+.menu-appearance{position:absolute;right:22px;top:16px;z-index:8}
+.menu-appearance .appearance-button{background:#f7edcf;color:#25453b;border:1px solid #6a7054;border-radius:18px 8px;padding:10px 15px;box-shadow:0 2px 8px #132d3020}
+.view-controls .appearance-button span{display:none}
+.appearance-dialog{margin:auto;width:min(720px,calc(100% - 28px));max-height:90dvh;overflow:auto;padding:28px;border:1px solid #777350;border-radius:24px 12px;background:#f7f0df;color:#253e36;box-shadow:0 24px 90px #082b3666}
+.appearance-dialog::backdrop{background:#122b366b;backdrop-filter:blur(3px)}
+.appearance-dialog h2{font:30px Georgia,serif;margin:5px 0}.appearance-dialog small{font-size:11px}
+.appearance-dialog p{font-size:13px;line-height:1.6;color:#506159}.appearance-dialog .panel-heading button{color:inherit;min-width:44px;min-height:44px}
+.appearance-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+.appearance-option{display:block;text-align:left;padding:0;overflow:hidden;border:2px solid #d3cfb9;border-radius:14px 6px;background:#fffaf0;color:#253e36;cursor:pointer}
+.appearance-option:hover{background:#fffaf0;border-color:#8f9e7c}.appearance-option.selected{border-color:#40694f;box-shadow:0 0 0 2px #40694f22}
+.appearance-preview{display:block;height:105px;background-size:cover;background-position:center 55%}
+.appearance-copy{display:grid;gap:5px;padding:13px}.appearance-copy strong{font:18px Georgia,serif}.appearance-copy>span{font:12px/1.5 system-ui;color:#526159}.appearance-copy small{font:600 11px system-ui;color:#54704c;margin-top:3px}
+.appearance-dialog .primary{background:#e8cb86;color:#2b3c31;border-color:#9b814d;min-height:44px;margin-top:12px}
+.appearance-dialog :focus-visible{outline:3px solid #735727;outline-offset:3px}
+
+.app[data-theme="original"]{--paper:#f3f1df;--paper-shade:#dce6df;--paint-ink:#244e50;--paint-muted:#4c6967;--paint-line:#809e98;--paint-accent:#805e32;--paint-aqua:#3b737e;--paint-button:#c2d3bc;--paint-floor:#7fa6a3;--menu-sign:url('/immunity/themes/watercolor/sign.webp')}
+.app[data-theme="sunseed"]{--paper:#f8f0d6;--paper-shade:#e9dfb6;--paint-ink:#3f452e;--paint-muted:#626548;--paint-line:#929269;--paint-accent:#825522;--paint-aqua:#3e7768;--paint-button:#e8c779;--paint-floor:#ede3b5}
+.app[data-theme="watercolor"]{--paper:#f3f1df;--paper-shade:#dce6d6;--paint-ink:#224e4b;--paint-muted:#486b65;--paint-line:#809e8e;--paint-accent:#8a572b;--paint-aqua:#3b737e;--paint-button:#e6c995;--paint-floor:#b8d4c9}
+.app[data-theme="moonbloom"]{--paper:#f1e8d0;--paper-shade:#ddd8c9;--paint-ink:#30394a;--paint-muted:#586071;--paint-line:#9293a3;--paint-accent:#7b5022;--paint-aqua:#526f89;--paint-button:#e8c97e;--paint-floor:#727a8b}
+.app[data-theme]{--pearl:var(--paint-ink);--subtle:var(--paint-muted);--gold:var(--paint-accent);--aqua:var(--paint-aqua);--muted:var(--paint-muted);color:var(--paint-ink);background:var(--paint-floor)}
+.app[data-theme] .tidal-periphery{display:none}
+.app[data-theme] .tidal-shell{opacity:.2;filter:sepia(1)}
+.app[data-theme] :is(.brand,.connection,.topbar nav button,.arena-status,.generation-clock,.spawn-status,.join-card,.player-hud,.view-controls,.field-tools-toggle,.mission-hud,.death-notice,.scores-panel,.run-history,.adaptation-organ,.training-panel,.modal,.model-manager,.joystick,.dash-touch){background:linear-gradient(125deg,var(--paper),var(--paper-shade));color:var(--paint-ink);border:1px solid var(--paint-line);box-shadow:0 2px 9px #182f3120,inset 0 0 0 3px #fffaf026;border-radius:16px 8px 18px 9px}
+.app[data-theme] :is(.topbar nav button:hover,.adaptation-organ:hover,.training-panel button:hover,.view-controls button:hover){background:var(--paper-shade);color:var(--paint-ink)}
+.app[data-theme] :is(.model-manager,.training-panel){--pearl:var(--paint-ink);--subtle:var(--paint-muted);--gold:var(--paint-accent)}
+.app[data-theme] :is(input,.model-manager select,.training-admin input){background:#fffaf0;color:var(--paint-ink);border-color:var(--paint-line)}
+.app[data-theme] input::placeholder{color:var(--paint-muted)}
+.app[data-theme] .primary{background:var(--paint-button);color:var(--paint-ink);border-color:var(--paint-line);box-shadow:none}
+.app[data-theme] :is(.death-notice strong,.death-notice span,.training-panel p,.modal p,.modal li,.join-card p,.model-manager>p){color:var(--paint-ink)}
+.app[data-theme] .generation-clock.urgent strong{color:#983d23}
+.app[data-theme] .breath-organ{background:var(--paper-shade);box-shadow:none;border-color:var(--paint-line)}
+.app[data-theme] .breath-organ i{background:var(--paint-button);border:1px solid var(--paint-accent);box-shadow:none;border-radius:8px 5px;transform:none}
+.app[data-theme] .organ-eyebrow>svg{stroke:var(--paint-ink)}
+.app[data-theme] :is(.chart-best,.chart-key i){stroke:var(--paint-accent);border-color:var(--paint-accent)}
+.app[data-theme] :is(.chart-mean,.chart-key>span:nth-child(2) i){stroke:var(--paint-aqua);border-color:var(--paint-aqua)}
+.app[data-theme] .chart-point{fill:var(--paint-accent);stroke:var(--paper)}
+.app[data-theme] .fitness-chart text{fill:var(--paint-ink)}
+.app[data-theme] .chart-grid{stroke:var(--paint-line);opacity:.3}
+.app[data-theme] .chart-baseline{stroke:var(--paint-line)}
+.app[data-theme] .training-panel thead th{background:var(--paper-shade)}
+.app[data-theme] .vault-notice{background:var(--paper-shade);color:var(--paint-ink);border-color:var(--paint-accent)}
+.app[data-theme] :is(button,a,input,summary):focus-visible{outline:3px solid var(--paint-accent);outline-offset:3px}
+.app[data-theme] .arena-shell::after{display:none}
+
+.app:not([data-theme="original"]) .nursery-scene{background-color:var(--paint-floor);background-size:cover}
+.app:not([data-theme="original"]) .nursery-scene h1{color:var(--paint-ink);background:var(--paper);border:1px solid var(--paint-line);border-radius:50% 45% 48% 42%;padding:12px 8px;top:10%;text-shadow:none}
+.app[data-theme] .nursery-label{background:linear-gradient(120deg,var(--paper),var(--paper-shade));border:1px solid var(--paint-line);border-radius:40% 45% 35% 40%;color:var(--paint-ink);text-shadow:none;box-shadow:0 3px 8px #263a3022}
+.app[data-theme] .nursery-label.selected{box-shadow:0 0 0 3px #f4d17b,0 0 20px #f8d28688}
+.app[data-theme] .nursery-label.selected strong{color:var(--paint-accent);text-shadow:none}
+.app[data-theme] .nursery-pool{opacity:.45}
+.app[data-theme] .nursery-pool.selected{opacity:1}
+.app[data-theme] .nursery-pool:not(.selected) .pool-halo{display:none}
+.app[data-theme] .nursery-pool:not(.selected) .pool-rim{stroke:var(--paint-line);filter:none;stroke-width:2}
+.app[data-theme] .nursery-reading{background:var(--paper);border:1px solid var(--paint-line);border-radius:42% 35% 40% 32% / 25% 30% 20% 28%;padding:24px 5%;text-shadow:none;color:var(--paint-ink)}
+.app[data-theme] .nursery-credits{color:#fff4d9;-webkit-text-stroke:2px #2c4037}
+.app[data-theme] .menu-appearance .appearance-button{background:var(--paper);color:var(--paint-ink);border-color:var(--paint-line)}
+@media(max-width:1000px){.in-expedition .appearance-button span{display:none}.in-expedition .topbar nav .appearance-button{padding:8px;min-width:44px}}
+@media(max-width:700px){.menu-appearance{top:12px;right:12px}.menu-appearance .appearance-button{padding:8px 10px}.menu-appearance .appearance-button span{display:none}.nursery-collection{max-width:calc(100% - 65px)}.appearance-dialog{padding:20px}.appearance-options{gap:10px}.appearance-copy{padding:10px}.appearance-copy strong{font-size:16px}.appearance-preview{height:80px}.appearance-dialog h2{font-size:25px}}
+@media(max-width:380px){.appearance-options{grid-template-columns:1fr}.appearance-option{display:grid;grid-template-columns:90px 1fr}.appearance-preview{height:100%;min-height:104px}.appearance-copy{gap:4px}}
+
+@media(max-width:700px){.in-expedition .topbar nav .invite-button{display:none}}
+@media(max-width:360px){.in-expedition .brand{width:122px;font-size:13px;letter-spacing:1px}}
+
+/* Reference fidelity: painted signs, quiet paper controls, a compact field HUD. */
+.app[data-theme="sunseed"]{--menu-sign:url('/immunity/themes/sunseed/sign.webp');--paint-floor:#f3e7bb}
+.app[data-theme="watercolor"]{--menu-sign:url('/immunity/themes/watercolor/sign.webp');--paint-floor:#e4e7d4}
+.app[data-theme="moonbloom"]{--menu-sign:url('/immunity/themes/moonbloom/sign.webp');--paint-floor:#a09baa}
+.app:not([data-theme="original"]) .nursery-scene h1{background:none;border:0;padding:0;top:12%;font-weight:600;letter-spacing:.08em;font-size:clamp(28px,4cqw,64px);color:#302b18;text-shadow:0 2px 3px #fff4d9}
+.app[data-theme="moonbloom"] .nursery-scene h1{color:#fff0c3;text-shadow:0 2px 3px #192633}
+.app[data-theme="moonbloom"] .nursery-ornament{color:#f0d69b}
+.app[data-theme] :is(.nursery-label,.nursery-label.selected,.nursery-label:hover){top:25%;width:26%;height:35%;background:var(--menu-sign) center/contain no-repeat;border:0;box-shadow:none;transform:none;border-radius:35%;padding:30px 2% 0;text-shadow:none}
+.app[data-theme] .nursery-label.survival{left:20%}.app[data-theme] .nursery-label.motion{left:54%}
+.app[data-theme] .nursery-label strong{font-size:clamp(18px,1.8cqw,30px);text-transform:none;white-space:nowrap;color:#302e1e;font-weight:500}
+.app[data-theme] .nursery-label>span{font-size:clamp(11px,.85cqw,14px);max-width:85%;color:#55513b}
+.app[data-theme] .nursery-label.selected{filter:drop-shadow(0 0 8px #f7df97)}
+.app[data-theme] .nursery-pool:not(.selected){opacity:0}
+.app[data-theme] .nursery-reading{top:78%;left:30%;width:40%;padding:18px 25px;border:0;border-radius:18px;background:var(--paper) url('/immunity/themes/paper.webp') center/100% 140% no-repeat}
+.app[data-theme] .nursery-message h2{font-size:23px;font-weight:400;margin-bottom:6px}
+.app[data-theme] .nursery-message p{font-size:14px}
+.app[data-theme] :is(.brand,.topbar nav button,.generation-clock,.player-hud,.view-controls,.field-tools-toggle,.mission-hud,.death-notice,.scores-panel,.adaptation-organ){background:var(--paper) url('/immunity/themes/paper.webp') center/100% 140% no-repeat;border:0;box-shadow:none;border-radius:12px;font-family:Georgia,serif}
+.app[data-theme] .tidal-shell{display:none}
+.app[data-theme] .brand{width:auto;min-width:130px;padding:10px 22px;font:23px Georgia,serif;letter-spacing:0;justify-content:center}
+.app[data-theme] .brand small,.app[data-theme] .brand-seed{display:none}
+.app[data-theme] .topbar nav button{font-size:14px;padding:10px 17px}
+.app[data-theme] .generation-clock{padding:10px 24px;font:16px Georgia,serif}
+.app[data-theme] .generation-clock :is(b,strong){font:20px Georgia,serif}
+.app[data-theme] .adaptation-organ{width:178px;min-height:52px;padding:14px 19px;top:95px;right:24px;display:block}
+.app[data-theme] .adaptation-organ :is(.adaptation-metrics,.fitness-visual,.adaptation-caption,.training-empty,.training-link){display:none}
+.app[data-theme] .adaptation-organ .organ-eyebrow{display:flex;border:0;padding:0;margin:0;gap:10px;font:19px Georgia,serif;text-transform:none;letter-spacing:0}
+.app[data-theme] .adaptation-organ:has(.disconnected) .adaptation-caption{display:block;font:10px/1.4 system-ui;margin:8px 0 0}
+.app[data-theme] .player-hud{width:246px;min-height:0;padding:16px 22px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 10px}
+.app[data-theme] .player-hud>span{font:14px Georgia,serif;text-transform:none;letter-spacing:0;margin:0;color:var(--paint-ink)}
+.app[data-theme] .player-hud>strong{font:24px Georgia,serif;letter-spacing:0;justify-self:end}
+.app[data-theme] .player-hud .stamina{grid-column:1 / -1;border:0;margin:6px 0 0;padding:0;gap:10px}
+.app[data-theme] .stamina>span{font:13px Georgia,serif;text-transform:none;letter-spacing:0;color:var(--paint-ink)}
+.app[data-theme] .breath-organ{background:none;border:0;padding:0;height:19px;gap:2px}
+.app[data-theme] .breath-organ i{height:16px!important;border-radius:6px;transform:none;background:var(--paint-button)}
+.app[data-theme] .scores-panel{padding:12px 22px}
+.app:not([data-theme="original"]) .arena-shell::before{content:'';position:absolute;inset:5px;border:2px solid #786b4440;border-radius:13px 8px 15px 9px;pointer-events:none;z-index:1}
+@media(max-width:1200px){.app[data-theme] .topbar .invite-button{display:none}}
+@media(max-width:1000px){.app[data-theme] .adaptation-organ{top:78px;right:16px;width:155px}.app[data-theme] .adaptation-organ .organ-eyebrow{font-size:16px}.app[data-theme] .generation-clock{font-size:13px;padding:10px 20px}}
+@media(max-aspect-ratio:4/5){
+ .app[data-theme] :is(.nursery-label,.nursery-label.selected,.nursery-label:hover){top:29%;width:44%;height:26%;padding:25px 5% 0}
+ .app[data-theme] .nursery-label.survival{left:4%}.app[data-theme] .nursery-label.motion{left:52%}
+ .app[data-theme] .nursery-label strong{font-size:clamp(17px,4.2cqw,27px)}
+ .app[data-theme] .nursery-label>span{font-size:clamp(10px,2.6cqw,14px)}
+ .app[data-theme] .nursery-reading{top:77%;left:10%;width:80%;padding:18px 25px}
+ .app:not([data-theme="original"]) .nursery-scene h1{top:17%;left:12%;width:76%;font-size:clamp(30px,7.3cqw,52px)}
+ .app:not([data-theme="original"]) .nursery-survivor{width:22%}
+}
+@media(max-width:700px){
+ .app[data-theme] .brand{min-width:0;width:122px;padding:8px 12px;font-size:18px}
+ .app[data-theme] .topbar nav button{font-size:12px;padding:8px 10px}
+ .app[data-theme] .generation-clock{font-size:11px;gap:4px;padding:10px 14px}
+ .app[data-theme] .generation-clock :is(b,strong){font-size:17px}
+ .app[data-theme] .adaptation-organ{top:var(--hud-top);right:12px;width:145px;min-height:44px;padding:12px 16px}
+ .app[data-theme] .adaptation-organ .organ-eyebrow{font-size:15px}
+ .app[data-theme] .player-hud{width:170px;padding:12px 16px;gap:0 6px}
+ .app[data-theme] .player-hud>span{font-size:10px}.app[data-theme] .player-hud>strong{font-size:18px}
+ .app[data-theme] .stamina>span{font-size:10px}.app[data-theme] .breath-organ{height:14px}
+ .app[data-theme] .breath-organ i{height:12px!important}
+ .app[data-theme] .scores-panel{padding:0 12px}
+ .app[data-theme] .nursery-message h2{font-size:20px}.app[data-theme] .nursery-message p{font-size:12px}
+}
+/* Original's painted shell plaques sit over its existing raised menu signs. */
+.app[data-theme="original"] :is(.nursery-label,.nursery-label.selected,.nursery-label:hover){top:13%;height:32%}
+@media(max-aspect-ratio:4/5){.app[data-theme="original"] :is(.nursery-label,.nursery-label.selected,.nursery-label:hover){top:19%;height:25%}}
+
+/* Keep archive controls and feedback legible on the paper panels. */
+.app[data-theme] .training-vault .vault-error{background:#f8e5dc;color:#762e21;border-color:#a75c47}
+.app[data-theme] .training-vault :is(.vault-preview,.vault-rollback){border-color:var(--paint-line)}
+.app[data-theme] .training-vault .vault-button{border-color:var(--paint-line)}
+.app[data-theme] .model-manager .export{background:var(--paint-button);color:var(--paint-ink)}
+.app[data-theme] .model-manager select{color-scheme:light}
+.app[data-theme] .join-card>button[type="button"]{width:100%;margin-top:10px;min-height:44px}

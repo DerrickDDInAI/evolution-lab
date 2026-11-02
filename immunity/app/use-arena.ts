@@ -1,5 +1,6 @@
 'use client';
 import {readGameStorage,clearGameSession} from '../lib/browser-storage';
+import {type VisualThemeId} from '../lib/visual-theme';
 import {type GameMode} from '../lib/game-mode';
 import {useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
@@ -13,7 +14,9 @@ import {correctionFor,decayCorrection,type Correction} from '../lib/net-motion';
 import type {Scores,Run} from '../lib/arena';
 type Session={id:string;token:string;mode?:GameMode};
 type ArenaResponse=View & {session?:Session;error?:string;contactReply?:ContactReply};
-export function useArena(help:boolean,zoom:number){
+export function useArena(help:boolean,zoom:number,theme:VisualThemeId='original'){
+  const themeRef=useRef(theme);
+  useEffect(()=>{themeRef.current=theme;},[theme]);
   const [mode,setMode]=useState<GameMode|null>(null),modeRef=useRef<GameMode>('survival');
   const [state,setState]=useState<View|null>(null),[session,setSession]=useState<Session|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[online,setOnline]=useState(false),[latency,setLatency]=useState(0),[clock,setClock]=useState(Date.now()),[scores,setScores]=useState<Scores>({bestMs:0,runs:[]});
   const canvas=useRef<HTMLCanvasElement>(null),view=useRef<View|null>(null),sessionRef=useRef<Session|null>(null),zoomRef=useRef(zoom),keys=useRef(new Set<string>()),taps=useRef(new Set<string>()),stick=useRef({x:0,y:0,dash:false}),positions=useRef(new Map()),joining=useRef(false),profile=useRef(''),commands=useRef<Command[]>([]),sequence=useRef(0),predicted=useRef<PredictedPlayer|null>(null),offset=useRef(0),networkDelay=useRef(0),correction=useRef<Correction>({x:0,y:0}),wake=useRef(()=>{});
@@ -130,7 +133,7 @@ export function useArena(help:boolean,zoom:number){
         display=contact.current.player;
         // A timeout is not a resurrection. Retry until the server resolves this life.
       }
-      if(canvas.current)renderArena(canvas.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current);
+      if(canvas.current)renderArena(canvas.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current,undefined,themeRef.current);
       if(noticeRef.current&&time-noticeRef.current.shownAt>3500)showNotice(null);
       if(time-lastUi>80){setClock(Date.now()+offset.current);lastUi=time;}
       frame=requestAnimationFrame(draw);

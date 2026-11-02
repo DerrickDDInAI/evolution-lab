@@ -25,3 +25,14 @@ See [implementation and verification](../../docs/glass-tide-implementation.md) f
 ## Whole-body running correction — 2026-10-22
 
 The existing `walk.webp` now supplies layered torso/cape, upper/lower arm and thigh/shin/boot samples for the shared normal-run/sprint rig. Arms oppose the legs, elbows bend, the torso leans/counter-rotates, and longer strides use continuous distance-based phases. Source arm regions are covered with sampled cape texture before moving arms are composited. `sprint.webp` remains a safe loading fallback. Menu cadence accounts for actual CSS travel, actor size and the tilted ground projection. See the [whole-body correction](../../docs/glass-tide-implementation.md#whole-body-locomotion-correction--2026-10-22).
+
+## Selectable watercolor worlds — 2026-10-30
+
+`themes/` contains Sunseed Garden, Watercolor Glass Tide and Moonbloom Nursery. Each includes a transparent 1448×1086 twelve-sprite atlas, a 1254×1254 ground painting, and a 1672×941 menu backdrop. The atlas rows contain scenery/dormant bud, four survivor views, and two active-sentinel views/collectible/border plant. Inspected per-row gutters in `lib/theme-art.ts` preserve complete silhouettes; generated columns are not a uniform grid. Alpha bounds anchor each sprite to the ground.
+
+Exact prompts are in [themes/generation-prompts.json](themes/generation-prompts.json). Built-in image generation used the owner's three concept boards. Runtime assets are WebP (atlas quality 92 with preserved alpha; opaque paintings quality 86), approximately 3.9 MB across all three sets. They are loaded on selection, with original art as the fallback. No external image service is used at runtime. See [implementation and checks](../../docs/watercolor-themes.md).
+
+
+### Reference fidelity additions
+
+The three themes also include `sign.webp` and `ground.webp`: individual painted menu plaques and walkable scenery washes. Shared `themes/paper.webp` supplies the cream ink-edged HUD surface. These seven assets were generated with the built-in image tool using the same reference boards; [exact prompts](themes/fidelity-prompts.json) are retained. WebP quality 91 preserves their transparent edges. The complete theme directory is approximately 6.3 MiB. Moonbloom borrows the cream-clad human row from the Sunseed atlas to match the board's traveler.

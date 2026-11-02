@@ -1,0 +1,51 @@
+[
+  {
+    "theme": "sunseed",
+    "asset": "sign",
+    "transparent": true,
+    "ref": "1424818d-b4e6-419b-835f-1a80778b4771",
+    "prompt": "Create ONE isolated game menu sign, faithfully matching the large cream seed-shaped standing sign in the MENU inset of this Sunseed Garden reference. Nearly round upright ivory seed plaque with fine olive ink contour, three pointed sage leaves crowning the top, small broad sage leaves and two white daisies tucked around its base. Warm pale yellow watercolor paper interior COMPLETELY BLANK for HTML text. No letters, no icons, no creatures, no landscape, no ground plane. Full silhouette with 6% empty margin. Square image, true transparent background. Match the reference's watercolor wash and restrained gouache brushwork, soft olive shadow, small imperfections. This is an in-game asset, not a concept board."
+  },
+  {
+    "theme": "watercolor",
+    "asset": "sign",
+    "transparent": true,
+    "ref": "cf355daf-5f94-4275-8f48-b3ad03dad745",
+    "prompt": "Create ONE isolated game menu sign, faithfully matching the pearl shell platforms in the MENU inset of this Watercolor Glass Tide reference. A wide rounded ivory scallop-shell plaque viewed slightly from above, subtle shell ridges framing a large smooth creamy center COMPLETELY BLANK for HTML text. A small closed pearl bud and two teal leaves at the top crest, a tiny lilac sprig at bottom side. Pale warm pearl, muted celadon linework, translucent watercolor and fine ink. No letters, no icons, no creatures, no landscape, no ground plane. Full silhouette with 6% empty margin. Square image, true transparent background. Center plaque fills middle 85% width and 65% height. Match watercolor style exactly, not shiny 3D."
+  },
+  {
+    "theme": "moonbloom",
+    "asset": "sign",
+    "transparent": true,
+    "ref": "4ee27d73-cdee-4efe-8216-5badf589d1ef",
+    "prompt": "Create ONE isolated game menu sign matching the glowing round seed portals in the MENU inset of Moonbloom Nursery reference. A nearly circular warm ivory moonstone sign/seed with luminous cream interior COMPLETELY BLANK for HTML text, framed in dark blue-sage overlapping leaves, a small closed ivory flower at the top, tiny gold buds at base. Painterly warm inner edge glows with fine dark ink outlines and watercolor brushwork, no airbrushed bloom outside. No letters, no icons, no creatures, no landscape, no ground plane. Full silhouette with 6% transparent margin, square image, genuinely transparent background. Match the reference's quiet moonlit botanical style."
+  },
+  {
+    "theme": "sunseed",
+    "asset": "ground",
+    "transparent": true,
+    "ref": "1424818d-b4e6-419b-835f-1a80778b4771",
+    "prompt": "Paint a transparent game terrain decal faithfully matching the ARENA of the Sunseed Garden reference. Top-down view of ONE irregular, broadly oval sunny cream sandy island patch with a very narrow winding teal shallow stream along its perimeter, small sage moss marks, tiny pale pebbles, a few lily pads and three tiny white daisies near the outer edge. Center 65% is open nearly plain pale golden sand, space where a separate game rock sprite will be drawn. NO upright plants, NO bushes, NO boulders, NO characters, no text, no UI. Only flat walkable ground and water. Delicate olive ink and watercolor pools, creamy yellow and sage matching reference. Broad horizontal oval with irregular naturally feathered outer edge into full transparency; no hard square edge or cast shadow. Square canvas, footprint fills width 90%, height 70%. Keep all details large enough to read at 350 pixels. Not a background sheet, ONE isolated ground patch."
+  },
+  {
+    "theme": "watercolor",
+    "asset": "ground",
+    "transparent": true,
+    "ref": "cf355daf-5f94-4275-8f48-b3ad03dad745",
+    "prompt": "Paint a transparent game terrain decal faithfully matching the ARENA of Watercolor Glass Tide reference. Top-down view of ONE irregular broad oval celadon shallow-water pool with visible large pale aqua watercolor facets and fine ivory ripples/caustics. Irregular cream silt islands and pale sandy rim, a few flat green lily pads and tiny lavender petal flecks. Center 60% shallow water and open cream sand, where separate game scenery will be drawn. NO upright plants, NO shells, NO rocks, NO characters, no text, no UI. Only flat walkable ground and very shallow water. Match reference's teal water, creamy sand, fine outlined watercolor brushwork. Edge feathers into full alpha transparency. Square canvas; broad oval footprint width90%, height70%. Readable at350px. One isolated patch not an atlas. No dark shadow."
+  },
+  {
+    "theme": "moonbloom",
+    "asset": "ground",
+    "transparent": true,
+    "ref": "4ee27d73-cdee-4efe-8216-5badf589d1ef",
+    "prompt": "Paint a transparent game terrain decal faithfully matching the ARENA of Moonbloom Nursery reference. Top-down view of ONE irregular broad oval patch of pale lavender-gray earth, irregular slate flat stepping stones around its outer rim, sparse sage moss and scattered tiny ivory petals. A thin winding butter-yellow light vein runs through parts of the rim as in the reference paths. Center60% plain calm lavender earth for separate game scenery. NO upright plants, NO bushes, NO boulders, NO creatures, no text, no UI. Only flat walkable ground. Fine ink and soft watercolor patchwork, lilac slate, muted sage, ivory yellow, NO saturated purple. Feather outside into true transparency. Square canvas; broad oval footprint width90%,height70%, fully contained. Readable at350px. One isolated ground patch not atlas."
+  },
+  {
+    "theme": "shared",
+    "asset": "paper",
+    "transparent": true,
+    "ref": "1424818d-b4e6-419b-835f-1a80778b4771",
+    "prompt": "Create one blank wide cream parchment HUD panel matching the bottom-left Survival/Sprint interface panel in the Sunseed Garden reference. Wide rounded rectangle with gently hand-painted imperfect corners, very fine double olive-brown ink outline, warm ivory watercolor paper with quiet sparse grain and a little pale ochre edge pigment. Empty smooth cream center, absolutely no text, numbers, symbols, leaves or icons. Aspect ratio 3:1, centered in wide landscape canvas with small transparent outer margin. This panel will carry readable game text. Entire inside opaque warm cream, only exterior truly transparent. Thin lines, no heavy shadow, no glossy gradient, no bevel. Faithful to the reference drawing."
+  }
+]

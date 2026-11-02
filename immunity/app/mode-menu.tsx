@@ -1,9 +1,12 @@
 'use client';
 import {useEffect,useRef,useState,useSyncExternalStore,type CSSProperties} from 'react';
+import {AppearanceButton} from './appearance';
+import {themePath,type VisualThemeId} from '../lib/visual-theme';
+import {themeArt,drawThemeActor} from '../lib/theme-art';
 import {activateMenuSign,menuArtSize,menuPads,menuZone,modeName,type GameMode,type MenuPosition} from '../lib/game-mode';
 import {immunityArt,directionalSprite,facingDirection,walkFrame,walkSprite,menuGaitDistance,GROUND_TILT} from '../lib/immunity-art';
 
-type Props={onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void};
+type Props={onChoose:(mode:GameMode)=>void;paused?:boolean;onModels:()=>void;onAppearance:()=>void;theme:VisualThemeId};
 const portraitQuery='(max-aspect-ratio: 4/5)';
 const subscribe=(listener:()=>void)=>{const media=matchMedia(portraitQuery);media.addEventListener('change',listener);return()=>media.removeEventListener('change',listener);};
 const isPortrait=()=>matchMedia(portraitQuery).matches;
@@ -12,7 +15,7 @@ const MODE_COPY={
   survival:{goal:'Outlast the sentinels.',text:'Stay alive while sentinels evolve pursuit and obstacle avoidance.'},
   motion:{goal:'Collect a seed. Escape.',text:'Collect a seed and escape while sentinels evolve motion detection and pursuit. Stillness is no guarantee.'},
 };
-export function ModeMenu({onChoose,paused=false,onModels}:Props){
+export function ModeMenu({onChoose,paused=false,onModels,onAppearance,theme}:Props){
   const portrait=useSyncExternalStore(subscribe,isPortrait,serverPortrait);
   const stage=useRef<HTMLDivElement>(null),actor=useRef<HTMLCanvasElement>(null),aboutDialog=useRef<HTMLDialogElement>(null);
   const position=useRef<MenuPosition>({x:50,y:68.5}),previousZone=useRef<GameMode|null>(null);
@@ -64,14 +67,16 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
         ctx.clearRect(0,0,180,190);
         ctx.fillStyle='#193f3d45';ctx.beginPath();ctx.ellipse(90,170,24,8,0,0,Math.PI*2);ctx.fill();
         const pose=walkFrame(facing,travel,moving,255,reduced.matches,{x:dx,y:dy/GROUND_TILT});
-        if(!pose||!walkSprite(ctx,art.walk,pose,90,170,156))directionalSprite(ctx,art.directions,true,facing,90,170,156);
+        const paint=themeArt(theme);
+        const painted=paint&&drawThemeActor(ctx,paint.human,true,false,facing,travel,moving,reduced.matches,90,170,156);
+        if(!painted&&(!pose||!walkSprite(ctx,art.walk,pose,90,170,156)))directionalSprite(ctx,art.directions,true,facing,90,170,156);
       }
       frame=requestAnimationFrame(draw);
     };
     element?.addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
     frame=requestAnimationFrame(draw);
     return()=>{cancelAnimationFrame(frame);resize.disconnect();element?.removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();};
-  },[blocked,portrait]);
+  },[blocked,portrait,theme]);
 
   function preview(next:GameMode){if(!blocked){selected.current=next;setMode(next);}}
   function confirm(next:GameMode){if(!blocked&&!done.current){done.current=true;choose.current(next);}}
@@ -89,8 +94,9 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
   }
   return <section className="mode-menu" aria-labelledby="expedition-title">
     <div className="nursery-habitat">
+      <div className="menu-appearance"><AppearanceButton onClick={onAppearance}/></div>
       <div className="nursery-collection"><strong>EvoGoo</strong><span>Evolution games &amp; experiments</span></div>
-      <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose a mode. Walk with WASD or arrows. Press Enter to play, or tap a mode sign twice." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
+      <div ref={stage} className="nursery-scene" style={theme==='original'?undefined:{backgroundImage:`url('${themePath(theme,'menu')}'),url('/immunity/nursery-menu.webp')`}} tabIndex={0} aria-label="Choose a mode. Walk with WASD or arrows. Press Enter to play, or tap a mode sign twice." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
         <h1 id="expedition-title">Immunity<svg className="nursery-ornament" viewBox="0 0 300 30" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"><path d="M3 8H119Q140 8 150 26Q160 8 181 8H297"/><path d="M18 13H117Q139 13 150 28Q161 13 183 13H282"/><path d="M124 3Q142 3 147 18M176 3Q158 3 153 18M150 2V25"/></g></svg></h1>
         <svg className={"nursery-pools"+(blocked?" paused":"")} viewBox={`0 0 ${artSize.width} ${artSize.height}`} preserveAspectRatio="none" aria-hidden="true">
           <defs><radialGradient id="nursery-pool-light"><stop offset="0" stopColor="#ffe9a3" stopOpacity=".18"/><stop offset=".72" stopColor="#ffd66b" stopOpacity=".25"/><stop offset="1" stopColor="#ffc447" stopOpacity=".52"/></radialGradient></defs>

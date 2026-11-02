@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './themes.css';
 const title='Immunity | EvoGoo';
 const description='An EvoGoo evolution experiment. Tread lightly in a living alien world and survive evolving sentinels in a shared multiplayer arena.';
 export const metadata:Metadata={

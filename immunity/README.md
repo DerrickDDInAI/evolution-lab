@@ -15,6 +15,8 @@ Choose an expedition, enter a player name, and cross a passage from the safe sho
 
 Move with **WASD** or **arrow keys**; hold **Shift** to sprint. Touch screens have movement and sprint controls. In the menu, walk to a circle, tap a mode sign, or use **Tab** to preview it. Read its explanation, then press **Enter** or tap the same sign again to play. Reaching a circle never starts a game automatically.
 
+Open **Appearance** in the menu or during play to try Sunseed Garden, Watercolor Glass Tide, Moonbloom Nursery, or the original look. The choice is saved in your browser and applies to both modes. The arena stays live while the picker is open.
+
 Other players are solid obstacles in both modes and on the shore. You can slide around them; player contact causes no damage or score penalty.
 
 Stillness may help in Motion Hunt, but detection is experimental and physical contact remains dangerous. Capture returns you to the shore; successful extraction lets you keep moving. Each mode has separate training and records.
