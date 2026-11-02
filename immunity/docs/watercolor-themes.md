@@ -73,3 +73,9 @@ PASS: 151 tests, TypeScript, production build and diff whitespace. Local disposa
 The owner requested removing all appearance options after the interface-fix commit. Original is now the fixed presentation for menu, arena and films, retaining the accepted cream paper controls and shell signs. The picker, saved-preference handling, alternate renderer/menu branches and alternate runtime images are removed. Old browser preferences are ignored. Historical prompts remain; earlier comparison assets are recoverable from Git.
 
 PASS: 151 tests, TypeScript, production build and diff whitespace. Disposable local browser review confirms no Appearance entry, the compact name form, successful join, Leave appearing only in a session, and Leave returning to the menu. Models/admin connection recovery was inspected; authenticated film playback, full contact/rejoin, Motion Hunt extraction, physical touch and OS reduced-motion checks were not repeated. No push, publication or existing runtime-data changes.
+
+## Menu label and instruction correction — 2026-11-02
+
+Owner's screenshot showed the old Appearance control and mode text below the painted sign centers. A fresh browser visit to https://evogoo.com confirmed no Appearance control in the current live interface; the prior open tab needs reloading. Corrected Original's label hit areas/text to align with its existing landscape and portrait signs instead of overlaying oversized shell signs. Raised keyboard instructions above the footer links with dark teal text on a light paper backing.
+
+PASS: 151 tests, TypeScript, full lint (zero findings), build and diff whitespace. Disposable browser review at 1440×810 and 390×844 confirms readable mode names/subtitles and raised instructions, with no Appearance control. Screenshot: ignored `outputs/menu-fix/desktop.png`. This correction is local; no publication, gameplay/data changes or full gameplay/device retest.
