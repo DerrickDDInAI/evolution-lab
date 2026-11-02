@@ -9,6 +9,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Generated domain modules and disposable test output; lint their sources.
+    ".sites-runtime/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

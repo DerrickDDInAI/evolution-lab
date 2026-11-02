@@ -3,7 +3,7 @@ import {MOTION_CONTROLLER,observePlayers,motionDecision,type MotionHistory} from
 import {checkpoint,emptyTraining,recoverBestModel,rememberBestModel,trainingBoundary,trainingSummary,type TrainingArtifact,type TrainingState,type TrainingWrite} from './training-checkpoints';
 import {RESOURCE,MOTION_THRESHOLD,atExit,type GameMode} from './game-mode';
 import { activate, breed, createGenome, random, type Evolution, type Genome } from './evolution';
-import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, inside, moveBody, moveActor, movePlayer, playerObstacles, type Motion, type Command, type Obstacle } from './physics';
+import { SIZE, FIELD, MAX_MOVEMENT_CREDIT, clamp, moveBody, moveActor, movePlayer, playerObstacles, type Motion, type Command, type Obstacle } from './physics';
 import {matchesContact,type ContactFrame,type ContactReport,type ContactReply} from './contact-report';
 import type {CollisionEvent} from './collision-effects';
 import {bestCompletedGeneration,emptyDetection,recordDetection,type DetectionCounts,type TrainingSample} from './training-metrics';
@@ -46,7 +46,9 @@ export function resetTraining(a:Arena,now:number):TrainingWrite[]{
   return [{slot:'rollback',artifact:backup},{slot:'latest',artifact:checkpoint(a,now)}];
 }
 // Upgrade an existing live world without discarding its trained genomes or generation history.
-export function upgradeArena(raw:any,now:number):Arena {
+export function upgradeArena(saved:unknown,now:number):Arena {
+  // Persisted worlds are trusted internal data; the migration below fills legacy fields.
+  const raw=saved as Arena;
   // One-time user-authorized reset. Keep player lives, cargo, scores, terrain and
   // Survival intact; invalidate issued frames from the replaced bot population.
   if(raw.mode==='motion'&&raw.motionController!==MOTION_CONTROLLER){
@@ -63,8 +65,8 @@ export function upgradeArena(raw:any,now:number):Arena {
   for(const b of raw.bots)ensureHome(raw,b);
   if(raw.version===2)return raw;
   raw.version=2;raw.time=now;raw.obstacles=obstacles(raw.evolution);
-  raw.players=raw.players.map((old:any)=>{
-    const p={...old,profileId:'',phase:'safe',runStartedAt:null,respawnUntil:0,life:0,ack:0,moveAt:now,credit:.25,runId:null,scores:{bestMs:0,runs:[]},lastDeath:null};
+  raw.players=raw.players.map(old=>{
+    const p={...old,profileId:'',phase:'safe' as const,runStartedAt:null,respawnUntil:0,life:0,ack:0,moveAt:now,credit:.25,runId:null,scores:{bestMs:0,runs:[]},lastDeath:null};
     respawn(p,now,false);return p;
   });
   for(const b of raw.bots)spawnBot(raw,b);
@@ -241,7 +243,11 @@ function step(a:Arena,dt:number,now:number,finished:FinishedRun[],trainingWrites
 export function snapshot(a:Arena,selfToken?:string) {
   const me=a.players.find(p=>p.token===selfToken);
   return {...(a.mode==='motion'?{detection:a.detection??null}:{}),version:2,controller:a.mode==='motion'?MOTION_CONTROLLER:'pursuit-v1',mode:a.mode||'survival',resource:a.mode==='motion'?RESOURCE:null,serverTime:Date.now(),simulationTime:a.time,field:FIELD,size:SIZE,population:POPULATION,round:ROUND,generation:a.generation,elapsed:a.elapsed,totalTags:a.totalTags,species:a.species,history:a.history,bestGeneration:bestCompletedGeneration(a.history,a.bestGeneration??null),
-    players:a.players.map(({token,profileId,scores,lastSeen,moveAt,credit,runId,lastDeath,contactMode,contactFrames,...p})=>p),
+    players:a.players.map(player=>{
+      const p={...player} as Partial<Player>;
+      for(const key of ['token','profileId','scores','lastSeen','moveAt','credit','runId','lastDeath','contactMode','contactFrames'] as const)delete p[key];
+      return p as Omit<Player,'token'|'profileId'|'scores'|'lastSeen'|'moveAt'|'credit'|'runId'|'lastDeath'|'contactMode'|'contactFrames'>;
+    }),
     personal:me?{scores:me.scores,lastDeath:me.lastDeath,contactFrame:me.contactFrames?.at(-1)?.id}:null,
     collisions:(a.collisions||[]).filter(e=>Date.now()-e.at<5000),
     bots:a.bots.map(({genome,...b})=>({...b,nodes:genome.nodes.length+11,connections:genome.genes.filter(c=>c.enabled).length})),obstacles:a.obstacles,

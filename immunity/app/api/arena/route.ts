@@ -52,7 +52,7 @@ export async function GET(request:Request){try{
 export async function POST(request:Request){
   const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Invalid request origin.'},403);
   const raw=await request.text();if(raw.length>20000)return json({error:'Request too large.'},413);
-  let input:any;try{input=JSON.parse(raw);}catch{return json({error:'Invalid request.'},400);}
+  let input:{mode?:unknown;action:string;name:string;contactMode?:unknown;contact?:unknown;commands:Command[];profileToken:string};try{input=JSON.parse(raw);}catch{return json({error:'Invalid request.'},400);}
   if(input?.mode!==undefined&&input.mode!=='survival'&&input.mode!=='motion')return json({error:'Unknown mode.'},400);
   const mode:GameMode=input?.mode==='motion'?'motion':'survival';
   if(!['join','input','leave'].includes(input?.action))return json({error:'Unknown action.'},400);
@@ -96,7 +96,7 @@ export async function POST(request:Request){
           if(p.profileId&&p.profileId!==profileId)return json({error:'Player identity mismatch. Rejoin the arena.'},401);
           if(!p.profileId){p.profileId=profileId;p.scores=await loadScores(db,profileId,mode);}
           applyCommands(a,p,input.commands,now,finished,!input.contact);
-          if(input.contact)contactReply=confirmContact(a,p,input.contact,now,finished);
+          if(validContactReport(input.contact))contactReply=confirmContact(a,p,input.contact,now,finished);
         }
       }
       recordFilm(a,now);

@@ -14,7 +14,7 @@ const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberCont
 const {inside,movePlayer,moveBody,bodyClear,playerObstacles}=await import(pathToFileURL(`${out}/physics.mjs`));
 const {reconcile}=await import(pathToFileURL(`${out}/prediction.mjs`));
 const {createEffects,updateEffects,cancelEffect,impactCamera,vanishing}=await import(pathToFileURL(`${out}/collision-effects.mjs`));
-const {trackRemote,projectBot,remoteAge,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
+const {trackRemote,projectBot,correctionFor,decayCorrection}=await import(pathToFileURL(`${out}/net-motion.mjs`));
 const {activate,breed,mutate}=await import(pathToFileURL(`${out}/evolution.mjs`));
 const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-prediction.mjs`));
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});

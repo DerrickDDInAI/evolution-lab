@@ -3,8 +3,10 @@ import {projectBot,MAX_REMOTE_AGE,type Pose} from './net-motion';
 export type ContactFrame={id:string;at:number;life:number;generation:number;moving?:boolean;bots:(Pose&{id:number})[]};
 export type ContactReport={frameId:string;life:number;seq:number;bot:number;age:number;x:number;y:number;bx:number;by:number};
 export type ContactReply={life:number;seq:number;status:'pending'|'confirmed'|'rejected'};
-export function validContactReport(r:any):r is ContactReport {
-  return !!r&&typeof r.frameId==='string'&&r.frameId.length<=100&&['life','seq','bot'].every(k=>Number.isSafeInteger(r[k])&&r[k]>=0)&&['age','x','y','bx','by'].every(k=>Number.isFinite(r[k]))&&r.age>=0&&r.age<=MAX_REMOTE_AGE+.001;
+export function validContactReport(value:unknown):value is ContactReport {
+  if(!value||typeof value!=='object')return false;
+  const r=value as Record<string,unknown>;
+  return !!r&&typeof r.frameId==='string'&&r.frameId.length<=100&&['life','seq','bot'].every(k=>typeof r[k]==='number'&&Number.isSafeInteger(r[k])&&r[k]>=0)&&['age','x','y','bx','by'].every(k=>Number.isFinite(r[k]))&&typeof r.age==='number'&&r.age>=0&&r.age<=MAX_REMOTE_AGE+.001;
 }
 // Validate against the frame actually sent to this player, even if a moving bot
 // has passed the contact point by the time the report reaches the server.

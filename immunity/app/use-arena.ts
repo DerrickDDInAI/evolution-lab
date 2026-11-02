@@ -1,7 +1,7 @@
 'use client';
 import {readGameStorage,clearGameSession} from '../lib/browser-storage';
 import {type GameMode} from '../lib/game-mode';
-import {useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {flushSync} from 'react-dom';
 import {predictContact,contactResult,type LocalContact} from '../lib/contact-prediction';
 import type {ContactReply} from '../lib/contact-report';
@@ -15,16 +15,18 @@ type Session={id:string;token:string;mode?:GameMode};
 type ArenaResponse=View & {session?:Session;error?:string;contactReply?:ContactReply};
 export function useArena(help:boolean,zoom:number){
   const [mode,setMode]=useState<GameMode|null>(null),modeRef=useRef<GameMode>('survival');
-  const [state,setState]=useState<View|null>(null),[session,setSession]=useState<Session|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[online,setOnline]=useState(false),[latency,setLatency]=useState(0),[clock,setClock]=useState(Date.now()),[scores,setScores]=useState<Scores>({bestMs:0,runs:[]});
+  const [state,setState]=useState<View|null>(null),[session,setSession]=useState<Session|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[online,setOnline]=useState(false),[latency,setLatency]=useState(0),[clock,setClock]=useState(()=>Date.now()),[scores,setScores]=useState<Scores>({bestMs:0,runs:[]});
   const canvas=useRef<HTMLCanvasElement>(null),view=useRef<View|null>(null),sessionRef=useRef<Session|null>(null),zoomRef=useRef(zoom),keys=useRef(new Set<string>()),taps=useRef(new Set<string>()),stick=useRef({x:0,y:0,dash:false}),positions=useRef(new Map()),joining=useRef(false),profile=useRef(''),commands=useRef<Command[]>([]),sequence=useRef(0),predicted=useRef<PredictedPlayer|null>(null),offset=useRef(0),networkDelay=useRef(0),correction=useRef<Correction>({x:0,y:0}),wake=useRef(()=>{});
   const contact=useRef<LocalContact|null>(null),localEvent=useRef<CollisionEvent|null>(null),localStartedAt=useRef(0),blockedContact=useRef<LocalContact|null>(null),noticeRef=useRef<{run:Run;shownAt:number}|null>(null),[notice,setNotice]=useState<{run:Run;shownAt:number}|null>(null);
-  const showNotice=(run:Run|null,shownAt=performance.now())=>{noticeRef.current=run?{run,shownAt}:null;setNotice(noticeRef.current);};
-  const onlineRef=useRef(false);onlineRef.current=online;
-  zoomRef.current=zoom;
-  const clearInput=()=>{keys.current.clear();taps.current.clear();stick.current={x:0,y:0,dash:false};};
+  const [playerView,setPlayerView]=useState<{player:PredictedPlayer|null;contact:LocalContact|null}>({player:null,contact:null});
+  const showNotice=useCallback((run:Run|null,shownAt=performance.now())=>{noticeRef.current=run?{run,shownAt}:null;setNotice(noticeRef.current);setPlayerView({player:predicted.current?{...predicted.current}:null,contact:contact.current});},[]);
+  const onlineRef=useRef(false);
+  useEffect(()=>{onlineRef.current=online;},[online]);
+  useEffect(()=>{zoomRef.current=zoom;},[zoom]);
+  const clearInput=useCallback(()=>{keys.current.clear();taps.current.clear();stick.current={x:0,y:0,dash:false};},[]);
   const chooseMode=(next:GameMode)=>{modeRef.current=next;setMode(next);setState(null);view.current=null;positions.current.clear();releaseRenderer(canvas.current);setScores({bestMs:0,runs:[]});setError('');};
-  const clearSession=()=>{setMode(null);contact.current=null;localEvent.current=null;blockedContact.current=null;showNotice(null);setSession(null);sessionRef.current=null;commands.current=[];predicted.current=null;correction.current={x:0,y:0};clearInput();try{clearGameSession(sessionStorage);}catch{}};
-  function update(data:ArenaResponse,rtt=0,sentContact:LocalContact|null=null){
+  const clearSession=useCallback(()=>{setMode(null);contact.current=null;localEvent.current=null;blockedContact.current=null;showNotice(null);setSession(null);sessionRef.current=null;commands.current=[];predicted.current=null;correction.current={x:0,y:0};clearInput();try{clearGameSession(sessionStorage);}catch{}},[clearInput,showNotice]);
+  const update=useCallback((data:ArenaResponse,rtt=0,sentContact:LocalContact|null=null)=>{
     offset.current=data.serverTime+rtt/2-Date.now();networkDelay.current=networkDelay.current?networkDelay.current*.8+rtt/2000*.2:rtt/2000;
     const auth=data.players.find(p=>p.id===sessionRef.current?.id);
     if(auth&&predicted.current&&auth.life<predicted.current.life)return;
@@ -57,13 +59,13 @@ export function useArena(help:boolean,zoom:number){
       }
     }
     view.current=data;setState(data);setOnline(true);
-  }
+  },[clearInput,showNotice]);
   useEffect(()=>{
-    try{
+    const restore=()=>{try{
       profile.current=readGameStorage(localStorage,'profile')||crypto.randomUUID();localStorage.setItem('immunity-profile',profile.current);
       const saved=readGameStorage(sessionStorage,'session');if(saved){const s=JSON.parse(saved);setSession(s);sessionRef.current=s;modeRef.current=s.mode==='motion'?'motion':'survival';setMode(modeRef.current);}
       setName(readGameStorage(localStorage,'name')||'');
-    }catch{profile.current=crypto.randomUUID();}
+    }catch{profile.current=crypto.randomUUID();}};
 
     let stopped=false,inFlight=false,urgent=false,timer:ReturnType<typeof setTimeout>;
     async function poll(){
@@ -80,8 +82,8 @@ export function useArena(help:boolean,zoom:number){
       finally{inFlight=false;if(!stopped){timer=setTimeout(poll,urgent?0:sessionRef.current?60:1000);urgent=false;}}
     }
     wake.current=()=>{if(sessionRef.current){urgent=true;if(!inFlight)void poll();}};
-    void poll();return()=>{stopped=true;clearTimeout(timer);wake.current=()=>{};};
-  },[]);
+    queueMicrotask(()=>{if(!stopped){restore();void poll();}});return()=>{stopped=true;clearTimeout(timer);wake.current=()=>{};};
+  },[clearSession,update]);
   useEffect(()=>{
     if(!mode)return;
     let cancelled=false;
@@ -95,7 +97,7 @@ export function useArena(help:boolean,zoom:number){
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clearInput);document.addEventListener('visibilitychange',clearInput);
     if(help)clearInput();
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);};
-  },[help]);
+  },[help,clearInput]);
   useEffect(()=>{
     const surface=canvas.current;let frame:number,last=0,accumulator=0,lastUi=0,previousInput='';
     function draw(time:number){
@@ -132,11 +134,11 @@ export function useArena(help:boolean,zoom:number){
       }
       if(canvas.current)renderArena(canvas.current,world,self,positions.current,zoomRef.current,time,display,localEvent.current,!!contact.current);
       if(noticeRef.current&&time-noticeRef.current.shownAt>3500)showNotice(null);
-      if(time-lastUi>80){setClock(Date.now()+offset.current);lastUi=time;}
+      if(time-lastUi>80){setClock(Date.now()+offset.current);setPlayerView({player:predicted.current?{...predicted.current}:null,contact:contact.current});lastUi=time;}
       frame=requestAnimationFrame(draw);
     }
     frame=requestAnimationFrame(draw);return()=>{cancelAnimationFrame(frame);releaseRenderer(surface);};
-  },[]);
+  },[clearInput,showNotice]);
   async function enter(e:React.FormEvent){
     e.preventDefault();if(joining.current)return;joining.current=true;setBusy(true);setError('');
     try{
@@ -148,5 +150,5 @@ export function useArena(help:boolean,zoom:number){
     }catch(e){setError(e instanceof Error?e.message:'Could not join. Please retry.');}finally{setBusy(false);joining.current=false;}
   }
   async function leave(){const s=sessionRef.current;clearSession();if(s)try{await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'leave',mode:s.mode||'survival'})});}catch{}}
-  return {mode,chooseMode,backToMenu:()=>setMode(null),state,session,notice,contact,name,setName,error,setError,busy,online,latency,clock,scores,canvas,stick,predicted,enter,leave};
+  return {mode,chooseMode,backToMenu:()=>setMode(null),state,session,notice,contact:playerView.contact,name,setName,error,setError,busy,online,latency,clock,scores,canvas,player:playerView.player,setStick:(x:number,y:number)=>{stick.current.x=x;stick.current.y=y;},setDash:(dash:boolean)=>{stick.current.dash=dash;},enter,leave};
 }
