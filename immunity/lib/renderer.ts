@@ -1,5 +1,3 @@
-import {themeArt,themeSprite,drawThemeActor} from './theme-art';
-import {themeColors,type VisualThemeId} from './visual-theme';
 import {GROUND_TILT,SURVIVOR_SIZE,visibleGround,immunityArt,ready,sprite,groundEllipse,depthOrder,overlaps,actorPose,directionalSprite,sprintFrame,sprintSprite,walkFrame,walkSprite,type ActorPose} from './immunity-art';
 import { FIELD, walls, clamp, playerObstacles } from './physics';
 import {createEffects,updateEffects,cancelEffect,impactCamera,vanishing,drawImpacts,drawRespawns,drawHitFlash,type EffectTimeline,type CollisionEvent} from './collision-effects';
@@ -36,7 +34,7 @@ export function updatePositions(state:View|null,self:string|null,positions:Map<s
     positions.set(e.key,track);
   }
 }
-export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null,pendingContact=false,film?:{width:number;height:number;camera:{x:number;y:number}},theme:VisualThemeId='original'){
+export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string|null,positions:Map<string,Track>,zoom:number,time:number,predicted:PredictedPlayer|null=null,localEvent:CollisionEvent|null=null,pendingContact=false,film?:{width:number;height:number;camera:{x:number;y:number}}){
   const rect=canvasSize(canvas),dpr=film?1:Math.min(devicePixelRatio||1,1.5);
   const width=film?.width??rect.width,height=film?.height??rect.height;
   if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);}
@@ -47,45 +45,22 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
   const w=width,h=height,me=state?.players.find(p=>p.id===self);
   const camera=film?.camera||heldImpact||(me&&predicted?predicted:positions.get('p'+me?.id))||{x:3000,y:4850};
   const sx=(x:number)=>(x-camera.x)*zoom+w/2,sy=(y:number)=>(y-camera.y)*zoom*GROUND_TILT+h/2;
-  const bounds=visibleGround(camera,zoom,w,h),art=immunityArt(),paint=themeArt(theme),palette=themeColors[theme];
-  const floor=paint&&ready(paint.floor)?paint.floor:art.floor;
-  const drawSprite=(cell:number,x:number,y:number,size:number)=>paint&&themeSprite(ctx,paint.atlas,[0,1,4,8,3,11][cell],x,y,size)||sprite(ctx,art.atlas,cell,x,y,size);
+  const bounds=visibleGround(camera,zoom,w,h),art=immunityArt();
   const visible=(x:number,y:number,pad=220)=>sx(x)>-pad&&sx(x)<w+pad&&sy(y)>-pad&&sy(y)<h+pad;
-  ctx.fillStyle=palette.floor;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#7fa6a3';ctx.fillRect(0,0,w,h);
 
   // A world-anchored texture: it never swims underneath the moving camera.
-  if(ready(floor)){
+  if(ready(art.floor)){
     const tile=640;
     for(let y=Math.floor(bounds.top/tile)*tile;y<bounds.bottom;y+=tile){
       for(let x=Math.floor(bounds.left/tile)*tile;x<bounds.right;x+=tile){
-        if(paint){
-          const flipX=Math.abs(Math.floor(x/tile)%2)===1,flipY=Math.abs(Math.floor(y/tile)%2)===1;
-          ctx.save();ctx.translate(sx(x)+(flipX?tile*zoom:0),sy(y)+(flipY?tile*zoom*GROUND_TILT:0));ctx.scale(flipX?-1:1,flipY?-1:1);
-          ctx.globalAlpha=theme==='watercolor'?.7:theme==='moonbloom'?.55:.35;ctx.drawImage(floor,0,0,tile*zoom+.5,tile*zoom*GROUND_TILT+.5);ctx.restore();
-        }else ctx.drawImage(floor,sx(x),sy(y),tile*zoom+.5,tile*zoom*GROUND_TILT+.5);
+        ctx.drawImage(art.floor,sx(x),sy(y),tile*zoom+.5,tile*zoom*GROUND_TILT+.5);
       }
     }
   }
   // The outside staging zone is pearl silt. The arena retains its exact square geometry.
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,h);ctx.rect(sx(FIELD.min),sy(FIELD.min),(FIELD.max-FIELD.min)*zoom,(FIELD.max-FIELD.min)*zoom*GROUND_TILT);ctx.clip('evenodd');
-  ctx.fillStyle=palette.shore;ctx.fillRect(0,0,w,h);ctx.restore();
-
-  // Painted, walkable terrain gathers around existing collision islands.
-  // Decals add no new rocks or collision geometry and remain world anchored.
-  if(paint&&ready(paint.ground)){
-    for(const o of state?.obstacles||[]){
-      const size=o.r*(theme==='watercolor'?6.8:5);if(!visible(o.x,o.y,size*zoom))continue;
-      ctx.drawImage(paint.ground,sx(o.x)-size*zoom/2,sy(o.y)-size*zoom*GROUND_TILT/2,size*zoom,size*zoom*GROUND_TILT);
-    }
-    // A continuous botanical bank follows each solid boundary, leaving gates open.
-    for(const wall of walls()){
-      const horizontal=wall.w>wall.h,length=horizontal?wall.w:wall.h;
-      for(let offset=90;offset<length-40;offset+=240){
-        const x=wall.x+(horizontal?offset:wall.w/2),y=wall.y+(horizontal?wall.h/2:offset);
-        if(visible(x,y,350*zoom))ctx.drawImage(paint.ground,sx(x)-310*zoom,sy(y)-230*zoom*GROUND_TILT,620*zoom,460*zoom*GROUND_TILT);
-      }
-    }
-  }
+  ctx.fillStyle='#e9ddc790';ctx.fillRect(0,0,w,h);ctx.restore();
 
   type Actor={x:number;y:number;kind:'human'|'bot';id:string;name:string;own:boolean;warming:boolean;life:number;vx:number;vy:number};
   const actors:Actor[]=[];
@@ -97,16 +72,16 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
   }
   const liveKeys=new Set(actors.map(a=>a.kind+':'+a.id));
   for(const key of rect.poses.keys())if(!liveKeys.has(key))rect.poses.delete(key);
-  const actorBoxes=actors.map(a=>({actor:a,box:{x:sx(a.x)-(paint?34:24)*zoom,y:sy(a.y)-(paint?80:51)*zoom,width:(paint?68:48)*zoom,height:(paint?90:60)*zoom}}));
+  const actorBoxes=actors.map(a=>({actor:a,box:{x:sx(a.x)-24*zoom,y:sy(a.y)-51*zoom,width:48*zoom,height:60*zoom}}));
   const objects:{y:number;order:number;draw:()=>void}[]=[];
   const plant=(x:number,y:number,r:number,cell:number,order:number)=>{
     if(!visible(x,y,r*3*zoom+50))return;
-    const px=sx(x),py=sy(y),size=r*(paint?2.85:2.55)*zoom;
+    const px=sx(x),py=sy(y),size=r*2.55*zoom;
     const box={x:px-size/2,y:py-size*.94,width:size,height:size};
     const obscures=actorBoxes.some(({actor,box:body})=>actor.y<y&&overlaps(box,body));
     objects.push({y,order,draw:()=>{
       ctx.save();ctx.globalAlpha=obscures ? .27 : 1;
-      if(!drawSprite(cell,px,py+r*.12*zoom,size)){
+      if(!sprite(ctx,art.atlas,cell,px,py+r*.12*zoom,size)){
         groundEllipse(ctx,px,py,r*zoom);ctx.fillStyle='#d7e2cf';ctx.fill();ctx.strokeStyle='#758e89';ctx.stroke();
       }
       ctx.restore();
@@ -117,11 +92,11 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
   for(const wall of walls()){
     const wallVisible=wall.x+wall.w>=bounds.left&&wall.x<=bounds.right&&wall.y+wall.h>=bounds.top&&wall.y<=bounds.bottom;
     const x=sx(wall.x),y=sy(wall.y),ww=wall.w*zoom,hh=wall.h*zoom*GROUND_TILT;
-    if(wallVisible){ctx.fillStyle=palette.wall;ctx.strokeStyle='#718f85';ctx.lineWidth=1.5;ctx.fillRect(x,y,ww,hh);ctx.strokeRect(x,y,ww,hh);}
+    if(wallVisible){ctx.fillStyle='#eff1d9';ctx.strokeStyle='#718f85';ctx.lineWidth=1.5;ctx.fillRect(x,y,ww,hh);ctx.strokeRect(x,y,ww,hh);}
     const horizontal=wall.w>wall.h,length=horizontal?wall.w:wall.h;
-    for(let offset=65;offset<length;offset+=paint?95:155){
+    for(let offset=65;offset<length;offset+=155){
       const px=wall.x+(horizontal?offset:wall.w/2),py=wall.y+(horizontal?wall.h/2:offset);
-      plant(px,py,paint?72:34,5,0);
+      plant(px,py,34,5,0);
     }
   }
   const gates=[{x:3000,y:1200,label:'NORTH',horizontal:true},{x:4800,y:3000,label:'EAST',horizontal:false},{x:3000,y:4800,label:'SOUTH',horizontal:true},{x:1200,y:3000,label:'WEST',horizontal:false}];
@@ -132,28 +107,21 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
     ctx.fillStyle=locked?'#c38e6850':'#eef7da90';ctx.strokeStyle=locked?'#b87845':'#476a62';ctx.lineWidth=2;
     ctx.fillRect(gate.horizontal?-125:-12,gate.horizontal?-12:-125,gate.horizontal?250:24,gate.horizontal?24:250);
     ctx.setLineDash([6,9]);ctx.strokeRect(gate.horizontal?-125:-12,gate.horizontal?-12:-125,gate.horizontal?250:24,gate.horizontal?24:250);ctx.restore();
-    ctx.font='600 10px system-ui';ctx.textAlign='center';ctx.fillStyle=palette.ink;
+    ctx.font='600 10px system-ui';ctx.textAlign='center';ctx.fillStyle='#244d4c';
     ctx.fillText(gate.label+' PASSAGE',x,y+32*zoom);
     ctx.font='10px system-ui';ctx.fillText(extracting?'Reach this passage to extract':locked?(state?.mode==='motion'?'Collect the seed first':'Run in progress'):'Enter the shallows',x,y+47*zoom);
   }
   if(state?.resource&&!predicted?.carrying){
     const seed=state.resource,x=sx(seed.x),y=sy(seed.y);
     groundEllipse(ctx,x,y,seed.radius*zoom);ctx.fillStyle='#f9db7a55';ctx.fill();ctx.strokeStyle='#ffe5a0';ctx.lineWidth=2;ctx.stroke();
-    if(!(paint&&themeSprite(ctx,paint.atlas,10,x,y+7*zoom,76*zoom))&&!sprite(ctx,art.atlas,4,x,y+7*zoom,76*zoom)){ctx.fillStyle='#ffe5a0';ctx.beginPath();ctx.arc(x,y,15*zoom,0,Math.PI*2);ctx.fill();}
-    ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillStyle=palette.ink;ctx.fillText('LIFE-SUPPORT SEED',x,y+35*zoom);
+    if(!sprite(ctx,art.atlas,4,x,y+7*zoom,76*zoom)){ctx.fillStyle='#ffe5a0';ctx.beginPath();ctx.arc(x,y,15*zoom,0,Math.PI*2);ctx.fill();}
+    ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#183f3d';ctx.fillText('LIFE-SUPPORT SEED',x,y+35*zoom);
   }
   for(let i=0;i<(state?.obstacles.length||0);i++){
     const o=state!.obstacles[i];if(!visible(o.x,o.y,o.r*3*zoom+50))continue;
     const x=sx(o.x),y=sy(o.y);
-    groundEllipse(ctx,x,y,o.r*zoom);ctx.fillStyle=paint?'#405a4800':'#527a7550';ctx.fill();ctx.strokeStyle=paint?'#355e5c24':'#355e5c80';ctx.lineWidth=1.2;ctx.stroke();
+    groundEllipse(ctx,x,y,o.r*zoom);ctx.fillStyle='#527a7550';ctx.fill();ctx.strokeStyle='#355e5c80';ctx.lineWidth=1.2;ctx.stroke();
     plant(o.x,o.y,o.r,i%4===0?1:0,1);
-    if(paint){
-      for(let petal=0;petal<3;petal++){
-        const angle=(i*.73+petal*2.1),dx=Math.cos(angle)*o.r*.95,dy=Math.sin(angle)*o.r*.75;
-        const size=Math.max(35,o.r*.68)*zoom;
-        objects.push({y:o.y+dy,order:1,draw:()=>{themeSprite(ctx,paint.atlas,2,sx(o.x+dx),sy(o.y+dy),size);}});
-      }
-    }
   }
   // Small, low decoration has no collision: keep it away from obstacle-like silhouettes.
   const step=220;
@@ -161,7 +129,7 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
     for(let x=Math.floor(bounds.left/step)*step;x<bounds.right;x+=step){
       const seed=Math.abs(Math.sin(x*12.9898+y*78.233));if(seed<.68)continue;
       const px=sx(x+seed*85),py=sy(y+seed*63);
-      ctx.save();ctx.globalAlpha=.19;if(paint)themeSprite(ctx,paint.atlas,2,px,py,28*zoom);else sprite(ctx,art.atlas,5,px,py,28*zoom);ctx.restore();
+      ctx.save();ctx.globalAlpha=.19;sprite(ctx,art.atlas,5,px,py,28*zoom);ctx.restore();
     }
   }
   // Ground contact rings stay at the real world radius, even while upright art is animated.
@@ -178,11 +146,11 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
     objects.push({y:actor.y,order:2,draw:()=>{
       const moving=pose.moving;
       const sway=reducedMotion?0:actor.kind==='human'?(moving?-Math.abs(Math.sin(pose.travel/9))*1.8*zoom:0):Math.sin(time/300+actor.x)*.7*zoom;
-      const human=actor.kind==='human',size=(paint?(human?88:actor.warming?61:73):(human?SURVIVOR_SIZE:actor.warming?39:47))*zoom;
+      const human=actor.kind==='human',size=(human?SURVIVOR_SIZE:actor.warming?39:47)*zoom;
       const speed=Math.min(pose.speed,Math.hypot(actor.vx,actor.vy));
       const sprint=human?sprintFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction):null;
       const walk=human?walkFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction):null;
-      const drawn=(paint&&drawThemeActor(ctx,human?paint.human:paint.atlas,human,actor.warming,pose.facing,pose.travel,moving,reducedMotion,x,y+(human?0:sway),size))||(sprint&&walkSprite(ctx,art.walk,sprint,x,y+4*zoom,size,true))||(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(walk&&walkSprite(ctx,art.walk,walk,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
+      const drawn=(sprint&&walkSprite(ctx,art.walk,sprint,x,y+4*zoom,size,true))||(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(walk&&walkSprite(ctx,art.walk,walk,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
       if(!drawn&&!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,pose.facing>=1&&pose.facing<=3)){
         groundEllipse(ctx,x,y,radius*zoom);ctx.fillStyle=human?'#f5e9b3':actor.warming?'#e0e7dc':'#d78542';ctx.fill();
       }
@@ -207,7 +175,7 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
   }
   // Labels are a final layer and therefore never disappear behind foreground scenery.
   for(const a of actors.filter(a=>a.kind==='human')){
-    const text=(a.own?'YOU · ':'')+a.name,x=sx(a.x),y=sy(a.y)-(paint?83:54)*zoom;
+    const text=(a.own?'YOU · ':'')+a.name,x=sx(a.x),y=sy(a.y)-54*zoom;
     ctx.font=(a.own?'600 ':'')+'11px system-ui';const tw=ctx.measureText(text).width;
     ctx.fillStyle='#173a3ce0';ctx.beginPath();ctx.roundRect(x-tw/2-7,y-12,tw+14,19,8);ctx.fill();ctx.fillStyle='#faf3db';ctx.textAlign='center';ctx.fillText(text,x,y+1);
   }
@@ -224,6 +192,6 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
   }
   // Gentle atmosphere at the edge, never a visibility mask over collision positions.
   const shade=ctx.createRadialGradient(w/2,h/2,Math.min(w,h)*.35,w/2,h/2,Math.max(w,h)*.68);
-  shade.addColorStop(0,'#173e4500');shade.addColorStop(1,palette.shadow);ctx.fillStyle=shade;ctx.fillRect(0,0,w,h);
+  shade.addColorStop(0,'#173e4500');shade.addColorStop(1,'#173e4540');ctx.fillStyle=shade;ctx.fillRect(0,0,w,h);
 
 }

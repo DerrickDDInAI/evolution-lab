@@ -36,3 +36,7 @@ Exact prompts are in [themes/generation-prompts.json](themes/generation-prompts.
 ### Reference fidelity additions
 
 The three themes also include `sign.webp` and `ground.webp`: individual painted menu plaques and walkable scenery washes. Shared `themes/paper.webp` supplies the cream ink-edged HUD surface. These seven assets were generated with the built-in image tool using the same reference boards; [exact prompts](themes/fidelity-prompts.json) are retained. WebP quality 91 preserves their transparent edges. The complete theme directory is approximately 6.3 MiB. Moonbloom borrows the cream-clad human row from the Sunseed atlas to match the board's traveler.
+
+## Original-only presentation — 2026-11-02
+
+The selectable worlds and alternate runtime artwork were removed at the owner's request. Original Glass Tide keeps its original scenery/actors plus `themes/paper.webp` and `themes/shell-sign.webp` for the accepted painted controls. Prompt JSON and earlier descriptions remain provenance/history; removed images can be recovered from Git.

@@ -67,3 +67,9 @@ The owner authorized publishing the updated Original interface. Sites version 37
 Owner requested removing the redundant arena status badge and reducing the join card to the name input, join and back controls. Leave remains session-only. Film headings, archive labels and download links now inherit panel ink/accent colors rather than pale dark-panel colors; error feedback and archive buttons use explicit paper-compatible contrast.
 
 PASS: 151 tests, TypeScript, production build and diff whitespace. Local disposable preview opened the menu and Models & admin connection-recovery panel. Full authenticated film/archive and gameplay journey were not repeated. This first commit also records the existing, previously published visual-theme foundation needed by these changes; unrelated evaluation work stays uncommitted. No push or deployment.
+
+## Original Glass Tide selected — 2026-11-02
+
+The owner requested removing all appearance options after the interface-fix commit. Original is now the fixed presentation for menu, arena and films, retaining the accepted cream paper controls and shell signs. The picker, saved-preference handling, alternate renderer/menu branches and alternate runtime images are removed. Old browser preferences are ignored. Historical prompts remain; earlier comparison assets are recoverable from Git.
+
+PASS: 151 tests, TypeScript, production build and diff whitespace. Disposable local browser review confirms no Appearance entry, the compact name form, successful join, Leave appearing only in a session, and Leave returning to the menu. Models/admin connection recovery was inspected; authenticated film playback, full contact/rejoin, Motion Hunt extraction, physical touch and OS reduced-motion checks were not repeated. No push, publication or existing runtime-data changes.
