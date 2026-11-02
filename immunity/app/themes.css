@@ -117,3 +117,15 @@
  .app[data-theme="original"] .nursery-label>span{font-size:clamp(10px,2.8cqw,16px)}
  .app[data-theme="original"] .nursery-instructions{position:static;transform:none;width:auto;max-width:100%;justify-self:center;margin:0 0 14px;padding:7px 12px;font-size:11px;gap:2px 10px}
 }
+
+/* Small menu labels need an opaque surface over the detailed scenery. */
+.app[data-theme="original"] .nursery-collection{top:14px;left:16px;width:max-content;max-width:calc(100% - 32px);padding:10px 14px;gap:2px;background:var(--paper);border:1px solid var(--paint-line);border-radius:14px 8px;color:var(--paint-ink);-webkit-text-stroke:0;text-shadow:none;font-size:13px;line-height:1.45}
+.app[data-theme="original"] .nursery-collection strong{font-size:20px}
+.app[data-theme="original"] .nursery-credits button{padding:9px 14px;background:var(--paper);border:1px solid var(--paint-line);border-radius:12px 7px;color:var(--paint-ink);-webkit-text-stroke:0;text-shadow:none;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.app[data-theme="original"] .nursery-credits button:hover{background:var(--paper-shade);color:var(--paint-ink)}
+.app[data-theme="original"] .nursery-credits button:focus-visible{outline:3px solid var(--paint-accent);outline-offset:3px}
+@media(max-width:700px){
+ .app[data-theme="original"] .nursery-collection{top:12px;left:12px;max-width:calc(100% - 24px);padding:8px 12px;font-size:12px}
+ .app[data-theme="original"] .nursery-collection strong{font-size:18px}
+ .app[data-theme="original"] .nursery-credits button{padding:8px 11px;font-size:13px}
+}

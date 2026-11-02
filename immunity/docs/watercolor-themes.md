@@ -79,3 +79,9 @@ PASS: 151 tests, TypeScript, production build and diff whitespace. Disposable lo
 Owner's screenshot showed the old Appearance control and mode text below the painted sign centers. A fresh browser visit to https://evogoo.com confirmed no Appearance control in the current live interface; the prior open tab needs reloading. Corrected Original's label hit areas/text to align with its existing landscape and portrait signs instead of overlaying oversized shell signs. Raised keyboard instructions above the footer links with dark teal text on a light paper backing.
 
 PASS: 151 tests, TypeScript, full lint (zero findings), build and diff whitespace. Disposable browser review at 1440×810 and 390×844 confirms readable mode names/subtitles and raised instructions, with no Appearance control. Screenshot: ignored `outputs/menu-fix/desktop.png`. This correction is local; no publication, gameplay/data changes or full gameplay/device retest.
+
+### Branding and footer contrast correction
+
+The owner found EvoGoo, its subtitle and both footer links hard to read over the scenery. Added opaque cream reading surfaces with dark teal text, removed text outlines/shadows, increased compact text sizes and provided matching hover/focus states. Both links retain at least 44px touch height.
+
+PASS: production build, diff whitespace and visual review at the default portrait viewport and 320×844. No overlaps observed. Evidence: ignored `outputs/menu-fix/label-contrast.png`. CSS-only correction; domain tests and the full gameplay journey were not repeated. Local only; no publication or runtime-data changes.
