@@ -516,6 +516,64 @@ Saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_725b3c2e55e88191
 
 The earlier five-minute simultaneous local test retained twelve players per mode at 24 sentinels, with two transient busy responses out of 39,826 updates. Publication does not validate hosted capacity, distributed isolates, WAN or physical phones. Configured caps remain unchanged. This receipt is a documentation-only follow-up; it does not change the published application.
 
+## Three selectable watercolor worlds — 2026-10-30
+
+The owner requested implementing the attached Sunseed Garden, Watercolor Glass Tide and Moonbloom Nursery boards for in-game comparison. Added a browser-local Appearance picker with the original retained as a fourth option; coordinated menu, terrain, scenery, survivor/sentinel/collectible art and readable interface palettes. Both modes use the same simulation and geometry. See [playable watercolor themes](watercolor-themes.md) for the accepted brief, implementation, artwork and verification limits.
+
+PASS: 136 regressions, TypeScript, production build and focused theme/menu/renderer lint. Full lint remains at the existing 16 errors (44 warnings including generated local fixtures). Browser review covers all themes, switching/restoring, persistence, loading-error recovery, Survival movement/capture recovery/saved-score rejoin, Motion Hunt entry and 320/390 CSS-pixel layouts. Physical touch, OS reduced-motion visuals, hosted performance and a fresh full Motion Hunt extraction remain unverified.
+
+Changes are local and uncommitted, based on published repair commit `5f6399e`; this task has not published anything. The disposable preview at `http://127.0.0.1:5190/` is intentionally left running for the owner. Existing runtime data, production scores/genomes, hosting and secrets are untouched. Next: owner compares the styles through Appearance; any publication requires separately authorized scope.
+
+
+### Reference fidelity correction — 2026-10-30
+
+The owner found the first theme pass insufficiently faithful. Added painted seed/shell/leaf menu signs, cream paper HUDs, compact expandable Adaptation, larger actors/scenery, fuller planted borders and themed water/stone ground details. Moonbloom now uses the cream-clad human traveler. Gameplay geometry, original theme, hosting and runtime data remain unchanged. See [correction details and artwork prompts](watercolor-themes.md#fidelity-correction-delivered).
+
+PASS: 136 regressions, TypeScript, production build, focused lint and diff whitespace checks. Browser review covered the revised three arenas, menus, movement and capture recovery, training access and actual 390/320 CSS-pixel HUD layouts without overflow. Existing physical-touch, OS reduced-motion, hosted-performance and fresh full Motion Hunt extraction limits remain. All theme work remains local/uncommitted; nothing was published. The disposable preview at `http://127.0.0.1:5190/` is left running for owner comparison.
+
+## Controlled evolution comparison — 2026-10-31
+
+The owner requested an isolated controlled evaluator followed by separate species-management and mutation comparisons, preserving learned genomes and live training. Added `npm run evaluate:evolution`, fresh temporary compilation of domain rules, deterministic scripted train/holdout scenarios, and four arms: unchanged baseline, persistent species/quotas/stagnation, lower structural mutation, and occasional weight replacement. No production domain code or genome format changes. See [protocol, implementation, results and limits](evolution-evaluation.md).
+
+Completed all 40 arms across five matched seeds, both modes and 30 breeding steps (eight-second episodes), with identical initial populations and no holdout influence on selection. Survival mean holdout capture rates: baseline 21.7%, species 28.3%, lower structural mutation 25.0%, weight reset 23.3%. Species improves two seeds and ties three on capture rate; this is an exploratory signal, not a proven live improvement. Motion Hunt gains in rewarded captures come with poorer balanced detection accuracy in every experimental arm; weight reset raises stationary false positives from 41.2% to 78.6%. No variant is promoted. The species screen did not exercise stagnant-species removal, so that mechanism's learning benefit remains unmeasured.
+
+PASS: 147 tests including 11 evaluator regressions, TypeScript, focused new-file lint, documentation links, source/initial-state audit and diff whitespace. Full lint retains the existing 16 errors/44 warnings. Evidence: ignored `outputs/evolution-evaluation/screen-aeT3yP/report.json` and `report.md`. All 14 protected runtime/hosting/secret/domain-source hashes match before and after. No live requests, resets/imports, database mutations, build, browser/HTTP fixtures, push or deployment. Existing visual-theme edits and preview are preserved.
+
+Task complete locally and uncommitted on `main` at `cd9b6b7`. Optional next research: broaden/lengthen the matched Survival species comparison and reserve a fresh final holdout before any promotion; investigate Motion Hunt detection/pursuit tradeoffs. Live training and saved populations retain the current algorithm.
+
+## Extended Survival comparison — 2026-10-31
+
+The owner authorized the longer/broader comparison while preserving live training and existing genomes. The frozen [v2 protocol](evolution-evaluation.md#extended-survival-protocol-v2--2026-10-31) compares unchanged baseline versus the same species-management package: 12 new seeds, 100 breeding steps, 12-second episodes, 16 training scenarios and 60 fresh holdouts. New opponent families/layouts and independent approach headings broaden the scenarios. Four bounded CPU workers run isolated synthetic worlds; no production source/parameters or persisted training state changes.
+
+Completed all 24 arms in 631.1 seconds with `npm run evaluate:survival -- --workers=4`. Evidence directory: `outputs/evolution-evaluation/survival-extended-Fysxp6/`, containing frozen protocol, per-arm results and final JSON/Markdown reports. All 12 pairs have matching initial populations and initial holdout results, and every recorded source hash matches. See [detailed results](evolution-evaluation.md#completed-extended-comparison--2026-10-31).
+
+Outcome: current versus persistent-species holdout capture rate is 60.97% versus 64.31%; paired gain +3.33 points, with descriptive 95% paired bootstrap interval −6.94 to +12.92 points. Species wins 7 seeds and loses 5. Capped capture time is 7.902 versus 7.567 seconds (delta −0.335 s, interval −1.027 to +0.397 s). Zigzag capture performance worsens by 13.89 points. Four species runs actually exclude a stagnant species, but the combined treatment cannot attribute any benefit to stagnation alone. Recommendation: retain the current algorithm; the small favorable mean does not establish a dependable advantage. No candidate is promoted.
+
+PASS: 151 tests and TypeScript, focused lint, worker/serial equivalence, new scenario validity, smoke comparison, final source/initial-state audit, documentation links and diff whitespace. Full lint retains 16 errors/44 warnings. All 39 protected runtime/hosting/secret/domain-source hashes match before and after. Existing theme work, preview, live training and learned populations remain untouched. No deployment, database mutation, imports/resets, push, build or browser/HTTP fixtures. Task complete locally and uncommitted on `main` at `cd9b6b7`; any future component ablations or live changes require a separate task.
+
+
+## Original adopts Watercolor controls — 2026-11-01
+
+At the owner's request, Original Glass Tide now shares the painted shell buttons and cream paper HUD from Watercolor, adapted with teal ink, sage stamina segments and menu placement matching Original's art. Original scenery, actors and gameplay remain unchanged. Existing uncommitted evaluation/theme work is preserved. See [scope and verification](watercolor-themes.md#original-glass-tide-adopts-the-painted-interface--2026-11-01).
+
+PASS: 151 tests, TypeScript, production builds, focused theme lint and diff whitespace. Browser checks covered selecting Original, keyboard menu entry, Survival joining/movement, training access, desktop and 320/390 CSS-pixel layouts. Full contact recovery, physical touch, reduced-motion visuals and Motion Hunt extraction were not repeated. Disposable preview stopped; the main checkout is rebuilt for `npm start -- --port 5173`. Local/uncommitted, no publication or existing runtime-data changes.
+
+
+## Updated Original interface published — 2026-11-02
+
+The owner explicitly authorized deployment. Version **37** succeeded from hosted source commit `849e1e51bf12416a4455c41afdd29825aff1db73`. Original remains the default, with its original world and the accepted painted shell buttons/cream paper HUD; the three alternate visual themes remain selectable. The release excludes all uncommitted evaluation scripts/tests/package changes. It contains presentation changes and artwork only; gameplay/API rules, schema, D1 binding, Site identity and public audience are unchanged.
+
+Saved version: `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_42289cea5b6c8191955b294c22be2211`. Deployment: `appgdep_6ae7ca7aff8c81918ee2dfb7df7d679c`, status `succeeded`, environment revision 1. Returned live URL: https://pursuit-lab-derrick.skycurtis-cloud.chatgpt.site. The Site reported https://evogoo.com as its current live URL before this release; its custom-domain configuration was not changed. Opening the returned URL in the app was queued, not browser-verified.
+
+The bounded release checkout passed 136 game regressions, TypeScript, production build, diff whitespace and archive inspection; the 15 unrelated evaluator tests are intentionally absent from this source. All 12 protected original local runtime/hosting/secret-file hashes remained identical. The 274-member local archive contains no local databases, dependencies, credentials or Git metadata. No production gameplay, reset/import, migration or load test was performed; previous browser/device limitations remain. The initial Git artwork upload failed with HTTP 400, then succeeded with refreshed credentials and a temporary-checkout-only upload buffer. Build/source content was unchanged during that retry.
+
+Hosted-source history was committed and pushed by the Sites helper. The working Evolution Lab checkout and its GitHub remote were not committed/pushed in this deployment; local visual work and unrelated evaluation work remain present. Release source and archive are retained at `/private/tmp/immunity-release-20261102-source` and `/private/tmp/immunity-release-20261102.tar.gz`. This receipt is local documentation and is not part of the published bundle.
+
+
+## Interface simplification and Original-only selection — 2026-11-02
+
+Owner requested two local commits: simplify the join panel/remove arena status and fix model/film contrast, then remove appearance choices and keep Original Glass Tide. First commit `f45a555` includes the previously published visual foundation. The second removes the picker, alternate art/rendering paths and stored-preference use while retaining painted Original controls. See [current outcome and verification](watercolor-themes.md#original-glass-tide-selected--2026-11-02). Tests (151), TypeScript, build and local join/Leave checks pass; authenticated film playback and full gameplay/device checks remain unverified. No push or deployment. Unrelated evaluator work remains local/uncommitted.
+
 ## Lint baseline cleared — 2026-11-02
 
 Owner requested fixing remaining lint failures. Reproduced 16 errors and 44 warnings. Fixed hook purity/ref ownership, stable effect dependencies and help-focus cleanup; touch controls now call hook-owned setters and the HUD receives state snapshots on its existing refresh cadence and immediate contact notices. Browser storage restoration is deferred until after the mount effect, with cancellation guarding Strict Mode cleanup. Replaced the home anchor with Next Link, removed explicit `any` annotations and unused imports, and preserved snapshot private-field filtering. ESLint excludes generated `.sites-runtime/` copies while continuing to check their maintained sources; no lint rules were weakened.
@@ -531,6 +589,18 @@ Version **38** deployed successfully from hosted source `14eae71446a334719edddda
 
 PASS: exact release source lint (zero findings), 136 game regressions, TypeScript, production build, source-tree equality, archive inspection and diff whitespace. The 15 uncommitted evaluator tests are outside this release. All six sampled original local runtime/hosting/secret files retain their hashes. No production gameplay, fixtures, reset/import, migration or load test was performed. Browser gameplay, restored sessions, keyboard/touch, reduced-motion and authenticated film checks were not repeated. Archive retained at `/private/tmp/immunity-lint-release-20261102.tar.gz`; isolated hosted checkout at `/private/tmp/immunity-lint-release-20261102`.
 
+## Menu readability follow-up — 2026-11-02
+
+Corrected mode-label alignment on Original's painted signs and raised the keyboard instructions with a paper reading surface. Fresh live browser inspection confirmed Appearance is already absent; the reported screenshot reflects the older loaded interface. See [menu correction](watercolor-themes.md#menu-label-and-instruction-correction--2026-11-02). 151 tests, TypeScript, zero-finding lint, build, desktop/portrait visual checks and diff whitespace pass. Local correction only; no publication or runtime-data changes.
+
+Menu contrast follow-up: EvoGoo branding/subtitle and About & contact / Models & admin now use opaque cream surfaces with dark teal text and visible focus states. Build and default/320px visual review pass; no gameplay changes or publication. See the watercolor-theme topic's branding/footer correction.
+
+## Menu fixes published — 2026-11-02
+
+Owner authorized push and deployment. GitHub `main` now includes `a4dc189` (mode labels/instructions) and `b51b355` (branding/footer contrast). Version **39** deployed successfully from hosted-source commit `dc698d46a84ab0531cb1e6a020a5a75d5a8a3349`; its tree equals `b51b355:immunity` (`51bb82e6d3d32b818b41edcba6a38ce39811e9b1`). Saved version: `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_4c31d3d114bc8191971f898170d61774`. Deployment: `appgdep_6ae90e1384ec8191a0b305fe3af7cd19`, succeeded, environment revision 1. Native production URL: https://pursuit-lab-derrick.skycurtis-cloud.chatgpt.site. Existing public access, Site/D1 identity and custom-domain configuration are unchanged.
+
+PASS: exact release 136 game tests, TypeScript, zero-finding lint, production build, source-tree equality and archive inspection (117 files; no database, credentials, dependencies or Git metadata). Published menu opened in the browser with the corrected signs and paper branding/instructions. No production game was joined and no database fixture, import/reset or migration ran. Unrelated local evaluation work remains excluded and preserved. Archive: `/private/tmp/immunity-menu-release-20261102.tar.gz`. This release receipt remains local documentation.
+
 
 ## Cell to spiral logo — 2026-11-04
 
@@ -539,3 +609,10 @@ User selected 01 Cell to spiral and authorized implementation, commit and deploy
 Verification: isolated release checkout passes 136 game regressions, TypeScript and production build; SVG raster review covers wordmarks at 326/196/156/100px and symbols at 64/32/16px. Diff whitespace passes. Browser gameplay and physical-device checks were not repeated.
 
 Publication blocked: the Sites connector returns project_not_found for the preserved project appgprj_6ad2976be9588191b0d83a413395dc2c, and list_sites returns no accessible sites. Restore access to this existing Site before packaging and deploying; do not create a replacement or change its D1 binding. Unrelated evaluator edits remain excluded.
+
+
+## Remaining work committed and folder recovery — 2026-11-04
+
+Owner authorized committing all remaining changes and restoring the project-folder/site connection. The remaining source is the offline-only controlled-evolution evaluator, extended Survival runner, regression tests and package commands, plus historical documentation receipts. Production evolution modules, learned genomes and runtime data remain unchanged. Fresh verification passes 151 tests, TypeScript, focused evaluator lint and diff whitespace. The prior logo production build remains applicable because these additions do not change application imports or dependencies.
+
+Current checkout: `/Users/derrickvanfrausum/git-repos/evolution-lab`; the app still lists the deleted `/Users/derrickvanfrausum/BeCode_AI/git-repos/evolution-lab` path. Available app tools cannot edit project source folders; the owner must add the relocated folder through Edit project and set it primary. Sites is installed/enabled, but listing returns no accessible sites and the existing Site returns project_not_found. Restoring ownership/account access requires the user's app controls; changing action-approval settings would not restore that access. No replacement Site, D1 change or deployment was performed.
