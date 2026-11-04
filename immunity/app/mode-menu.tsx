@@ -89,7 +89,7 @@ export function ModeMenu({onChoose,paused=false,onModels}:Props){
   }
   return <section className="mode-menu" aria-labelledby="expedition-title">
     <div className="nursery-habitat">
-      <div className="nursery-collection"><strong>EvoGoo</strong><span>Evolution games &amp; experiments</span></div>
+      <div className="nursery-collection"><img className="evogoo-wordmark" src="/evogoo-wordmark.svg" alt="EvoGoo" width="326" height="90"/><span>Evolution games &amp; experiments</span></div>
       <div ref={stage} className="nursery-scene" tabIndex={0} aria-label="Choose a mode. Walk with WASD or arrows. Press Enter to play, or tap a mode sign twice." onPointerDown={walk} onPointerMove={e=>{if(e.buttons)walk(e);}} onBlur={()=>{keys.current.clear();goal.current=null;}}>
         <h1 id="expedition-title">Immunity<svg className="nursery-ornament" viewBox="0 0 300 30" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"><path d="M3 8H119Q140 8 150 26Q160 8 181 8H297"/><path d="M18 13H117Q139 13 150 28Q161 13 183 13H282"/><path d="M124 3Q142 3 147 18M176 3Q158 3 153 18M150 2V25"/></g></svg></h1>
         <svg className={"nursery-pools"+(blocked?" paused":"")} viewBox={`0 0 ${artSize.width} ${artSize.height}`} preserveAspectRatio="none" aria-hidden="true">

@@ -530,3 +530,12 @@ Owner authorized committing the lint fixes, pushing all pending commits and depl
 Version **38** deployed successfully from hosted source `14eae71446a334719edddda11248c623ea4090b7`, whose source tree exactly matches `24f8a30:immunity`. Saved version `appgprj_6ad2976be9588191b0d83a413395dc2c~appgver_904dc5ff478c8191931f8817c9af9c08`; deployment `appgdep_6ae908b9c6e88191a098e63cf1709d56`, status `succeeded`, environment revision 1. Returned production URL: https://pursuit-lab-derrick.skycurtis-cloud.chatgpt.site. Existing Site identity, public access, custom-domain configuration and D1 binding remain unchanged.
 
 PASS: exact release source lint (zero findings), 136 game regressions, TypeScript, production build, source-tree equality, archive inspection and diff whitespace. The 15 uncommitted evaluator tests are outside this release. All six sampled original local runtime/hosting/secret files retain their hashes. No production gameplay, fixtures, reset/import, migration or load test was performed. Browser gameplay, restored sessions, keyboard/touch, reduced-motion and authenticated film checks were not repeated. Archive retained at `/private/tmp/immunity-lint-release-20261102.tar.gz`; isolated hosted checkout at `/private/tmp/immunity-lint-release-20261102`.
+
+
+## Cell to spiral logo — 2026-11-04
+
+User selected 01 Cell to spiral and authorized implementation, commit and deployment. The menu now uses a custom SVG wordmark with its final double-o rendered as a lime-nucleus cell joined to an open spiral with one bud. The favicon uses the paired-cell symbol. An opaque cream background and 196px desktop / 156px mobile wordmark widths preserve contrast. Gameplay, learned populations and persistence are unchanged.
+
+Verification: isolated release checkout passes 136 game regressions, TypeScript and production build; SVG raster review covers wordmarks at 326/196/156/100px and symbols at 64/32/16px. Diff whitespace passes. Browser gameplay and physical-device checks were not repeated.
+
+Publication blocked: the Sites connector returns project_not_found for the preserved project appgprj_6ad2976be9588191b0d83a413395dc2c, and list_sites returns no accessible sites. Restore access to this existing Site before packaging and deploying; do not create a replacement or change its D1 binding. Unrelated evaluator edits remain excluded.

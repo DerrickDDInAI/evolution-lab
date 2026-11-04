@@ -263,3 +263,9 @@
 .model-manager>p{color:var(--subtle)}.model-manager>label{display:block;margin:20px 0 7px}.model-manager select{width:100%;padding:12px;background:#0d292e;color:var(--pearl);border:1px solid #d6c69b88;border-radius:12px;font:inherit}.model-manager :is(button,select,input,summary):focus-visible{outline:2px solid #ffda85;outline-offset:3px}
 .model-manager .training-vault h3{font:22px Georgia,serif}.model-manager h3 small{display:block;font:12px system-ui;margin:8px 0;color:var(--subtle)}.model-manager .export{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:12px;background:#edd8a9;color:#183b3a;border-radius:16px 8px;font-size:13px}.model-manager details{margin:16px 0}.model-manager summary{cursor:pointer;min-height:44px;padding:10px 0}.model-manager dl{margin:12px 0}.model-manager dl>div{display:flex;justify-content:space-between;gap:12px}.model-manager dd{margin:0}.vault-refresh{margin-top:12px;min-height:44px;color:inherit;text-decoration:underline;text-underline-offset:4px}
 @media(max-width:420px){.model-manager{padding:20px}.model-manager h2{font-size:26px}}
+
+/* Cell to spiral: opaque backing and generous counters preserve mobile contrast. */
+.nursery-collection{background:#fff7e5;color:#244b36;padding:12px 18px 14px;border-radius:0 0 20px 0;-webkit-text-stroke:0;text-shadow:none;gap:4px}
+.evogoo-wordmark{display:block;width:196px;max-width:100%;height:auto}
+.nursery-collection>span{font:12px/1.4 system-ui,sans-serif}
+@media(max-width:700px){.nursery-collection{padding:10px 14px 12px}.evogoo-wordmark{width:156px}.nursery-collection>span{font-size:10px}}
