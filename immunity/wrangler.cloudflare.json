@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "evogoo-immunity",
+  "main": "./build/sites-worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "evogoo-immunity",
+      "database_id": "0004134d-3a67-40df-9aad-1a539440afc6",
+      "migrations_dir": "./drizzle"
+    }
+  ],
+  "account_id": "5e5f072708418f588136228a35983217",
+  "routes": [
+    {
+      "pattern": "evogoo.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.evogoo.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.evogoo.com/*",
+      "zone_name": "evogoo.com"
+    }
+  ]
+}

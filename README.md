@@ -28,7 +28,16 @@ npm run verify
 npm run build
 ```
 
-Follow the [Immunity setup guide](immunity/README.md#run-locally) to initialize a local database and start the game. Each experiment keeps its code and dependencies in its own directory.
+Initialize the local database once using the [local setup instructions](immunity/README.md#initialize-the-local-database), then choose a workflow:
+
+| Task | Command from `immunity/` |
+| --- | --- |
+| Develop with live rebuilds | `npm run dev -- --port 5173 --hostname 127.0.0.1` |
+| Build and preview locally | `npm run build`, then `npm start -- --port 5173` |
+| Build for Cloudflare without publishing | `npm run cloudflare:build` |
+| Deploy to Cloudflare | `npx wrangler login`, then `npm run cloudflare:deploy` |
+
+Development and preview open at [http://127.0.0.1:5173](http://127.0.0.1:5173). Read the [complete installation and running guide](immunity/README.md#install) and [Cloudflare deployment instructions](immunity/README.md#deploy-to-cloudflare) for database setup, account configuration and secrets. Each experiment keeps its code and dependencies in its own directory.
 
 ## Contributing
 

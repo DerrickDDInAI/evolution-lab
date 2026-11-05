@@ -26,34 +26,74 @@ Each arena has 24 sentinels. After 45 seconds of active simulation, selection an
 
 This is a **NEAT-inspired** experiment, not a claim of consistently improving AI. Changing human opponents affect fitness, and higher fitness alone does not establish better performance. The game supports up to 12 players per arena. [Local load checks](docs/performance.md#repaired-local-results-2026-10-29) cover twelve players in each mode simultaneously; hosted, WAN and physical-device capacity remain unverified.
 
-## Run locally
+## Install
 
-Requires **Node.js 22.13+** and npm. From the repository root:
+Requires **Node.js 22.13+** and npm. Clone the repository and install the locked dependencies:
 
 ```sh
-cd immunity
+git clone https://github.com/DerrickDDInAI/evolution-lab.git
+cd evolution-lab/immunity
 npm run install:ci
+```
+
+If you already have the repository, run `npm run install:ci` from `immunity/`. All commands below run from that folder. Cloudflare sign-in is only required for remote database operations and deployment.
+
+## Run locally
+
+### Initialize the local database
+
+Build once to generate the local Worker configuration:
+
+```sh
 npm run build
 ```
 
-Initialize a fresh local database by applying both migrations in order:
+For a **new, empty local database**, apply both schema files in order:
 
 ```sh
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_high_carnage.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_messy_tombstone.sql
+```
+
+Local state persists in `.wrangler/state`. Initialize it once; do not reapply these table-creation files to an existing database or delete its state to fix a build. These commands use `--local` and do not alter production.
+
+### Development with live rebuilds
+
+After local database initialization:
+
+```sh
+npm run dev -- --port 5173 --hostname 127.0.0.1
+```
+
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Edits rebuild automatically. Stop the server with Ctrl+C.
+
+### Build and preview
+
+To preview a production bundle locally:
+
+```sh
+npm run build
 npm start -- --port 5173
 ```
 
-Open **http://127.0.0.1:5173**. For development with live rebuilds, use `npm run dev -- --port 5173 --hostname 127.0.0.1` instead of `npm start`.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Preview does not rebuild on edits; stop it, build again and restart. It uses the local database and loads an existing ignored `.dev.vars` for local secrets. Keep that file out of Git.
 
-The built preview keeps the inspector disabled for sustained runs. For interactive debugging, opt in with `npm start -- --port 5173 --inspect`; `--inspector-port` chooses its port but does not enable it on its own. The launcher keeps local D1 state and loads an existing ignored `.dev.vars`. See [capacity measurements](docs/performance.md#instability-repair-investigation-2026-10-29) for the pinned preview inspector bug and retest evidence.
+The preview inspector is disabled by default for sustained runs. Opt in for debugging with `npm start -- --port 5173 --inspect`; `--inspector-port` selects its port. See [preview stability evidence](docs/performance.md#instability-repair-investigation-2026-10-29).
+
+### Cloudflare production build
+
+```sh
+npm run cloudflare:build
+```
+
+This builds `dist/client/` and `dist/server/` using the real bindings in `wrangler.cloudflare.json`, without publishing. `npm run build` uses the existing local/Sites configuration instead. For ordinary local development and preview, use `npm run build` as shown above; changing build configurations can select a different local database.
 
 ## Checks
 
 ```sh
 npm run verify     # Domain tests and TypeScript
 npm run build      # Production bundle
-npm run lint       # Existing lint debt is tracked separately
+npm run lint       # ESLint
 ```
 
 Run `npm run test:integration` only against a **disposable local database** with a preview already running: the fixtures change arena state and create scores. See [test setup and coverage](docs/engineering.md#local-integration-checks).
@@ -91,3 +131,41 @@ Created and maintained by **Derrick Van Frausum**.
 
 - Business inquiries: [info@evogoo.com](mailto:info@evogoo.com)
 - Contact and feedback: [contact@evogoo.com](mailto:contact@evogoo.com)
+
+## Deploy to Cloudflare
+
+Production runs on Worker **evogoo-immunity**, with the D1 database configured in `wrangler.cloudflare.json`. It serves [evogoo.com](https://evogoo.com), [www.evogoo.com](https://www.evogoo.com) and the [workers.dev address](https://evogoo-immunity.astrodd-apps.workers.dev).
+
+### Publish an update
+
+Authenticate with the Cloudflare account that owns the Worker, then check and deploy:
+
+```sh
+npx wrangler login
+npx wrangler whoami
+npm run verify
+npm run lint
+npm run cloudflare:deploy
+```
+
+`cloudflare:deploy` rebuilds with the Cloudflare bindings and publishes `dist/server/wrangler.json`, including assets and domain routes. It does not reset scores or trained populations and does not automatically apply database migrations. Do not deploy a default local/Sites build with its placeholder database ID.
+
+### Set up a separate Cloudflare installation
+
+For your own installation, update the Worker name, account ID, domain routes and D1 binding in `wrangler.cloudflare.json` to resources you own. Create a database with `npx wrangler d1 create YOUR_DATABASE_NAME` and copy its returned ID into the `DB` binding. Initialize that **new database** with:
+
+```sh
+npx wrangler d1 migrations apply DB --remote --config wrangler.cloudflare.json
+```
+
+The existing EvoGoo production database is already initialized; this setup step is not needed for routine code updates. Review future migrations before applying them remotely. If custom-domain deployment reports conflicting DNS records, preserve a copy and remove only the old web A/AAAA/CNAME records for the affected hostnames; preserve mail and verification records. The explicit `www.evogoo.com/*` route is required for the current installation to override the former host's routing.
+
+Administrator imports and resets require the `IMMUNITY_ADMIN_PASSWORD_HASH` Worker secret. Run `npm run admin:password` to generate a hash in ignored `.dev.vars`. Copy only its `IMMUNITY_ADMIN_PASSWORD_HASH` value (without the surrounding quotes), then paste it into the interactive Cloudflare secret prompt:
+
+```sh
+npx wrangler secret put IMMUNITY_ADMIN_PASSWORD_HASH --config wrangler.cloudflare.json
+```
+
+See [administrator setup](docs/training-checkpoints.md) for the hash format. Never commit passwords, secret values, local databases or `.dev.vars`.
+
+The 2026-11-05 migration started with a fresh database by the owner's choice; historical Sites scores and learned populations were not copied. The original `.openai/hosting.json` identity and hosting adapter remain preserved. See [project state](docs/project-state.md#direct-cloudflare-migration--2026-11-05) for migration evidence and verification limits.

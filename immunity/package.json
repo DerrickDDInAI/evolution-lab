@@ -18,7 +18,9 @@
     "test:integration": "node scripts/test-integration.mjs",
     "admin:password": "node scripts/admin-password.mjs",
     "evaluate:evolution": "node scripts/evaluate-evolution.mjs",
-    "evaluate:survival": "node scripts/evaluate-survival-extended.mjs"
+    "evaluate:survival": "node scripts/evaluate-survival-extended.mjs",
+    "cloudflare:build": "node scripts/cloudflare-build.mjs",
+    "cloudflare:deploy": "npm run cloudflare:build && wrangler deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
