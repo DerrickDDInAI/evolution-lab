@@ -11,7 +11,7 @@ export const PLAYER_RADIUS=16;
 export function playerObstacles(obstacles:Obstacle[],players:ReadonlyArray<{id:string;x:number;y:number}>,self:string):Obstacle[]{
   return [...obstacles,...players.filter(p=>p.id!==self).map(p=>({x:p.x,y:p.y,r:PLAYER_RADIUS}))];
 }
-export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number; carrying?: boolean };
+export type Motion = { x: number; y: number; vx: number; vy: number; energy: number; sprintExhausted?: boolean; phase: 'safe' | 'arena'; runStartedAt: number | null; respawnUntil: number; carrying?: boolean };
 export type Command = { seq: number; life: number; dt: number; x: number; y: number; dash: boolean };
 export const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 export const inside = (x: number, y: number, inset = 0) => x > FIELD.min + inset && x < FIELD.max - inset && y > FIELD.min + inset && y < FIELD.max - inset;
@@ -92,7 +92,12 @@ export function moveActor(p:{x:number;y:number;vx:number;vy:number},radius:numbe
 // The same movement function runs immediately in the browser and authoritatively on the server.
 export function movePlayer(p:Motion,c:Pick<Command,'x'|'y'|'dash'>,dt:number,obstacles:Obstacle[],now:number) {
   if(now<p.respawnUntil){p.vx=0;p.vy=0;return;}
-  const len=Math.max(1,Math.hypot(c.x,c.y)),boost=c.dash&&p.energy>.08&&(c.x!==0||c.y!==0);
+  // Exhaustion is latched until the sprint control is released. Without this,
+  // holding sprint alternates regeneration and boost around the cutoff each tick.
+  if(!c.dash&&p.sprintExhausted)p.sprintExhausted=false;
+  const moving=c.x!==0||c.y!==0;
+  if(c.dash&&moving&&p.energy<=.08)p.sprintExhausted=true;
+  const len=Math.max(1,Math.hypot(c.x,c.y)),boost=c.dash&&!p.sprintExhausted&&p.energy>.08&&moving;
   p.energy=clamp(p.energy+(boost?-.65:.22)*dt,0,1);
   p.vx=c.x/len*(boost?430:255);p.vy=c.y/len*(boost?430:255);
   // Seed carriers use the real gate openings; other active actors stay contained.

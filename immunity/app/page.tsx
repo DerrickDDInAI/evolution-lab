@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Maximize2,Minimize2,Plus,Minus,X,ScanEye} from 'lucide-react';
@@ -6,7 +7,6 @@ import {TrainingOrgan,TrainingPanel} from './training-organ';
 import {TidalShell,TidalPeriphery} from './tidal-shell';
 import {ModeMenu} from './mode-menu';
 import {ModelManager} from './model-manager';
-import {modeName} from '../lib/game-mode';
 import {useArena} from './use-arena';
 import {generationClock} from '../lib/generation-clock';
 const timeScore=(ms:number)=>{const t=Math.floor(Math.max(0,ms)/10);return `${Math.floor(t/6000).toString().padStart(2,'0')}:${(Math.floor(t/100)%60).toString().padStart(2,'0')}.${(t%100).toString().padStart(2,'0')}`;};
@@ -38,12 +38,12 @@ export default function Home(){
   return <main data-theme="original" className={'app'+(expanded?' expanded':'')+(!session&&!mode?' choosing':'')+(mode?' in-expedition':'')}>
     {mode&&<TidalPeriphery/>}
     {mode&&<header className="topbar">
-      <Link className="brand" href="/" aria-label="Immunity, EvoGoo home">{mode&&<TidalShell lens/>}<svg className="brand-seed" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 3C7 14 3 28 11 38c4 6 14 6 18 0C37 28 33 14 20 3Z"/><path d="M20 7v34M8 27l12 9 12-9M12 18l8 10 8-10"/></svg><span><small>{mode?modeName(mode):"EVOGOO"}</small>Immunity</span></Link>
+      <Link className="brand" href="/" aria-label="evogoo home"><Image unoptimized className="evogoo-wordmark" src="/evogoo-wordmark.svg" alt="evogoo" width="326" height="90"/></Link>
       <span className="connection"><i className={online?'status-dot':'status-dot offline'}/>{state?.players.length||0}/12 players</span>
       <nav><button className="invite-button" onClick={share}>{copied?'Link copied':<><span className="invite-full">Copy invite link</span><span className="invite-short">Invite</span></>}</button><button ref={helpButton} onClick={()=>{setTraining(false);setHelp(true);}}>Help</button>{session&&<button onClick={()=>{setExpanded(false);setTraining(false);leave();}}>Leave</button>}</nav>
     </header>}
-    <section className="arena-shell" aria-label="Immunity survival arena">
-      <canvas ref={canvas} tabIndex={0} className="world" aria-label="Shared Immunity arena. Move with WASD or arrow keys. Hold Shift to sprint."/>
+    <section className="arena-shell" aria-label="evogoo survival arena">
+      <canvas ref={canvas} tabIndex={0} className="world" aria-label="Shared evogoo arena. Move with WASD or arrow keys. Hold Shift to sprint."/>
       {mode&&<TrainingOrgan state={state} online={online} open={training} onToggle={()=>setTraining(v=>!v)} buttonRef={trainingButton}/>}
       <div className={'generation-clock'+(generation.remaining<=5&&generation.running?' urgent':'')} aria-label="Generation countdown" title={generation.running?'Time until the next generation':'Training pauses when nobody is inside'}>
         <TidalShell lens/><span>Gen <b>{state?.generation||1}</b></span><span className="clock-divider"/>

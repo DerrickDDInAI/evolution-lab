@@ -13,7 +13,7 @@ Choose an expedition, enter a player name, and cross a passage from the safe sho
 | **Survival** | Stay alive as long as possible. | Pursue players, close distance, and avoid obstacles. |
 | **Motion Hunt** | Collect a life-support seed and carry it through an exit. | Detect movement from recent positions, choose a target, and pursue it. |
 
-Move with **WASD** or **arrow keys**; hold **Shift** to sprint. Touch screens have movement and sprint controls. In the menu, walk to a circle, tap a mode sign, or use **Tab** to preview it. Read its explanation, then press **Enter** or tap the same sign again to play. Reaching a circle never starts a game automatically.
+Move with **WASD** or **arrow keys**; hold **Shift** to sprint. After stamina runs out, release Shift (or the touch Sprint button) before starting another sprint. Touch screens have movement and sprint controls. In the menu, walk to a circle, tap a mode sign, or use **Tab** to preview it. Read its explanation, then press **Enter** or tap the same sign again to play. Reaching a circle never starts a game automatically.
 
 
 Other players are solid obstacles in both modes and on the shore. You can slide around them; player contact causes no damage or score penalty.

@@ -87,3 +87,10 @@ PASS: 95 tests, TypeScript, final production build and whitespace checks. Browse
 ## Motion Hunt detection measurements — 2026-10-24
 
 Added a Movement detection section near the top of the existing training panel, reusing its amber/cyan charts and summary layout. It shows completed/live accuracy, stationary false-positive rate, raw sample denominators, moving-player recall, percentage-point changes, a generation trend and table columns. Missing history is unmeasured; partial generations are labeled; import boundaries break lines/comparisons. Populations, rewards, generation numbering, accepted art and persistent HUD are preserved. [Definitions, implementation and verification](motion-hunt.md#detection-observability--2026-10-24). Browser-reviewed at 1600×900 and measured 390×844 with local controlled fixtures and real movement; no horizontal page/panel overflow or browser warnings/errors observed. Physical-device/load and learning-quality claims remain outside this update.
+
+
+## evogoo identity — 2026-11-05
+
+Owner requested replacing the visible Immunity name in the menu and game with evogoo, adapting the logo to the established drawing style. Reused the Cell to spiral silhouette with sea-glass shading, subtly irregular painted edges, muted seed gold and small leaf buds. The wordmark now occupies the central Nursery title above its existing ornament and the in-game paper header; the detached cream logo badge is removed. Updated About, admin heading, accessibility names, page/social title and favicon palette. Existing asset paths, persistence keys, export formats and gameplay remain compatible. Builder reviewed a Quick Look raster of the SVG; responsive widths remain bounded by the existing title/header containers.
+
+PASS: 151 regression tests, TypeScript, zero-finding lint, Cloudflare production build and whitespace checks. Browser automation failed during initialization; rendered menu/game, physical devices and full gameplay journey were not rechecked. Publication was rejected by automatic approval review because explicit deployment authorization is required; no live update occurred. Changes remain local and uncommitted.

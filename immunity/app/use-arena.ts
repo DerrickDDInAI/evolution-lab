@@ -1,4 +1,5 @@
 'use client';
+import {movementKey} from '../lib/movement-input';
 import {readGameStorage,clearGameSession} from '../lib/browser-storage';
 import {type GameMode} from '../lib/game-mode';
 import {useCallback,useEffect,useRef,useState} from 'react';
@@ -92,8 +93,12 @@ export function useArena(help:boolean,zoom:number){
     return()=>{cancelled=true;};
   },[mode]);
   useEffect(()=>{
-    const down=(e:KeyboardEvent)=>{if(!sessionRef.current||(e.target as HTMLElement).matches('input,textarea')||help)return;const key=e.key.toLowerCase();if(e.repeat&&!keys.current.has(key))return;if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(key)){if(!keys.current.has(key))taps.current.add(key);keys.current.add(key);if(sessionRef.current)e.preventDefault();}};
-    const up=(e:KeyboardEvent)=>keys.current.delete(e.key.toLowerCase());
+    const down=(e:KeyboardEvent)=>{
+      if(!e.shiftKey){keys.current.delete('shift');taps.current.delete('shift');}
+      if(!sessionRef.current||(e.target as HTMLElement).matches('input,textarea')||help)return;
+      if(movementKey(keys.current,taps.current,e,true))e.preventDefault();
+    };
+    const up=(e:KeyboardEvent)=>{movementKey(keys.current,taps.current,e,false);};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',clearInput);document.addEventListener('visibilitychange',clearInput);
     if(help)clearInput();
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);};
@@ -102,7 +107,7 @@ export function useArena(help:boolean,zoom:number){
     const surface=canvas.current;let frame:number,last=0,accumulator=0,lastUi=0,previousInput='';
     function draw(time:number){
       const dt=last?Math.min(.05,(time-last)/1000):0;last=time;accumulator+=dt;
-      const k=new Set([...keys.current,...taps.current]),input={x:(k.has('d')||k.has('arrowright')?1:0)-(k.has('a')||k.has('arrowleft')?1:0)||stick.current.x,y:(k.has('s')||k.has('arrowdown')?1:0)-(k.has('w')||k.has('arrowup')?1:0)||stick.current.y,dash:k.has('shift')||stick.current.dash};
+      const k=new Set([...keys.current,...taps.current]),input={x:(k.has('d')||k.has('arrowright')?1:0)-(k.has('a')||k.has('arrowleft')?1:0)||stick.current.x,y:(k.has('s')||k.has('arrowdown')?1:0)-(k.has('w')||k.has('arrowup')?1:0)||stick.current.y,dash:keys.current.has('shift')||stick.current.dash};
       const signature=JSON.stringify(input);
       while(accumulator>=1/60){
         accumulator-=1/60;

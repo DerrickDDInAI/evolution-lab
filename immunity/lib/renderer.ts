@@ -148,8 +148,8 @@ export function renderArena(canvas:HTMLCanvasElement,state:View|null,self:string
       const sway=reducedMotion?0:actor.kind==='human'?(moving?-Math.abs(Math.sin(pose.travel/9))*1.8*zoom:0):Math.sin(time/300+actor.x)*.7*zoom;
       const human=actor.kind==='human',size=(human?SURVIVOR_SIZE:actor.warming?39:47)*zoom;
       const speed=Math.min(pose.speed,Math.hypot(actor.vx,actor.vy));
-      const sprint=human?sprintFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction):null;
-      const walk=human?walkFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction):null;
+      const sprint=human?sprintFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction,pose.gaitPhase):null;
+      const walk=human?walkFrame(pose.facing,pose.travel,pose.moving,speed,reducedMotion,pose.direction,pose.gaitPhase):null;
       const drawn=(sprint&&walkSprite(ctx,art.walk,sprint,x,y+4*zoom,size,true))||(sprint&&sprintSprite(ctx,art.sprint,sprint,x,y+4*zoom,size))||(walk&&walkSprite(ctx,art.walk,walk,x,y+4*zoom,size))||(!actor.warming&&directionalSprite(ctx,art.directions,human,pose.facing,x,y+4*zoom+sway,size));
       if(!drawn&&!sprite(ctx,art.atlas,human?2:actor.warming?4:3,x,y+4*zoom+sway,size,pose.facing>=1&&pose.facing<=3)){
         groundEllipse(ctx,x,y,radius*zoom);ctx.fillStyle=human?'#f5e9b3':actor.warming?'#e0e7dc':'#d78542';ctx.fill();

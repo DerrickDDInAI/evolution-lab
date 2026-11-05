@@ -25,7 +25,7 @@ export function ModelManager({onClose}:{onClose:()=>void}){
   },[onClose]);
   return <div className="model-manager-backdrop" onClick={onClose}>
     <aside ref={panel} className="model-manager" role="dialog" aria-modal="true" aria-labelledby="model-manager-title" onClick={e=>e.stopPropagation()}>
-      <div className="panel-heading"><div><span className="eyebrow">EvoGoo · Immunity</span><h2 id="model-manager-title">Models & admin</h2></div><button onClick={onClose} aria-label="Close model manager"><X size={20}/></button></div>
+      <div className="panel-heading"><div><span className="eyebrow">evogoo</span><h2 id="model-manager-title">Models & admin</h2></div><button onClick={onClose} aria-label="Close model manager"><X size={20}/></button></div>
       <p>Save the sentinels’ progress or restore a compatible model. Each mode has its own population.</p>
       <label htmlFor="model-mode">Game mode</label>
       <select id="model-mode" value={mode} onChange={e=>setMode(e.target.value as GameMode)}><option value="survival">Survival</option><option value="motion">Motion Hunt</option></select>

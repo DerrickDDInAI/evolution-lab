@@ -5,9 +5,9 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/tests');mkdirSync(out,{recursive:true});
-for(const name of ['behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
+for(const name of ['movement-input','behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer']){
   let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  for(const dep of ['behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
+  for(const dep of ['movement-input','behavior-film','motion-observation','training-checkpoints','training-metrics','browser-storage','game-mode','physics','evolution','arena','prediction','net-motion','collision-effects','contact-prediction','contact-report','generation-clock','immunity-art','renderer'])code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
   writeFileSync(`${out}/${name}.mjs`,code);
 }
 const {createArena,join,advance,applyCommands,snapshot,upgradeArena,rememberContactFrame,confirmContact,ROUND,FIELD}=await import(pathToFileURL(`${out}/arena.mjs`));
@@ -20,6 +20,53 @@ const {predictContact,contactResult}=await import(pathToFileURL(`${out}/contact-
 const command=(seq,life=0,x=0,y=-1)=>({seq,life,x,y,dt:1/60,dash:false});
 function runner(a,now=0){const p=join(a,'one','secret','Runner',now,'profile');p.phase='arena';p.x=3000;p.y=3000;p.runStartedAt=now;p.runId='run-one';return p;}
 function parkBots(a){for(const b of a.bots){b.spawnWait=0;b.x=1800;b.y=1800;for(const g of b.genome.genes)g.weight=0;}}
+test('holding sprint through exhaustion switches to walking once until release in both modes',()=>{
+ for(const mode of ['survival','motion']){
+  const a=createArena(0,mode);a.obstacles=[];parkBots(a);const p=runner(a);p.x=1600;p.y=3000;
+  const initial=structuredClone(p),commands=[];let exhausted=false,transitions=0,previous;
+  for(let i=0;i<420;i++){
+   const c={...command(i+1,0,1,0),dash:true};commands.push(c);
+   movePlayer(p,c,c.dt,[],i*1000/60);
+   const sprint=Math.hypot(p.vx,p.vy)>300;
+   if(previous!==undefined&&sprint!==previous)transitions++;
+   if(!sprint){exhausted=true;assert.equal(p.sprintExhausted,true);}
+   if(exhausted)assert.equal(sprint,false,'held Shift cannot restart sprint as stamina regenerates');
+   previous=sprint;
+  }
+  assert.equal(transitions,1);assert.equal(p.energy,1,'walking can fully recover while Shift remains held');
+  const replay=reconcile(initial,commands,[],7000);
+  assert.equal(replay.x,p.x);assert.equal(replay.energy,p.energy);assert.equal(replay.sprintExhausted,true);
+  const server=createArena(0,mode);server.obstacles=[];parkBots(server);const authoritative=runner(server);Object.assign(authoritative,initial);
+  for(let start=0;start<commands.length;start+=10)applyCommands(server,authoritative,commands.slice(start,start+10),(start+10)*1000/60);
+  assert.equal(authoritative.x,p.x);assert.equal(authoritative.energy,p.energy);assert.equal(authoritative.sprintExhausted,true,'server command batches keep the same exhaustion latch');
+
+  const auth=snapshot(a,'secret').players.find(v=>v.id===p.id);
+  assert.equal(auth.sprintExhausted,true,'snapshots carry exhaustion into prediction');
+  movePlayer(p,{x:1,y:0,dash:false},1/60,[],7017);assert.equal(p.sprintExhausted,false);assert.equal(p.vx,255);
+  movePlayer(p,{x:1,y:0,dash:true},1/60,[],7034);assert.ok(Math.abs(p.vx-430)<1e-8,'release then press explicitly starts a new sprint');
+ }
+});
+test('low-energy legacy motion and release never produce unrequested boost',()=>{
+ const p={x:2000,y:3000,vx:0,vy:0,energy:.079,phase:'arena',runStartedAt:0,respawnUntil:0};
+ for(let i=0;i<180;i++){movePlayer(p,{x:1,y:0,dash:true},1/60,[],i*17);assert.equal(p.vx,255);}
+ for(let i=0;i<60;i++){movePlayer(p,{x:1,y:0,dash:false},1/60,[],4000+i*17);assert.equal(p.vx,255);}
+});
+test('Shift is held rather than tap-buffered and stale releases repair on keyboard events',async()=>{
+ const {movementKey}=await import(pathToFileURL(`${out}/movement-input.mjs`));
+ const keys=new Set(),taps=new Set();
+ movementKey(keys,taps,{key:'Shift',shiftKey:true},true);
+ assert.equal(keys.has('shift'),true);assert.equal(taps.has('shift'),false);
+ movementKey(keys,taps,{key:'Shift',shiftKey:false},false);
+ assert.equal(keys.has('shift'),false);assert.equal(taps.has('shift'),false,'quick Shift tap cannot sprint on a later tick');
+ movementKey(keys,taps,{key:'d',shiftKey:false},true);assert.equal(taps.has('d'),true,'preserve short directional taps');
+ movementKey(keys,taps,{key:'Shift',shiftKey:true},true);
+ movementKey(keys,taps,{key:'d',shiftKey:false,repeat:true},true);
+ assert.equal(keys.has('shift'),false,'a movement event repairs a missed modifier keyup');
+ movementKey(keys,taps,{key:'Shift',shiftKey:true},true);
+ movementKey(keys,taps,{key:'Shift',shiftKey:true},false);assert.equal(keys.has('shift'),true,'the other physical Shift remains held');
+ keys.clear();taps.clear();movementKey(keys,taps,{key:'Shift',shiftKey:true,repeat:true},true);
+ assert.equal(keys.has('shift'),false,'repeat after focus loss cannot resurrect a cleared sprint');
+});
 test('players are solid without damage in both modes and prediction matches sprint blocking',()=>{
  for(const mode of ['survival','motion'])for(const safe of [false,true]){
   const a=createArena(0,mode);a.obstacles=[];parkBots(a);const p=runner(a),other=join(a,'two','other','Other',0);
@@ -553,8 +600,8 @@ test('sprint sheet fallback and sampled rows keep the draw anchor fixed',async()
 test('walking and sprinting select exclusive gaits across headings and speed changes',async()=>{
  const {walkFrame,sprintFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(let facing=0;facing<8;facing++){
-  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*39,true,255).frame,frame);
-  assert.equal(walkFrame(facing,156,true,255).frame,0);
+  for(let frame=0;frame<4;frame++)assert.equal(walkFrame(facing,frame*35,true,255).frame,frame);
+  assert.equal(walkFrame(facing,140,true,255).frame,0);
   assert.equal(walkFrame(facing,120,true,255,true).frame,0);
   for(const speed of [8,120,255,300]){assert.ok(walkFrame(facing,100,true,speed));assert.equal(sprintFrame(facing,100,true,speed),null);}
   for(const speed of [301,430]){assert.equal(walkFrame(facing,100,true,speed),null);assert.ok(sprintFrame(facing,100,true,speed));}
@@ -565,7 +612,7 @@ test('walking and sprinting select exclusive gaits across headings and speed cha
 test('walking retains body orientation through both footfalls',async()=>{
  const {walkFrame}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  for(let facing=0;facing<8;facing++){
-  const poses=Array.from({length:4},(_,phase)=>walkFrame(facing,phase*39,true,255));
+  const poses=Array.from({length:4},(_,phase)=>walkFrame(facing,phase*35,true,255));
   assert.deepEqual(poses.map(p=>p.frame),[0,1,2,3]);
   assert.ok(poses.every(p=>p.flip===(facing>=1&&facing<=3)),`heading ${facing} must retain its body orientation through both footfalls`);
   assert.deepEqual(walkFrame(facing,0,true,255,true),walkFrame(facing,168,true,255,true),'reduced motion freezes both frame and orientation');
@@ -585,16 +632,16 @@ test('normal running alternates ground contacts with a continuous return swing',
   assert.ok(Math.abs(next.reach-a.reach)<.001&&Math.abs(next.lift-a.lift)<.001);
  }
  assert.ok(flight,'normal speed now uses a run rather than grounded shuffling');
- assert.ok(Math.abs(walkLegMotion((1+survivorGait().stance)/2).lift-1)<1e-12);
+ assert.ok(Math.abs(walkLegMotion(survivorGait().stance+(1-survivorGait().stance)/3).lift-1)<1e-12);
  assert.ok(runBodyMotion(0).arm<0&&runBodyMotion(.5).arm>0,'arms counter the leading leg');
 });
-test('whole-body run has long projected steps, moving bent arms and continuous torso motion',async()=>{
+test('running has a longer push-off, opposing arms and continuous torso motion',async()=>{
  const {runPose,survivorGait}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
  const first=runPose(2,0),second=runPose(2,.5),back=runPose(2,survivorGait().stance);
  const near=p=>p.legs.find(l=>l.near),arm=p=>p.arms.find(a=>a.near);
- assert.ok(near(first).ankle[0]-near(back).ankle[0]>100,'visible leg excursion exceeds the old 50-unit shuffle');
+ assert.ok(near(first).ankle[0]-near(back).ankle[0]>110&&near(first).ankle[0]-near(back).ankle[0]<125,'normal run has enough foot travel for a visible planted push-off');
  assert.ok(arm(first).hand[0]<arm(first).shoulder[0]);
- assert.ok(arm(second).hand[0]>arm(second).shoulder[0]+35);
+ assert.ok(arm(second).hand[0]>arm(second).shoulder[0]+15);
  for(let row=0;row<5;row++)for(let i=0;i<100;i++){
   const a=runPose(row,i/100),b=runPose(row,i/100+.00001);
   assert.ok(Math.abs(a.drop-b.drop)<.1&&Math.abs(a.lean-b.lean)<.001,'hips and torso have no cycle discontinuity');
@@ -604,7 +651,7 @@ test('whole-body run has long projected steps, moving bent arms and continuous t
  assert.ok(near(fast).ankle[0]-near(fast).hip[0]>near(first).ankle[0]-near(first).hip[0],'sprint extends the same whole-body rig further');
  assert.ok(fast.lean>first.lean,'sprint has a stronger forward lean');
  const front=runPose(0,0),frontBack=runPose(0,survivorGait().stance);
- assert.ok(Math.abs(near(front).ankle[1]-near(frontBack).ankle[1])>60,'front/rear steps project actual depth rather than a tiny vertical twitch');
+ assert.ok(Math.abs(near(front).ankle[1]-near(frontBack).ankle[1])>45,'front/rear steps project actual depth rather than a tiny vertical twitch');
 });
 test('running keeps a steady pelvis and smooth velocity through contacts and flight',async()=>{
  const {runPose}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
@@ -650,6 +697,39 @@ test('feet ease through lift-off and landing without a velocity jump',async()=>{
    const a=walkLegMotion(p-h,stance),b=walkLegMotion(p,stance),c=walkLegMotion(p+h,stance);
    for(const axis of ['reach','lift'])assert.ok(Math.abs((b[axis]-a[axis])/h-(c[axis]-b[axis])/h)<.01,'support, return swing and loop have matching velocities');
   }
+ }
+});
+test('running heel recovery clears the ground early with higher sprint clearance',async()=>{
+ const {runPose}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(let row=0;row<5;row++){
+  for(const sprinting of [false,true]){
+   const poses=Array.from({length:1001},(_,i)=>runPose(row,i/1000,sprinting,{x:1,y:0}));
+   const ankles=poses.map(p=>p.legs.find(l=>l.near).ankle[1]);
+   const clearance=Math.max(...ankles)-Math.min(...ankles);
+   assert.ok(Math.abs(clearance-(sprinting?36:28))<.01,'heel recovery is visible rather than a low skating return');
+  }
+ }
+});
+test('run recovery peaks behind the body before the foot swings forward',async()=>{
+ const {walkLegMotion,survivorGait}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ for(const sprinting of [false,true]){
+  const {stance}=survivorGait(sprinting),p=stance+(1-stance)/3;
+  const foot=walkLegMotion(p,stance);
+  assert.ok(foot.reach<0,'heel folds behind the body, instead of lifting at the forward step');
+  assert.ok(foot.lift>.99);
+  assert.ok(walkLegMotion(stance+(1-stance)*.85,stance).lift<.03,'foot extends and lowers before touchdown');
+ }
+});
+test('run and sprint preserve footfall phase through Shift and exhaustion transitions',async()=>{
+ const {actorPose,walkFrame,sprintFrame,survivorGait}=await import(pathToFileURL(`${out}/immunity-art.mjs`));
+ let actor={x:0,y:0,vx:255,vy:0,life:1},pose=actorPose(undefined,actor,0);
+ for(let tick=1;tick<=100;tick++){
+  const sprint=tick>=30&&tick<65,speed=sprint?430:255,old=pose;
+  actor={...actor,x:actor.x+speed/60,vx:speed};pose=actorPose(pose,actor,tick*1000/60);
+  const advance=(pose.gaitPhase-old.gaitPhase+1)%1;
+  assert.ok(Math.abs(advance-speed/60/survivorGait(sprint).cycle)<1e-12,'phase advances only by the current step distance');
+  const frame=(sprint?sprintFrame:walkFrame)(pose.facing,pose.travel,true,speed,false,undefined,pose.gaitPhase);
+  assert.equal(frame.phase,pose.gaitPhase,'renderer uses integrated phase in either gait');
  }
 });
 test('front and rear painted limbs never collapse or invert as feet pass',async()=>{

@@ -89,7 +89,7 @@ export function respawn(p:Player,now:number,dead=true,obstacles:Obstacle[]=[]) {
   const distances=[Math.abs(p.y-FIELD.min),Math.abs(p.x-FIELD.max),Math.abs(p.y-FIELD.max),Math.abs(p.x-FIELD.min)];
   const side=dead?distances.indexOf(Math.min(...distances)):2;
   const points=[[3000,1050],[4950,3000],[3000,4950],[1050,3000]];
-  p.carrying=false;[p.x,p.y]=points[side];p.vx=0;p.vy=0;p.energy=1;p.phase='safe';p.runStartedAt=null;p.runId=null;p.respawnUntil=dead?now+1200:0;
+  p.carrying=false;[p.x,p.y]=points[side];p.vx=0;p.vy=0;p.energy=1;p.sprintExhausted=false;p.phase='safe';p.runStartedAt=null;p.runId=null;p.respawnUntil=dead?now+1200:0;
   moveActor(p,16,0,obstacles,'safe');
   if(dead)p.life++;
 }
