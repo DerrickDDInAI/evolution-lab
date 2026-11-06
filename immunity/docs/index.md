@@ -7,6 +7,7 @@ Start with [AGENTS.md](../AGENTS.md) and [project state](project-state.md). Read
 | Gameplay, learning limits, movement/contact protocol, module map and local setup | [README](../README.md) |
 | Contributor rules, preservation boundaries and completion criteria | [AGENTS.md](../AGENTS.md) |
 | Current milestone, decisions, verification and next handoff | [Project state](project-state.md) |
+| Evidence-based design scorecard, genre references and prioritized improvement proposals | [Game evaluation](game-evaluation.md) |
 | Planet narrative, three proposed visual directions, organic UI and selection handoff | [Visual directions](visual-directions.md) |
 | Selected tilted Glass Tide implementation, art assets and verification | [Glass Tide implementation](glass-tide-implementation.md) |
 | Original-only appearance and historical watercolor theme artwork | [Playable watercolor themes](watercolor-themes.md) |
