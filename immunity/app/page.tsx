@@ -1,6 +1,5 @@
 'use client';
 import Image from 'next/image';
-import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Maximize2,Minimize2,Plus,Minus,X,ScanEye} from 'lucide-react';
 import {TrainingOrgan,TrainingPanel} from './training-organ';
@@ -38,7 +37,7 @@ export default function Home(){
   return <main data-theme="original" className={'app'+(expanded?' expanded':'')+(!session&&!mode?' choosing':'')+(mode?' in-expedition':'')}>
     {mode&&<TidalPeriphery/>}
     {mode&&<header className="topbar">
-      <Link className="brand" href="/" aria-label="evogoo home"><Image unoptimized className="evogoo-wordmark" src="/evogoo-wordmark.svg" alt="evogoo" width="326" height="90"/></Link>
+      <button type="button" className="brand" aria-label="evogoo home" disabled={busy} onClick={()=>{setExpanded(false);setTraining(false);setViewTools(false);setError('');void leave();}}><Image unoptimized className="evogoo-wordmark" src="/evogoo-wordmark.svg" alt="evogoo" width="326" height="90"/></button>
       <span className="connection"><i className={online?'status-dot':'status-dot offline'}/>{state?.players.length||0}/12 players</span>
       <nav><button className="invite-button" onClick={share}>{copied?'Link copied':<><span className="invite-full">Copy invite link</span><span className="invite-short">Invite</span></>}</button><button ref={helpButton} onClick={()=>{setTraining(false);setHelp(true);}}>Help</button>{session&&<button onClick={()=>{setExpanded(false);setTraining(false);leave();}}>Leave</button>}</nav>
     </header>}

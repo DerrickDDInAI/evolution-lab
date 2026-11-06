@@ -684,3 +684,13 @@ Recommended next sequence: contextual onboarding and feedback, route/tactic vari
 Owner requested removing the obstructive in-game goal explanation because players already know the objective. Removed the Motion Hunt mission banner from `app/page.tsx`, including its carrying-seed variation and now-unused presentation variable. Mode-selection explanations and Help remain available. No gameplay, persistence or runtime-data changes.
 
 PASS: 157 regression tests, TypeScript, full lint, Cloudflare production build and diff whitespace. Rendered gameplay and physical-device review were not repeated. Local/uncommitted; no publication.
+
+
+**Goal banner deployed — 2026-11-06:** owner explicitly requested publication. Deployed committed source `c7f1fe6` with `npm run cloudflare:deploy`; production build passed. Cloudflare Worker `evogoo-immunity` version `11e90e4a-ffe7-453e-8c14-acaff8fb5f84` retains the existing D1 binding and apex/www routes. Both domains return HTTP 200 with title `evogoo`, and the live page asset `page-DxQk-QKg.js` matches the local build by SHA-256 and excludes the goal banner. Report: `/private/tmp/evogoo-banner-live-check-20261106.json`; deployment log: `/private/tmp/evogoo-banner-deploy-20261106.log`. No database migration/reset/import or production player session. Full rendered gameplay/device checks were not repeated. This release receipt remains local/uncommitted.
+
+
+## Logo home action — 2026-11-06
+
+Owner reported that the in-game evogoo logo did nothing. Its same-page `/` link did not reset client game state. Replaced it with a native button using the existing leave/session-cleanup action: return to the expedition menu, clear expanded/training/view controls and transient errors, and send the authenticated leave request for an active session. Disabled during a pending join to avoid a late join restoring the game after returning home. Preserves logo appearance and keyboard focus styling, anonymous profile identity and saved records.
+
+PASS: 157 regressions, TypeScript, full lint, Cloudflare production build and diff whitespace. Headless Chrome against fresh disposable `/private/tmp/evogoo-home-qa-xlr0p6mt` verified both modes' join-form return, pending-join guard, Enter/Space activation from an active session, cleared session storage, unchanged profile token and server-side player removal; emulated touch at 390px also returns home. Report: `/private/tmp/evogoo-home-browser-result.json`. Full contact/respawn/rejoin gameplay, physical-device and reduced-motion checks were not repeated. Local/uncommitted; no deployment or production/runtime-data changes. Prior uncommitted release receipt preserved.
