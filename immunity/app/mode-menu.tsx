@@ -11,7 +11,7 @@ const isPortrait=()=>matchMedia(portraitQuery).matches;
 const serverPortrait=()=>false;
 const MODE_COPY={
   survival:{goal:'Outlast the sentinels.',text:'Stay alive while sentinels evolve pursuit and obstacle avoidance.'},
-  motion:{goal:'Collect a seed. Escape.',text:'Collect a seed and escape while sentinels evolve motion detection and pursuit. Stillness is no guarantee.'},
+  motion:{goal:'Collect a seed and Escape.',text:'Collect a seed and escape while sentinels evolve motion detection and pursuit. Stillness is no guarantee.'},
 };
 export function ModeMenu({onChoose,paused=false,onModels}:Props){
   const portrait=useSyncExternalStore(subscribe,isPortrait,serverPortrait);

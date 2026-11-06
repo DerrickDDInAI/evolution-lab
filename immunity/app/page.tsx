@@ -32,7 +32,7 @@ export default function Home(){
   },[help]);
   async function share(){try{await navigator.clipboard.writeText(location.origin);setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{setError('Copy the address from your browser to invite a friend.');}}
   const generation=generationClock(state,clock);
-  const motion=mode==='motion',carrying=!!player?.carrying;
+  const motion=mode==='motion';
   const active=!contact&&player?.phase==='arena',started=player?.runStartedAt,survival=active&&started!=null?clock-started:0;
   const clearStick=()=>{setStick(0,0);};
   return <main data-theme="original" className={'app'+(expanded?' expanded':'')+(!session&&!mode?' choosing':'')+(mode?' in-expedition':'')}>
@@ -60,7 +60,6 @@ export default function Home(){
         <strong>{timeScore(contact?.run.durationMs??survival)}</strong>
         <div className="stamina"><span>Stamina</span><div className="breath-organ" aria-hidden="true">{Array.from({length:7},(_,i)=><i key={i} style={{opacity:.18+.82*Math.max(0,Math.min(1,(player?.energy??1)*7-i))}}/>)}</div><meter className="sr-only" min={0} max={1} value={player?.energy??1} aria-label="Sprint energy"/></div>
       </div>}
-      {session&&motion&&!notice&&<div className="mission-hud" role="status"><strong>{carrying?"Seed secured · reach any passage":"Recover the life-support seed"}</strong><span>{carrying?"Return to a gate to extract. Capture loses the seed.":"Find the gold life-support seed. Touch it to collect."}</span><small>Experimental senses · stillness may help. Contact remains dangerous.</small></div>}
       {notice&&<div className="death-notice" role="status"><strong>{notice.run.bot===-1?'Extraction successful':contact?'Touched':motion?'Mission lost':'Run ended'} · {timeScore(notice.run.durationMs)}</strong><span>{notice.run.bot===-1?"Life-support seed delivered · Humanity has a future":`Sentinel ${notice.run.bot+1} · Generation ${notice.run.generation}${contact?" · Confirming…":" · Back outside"}`}</span></div>}
       <button className="field-tools-toggle" aria-expanded={viewTools} aria-controls="field-view" onClick={()=>setViewTools(v=>!v)}><ScanEye size={17}/><span>View</span></button>
       <div id="field-view" className={"view-controls"+(viewTools?" field-tools-open":"")}><button aria-label="Zoom out" onClick={()=>setZoom(z=>Math.max(.35,z-.15))}><Minus size={16}/></button><span>{Math.round(zoom*100)}%</span><button aria-label="Zoom in" onClick={()=>setZoom(z=>Math.min(1.5,z+.15))}><Plus size={16}/></button><button aria-label={expanded?'Exit expanded arena':'Expand arena'} onClick={()=>setExpanded(v=>!v)}>{expanded?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button></div>

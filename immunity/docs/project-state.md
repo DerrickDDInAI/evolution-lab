@@ -677,3 +677,10 @@ Live checks pass on both https://evogoo.com and https://www.evogoo.com: HTTP 200
 Owner requested an honest assessment using successful genre references and recommendations to improve scores. [Game evaluation](game-evaluation.md) records a provisional weighted design score of 5.6/10, evidence/uncertainty boundaries, direct official reference links, and prioritized proposals with observable acceptance criteria. Reviewed clean `main` at `c07762b`, current gameplay/UI/controller source, learning/capacity documentation and the actual 2026-11-05 live-menu screenshot. This is a source/document/visual-artifact review, not a fresh gameplay or retention study. Browser initialization failed; no new player session, physical-device or hosted-load validation was completed.
 
 Recommended next sequence: contextual onboarding and feedback, route/tactic variation, results and milestones, then a cooperative prototype. These remain proposals, not accepted implementation or publication scope. Technical reliability is unscored; controlled-learning outcomes are not human performance claims. Documentation-only changes; local and uncommitted. No gameplay, hosting, database, score identity, learned genome or runtime-data change.
+
+
+## Goal banner removed — 2026-11-06
+
+Owner requested removing the obstructive in-game goal explanation because players already know the objective. Removed the Motion Hunt mission banner from `app/page.tsx`, including its carrying-seed variation and now-unused presentation variable. Mode-selection explanations and Help remain available. No gameplay, persistence or runtime-data changes.
+
+PASS: 157 regression tests, TypeScript, full lint, Cloudflare production build and diff whitespace. Rendered gameplay and physical-device review were not repeated. Local/uncommitted; no publication.
