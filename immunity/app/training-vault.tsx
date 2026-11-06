@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {readApiJson} from '../lib/api-response';
 import {FilmStudio} from './film-studio';
 import {Download,LockKeyhole} from 'lucide-react';
 import type {View} from '../lib/renderer';
@@ -15,7 +16,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
   const artifact=useRef<unknown>(null),fileInput=useRef<HTMLInputElement>(null);
   const refresh=useCallback(async()=>{
     const response=await fetch(`/api/training?mode=${mode}`,{cache:'no-store'});
-    const data=await response.json().catch(()=>({error:'Connection interrupted. Refresh training status before retrying.'})) as Status & {error?:string};if(!response.ok)throw new Error(data.error||'Could not refresh training controls.');setStatus(data as Status);
+    const data=await readApiJson<Status & {error?:string}>(response,'Cannot reach model storage. Please retry refreshing the status.');if(!response.ok)throw new Error(data.error||'Could not refresh training controls.');setStatus(data as Status);
   },[mode]);
   useEffect(()=>{
     let active=true;
@@ -25,7 +26,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
   const t=status?.training||state?.training;
   async function action(name:string,body:Record<string,unknown>={}){
     const response=await fetch(`/api/training?action=${name}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,...body})});
-    const data=await response.json().catch(()=>({error:'Connection interrupted. Refresh training status before retrying.'})) as {error?:string;message:string;preview:Preview};if(response.status===401)setStatus(old=>old?{...old,authenticated:false}:old);
+    const data=await readApiJson<{error?:string;message:string;preview:Preview}>(response,'Connection interrupted. Refresh training status before retrying; the change may already be saved.');if(response.status===401)setStatus(old=>old?{...old,authenticated:false}:old);
     if(!response.ok)throw new Error(data.error||'The training change could not be saved.');return data;
   }
   async function run(operation:()=>Promise<void>){
@@ -35,7 +36,7 @@ export function TrainingVault({state,motion,online,adminOpen=false}:{state:View|
   }
   async function download(kind:'champion'|'current'|'checkpoint'|'rollback'){
     await run(async()=>{
-      const response=await fetch(`/api/training/export?mode=${mode}&kind=${kind}`);const data=await response.json().catch(()=>({error:'Connection interrupted. Refresh training status before retrying.'})) as {error?:string;generation:number};
+      const response=await fetch(`/api/training/export?mode=${mode}&kind=${kind}`);const data=await readApiJson<{error?:string;generation:number}>(response,'Export interrupted. Please download the training file again.');
       if(!response.ok)throw new Error(data.error||'Export failed.');
       const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
       const link=document.createElement('a');link.href=url;link.download=`immunity-${mode}-${kind}-gen-${data.generation}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

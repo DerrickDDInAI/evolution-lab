@@ -5,7 +5,7 @@ import {readFileSync,mkdirSync,writeFileSync,copyFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 const out=path.resolve('.sites-runtime/training-tests');mkdirSync(out,{recursive:true});
-const modules=['film-store','behavior-film','motion-observation','training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http'];
+const modules=['film-store','behavior-film','motion-observation','training-checkpoints','training-metrics','game-mode','physics','evolution','arena','contact-report','collision-effects','net-motion','admin-auth','training-http','api-response'];
 for(const name of modules){
  let code=ts.transpileModule(readFileSync(`lib/${name}.ts`,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
  for(const dep of modules)code=code.replaceAll(`'./${dep}'`,`'./${dep}.mjs'`);
@@ -211,4 +211,24 @@ test('highlight writes are immutable and guarded by the winning world commit; li
  for(let i=1;i<55;i++){const item={...clip,createdAt:i*1000,generation:i};for(const s of filmStatements(db,'survival',[item],'winner'))s.run();}
  const page=await listFilm(db,'survival');assert.equal(page.clips.length,50);assert.ok(page.before);const older=await listFilm(db,'survival',page.before);assert.equal(older.clips.length,5);assert.equal(older.before,null);
  assert.equal((await listFilm(db,'motion')).clips.length,0);assert.equal(new Set([...page.clips,...older.clips].map(c=>c.id)).size,55);sql.close();
+});
+
+const {readApiJson}=await load('api-response');
+test('HTML host errors and malformed successful responses fail without exposing parser errors or exporting fake JSON',async()=>{
+ for(const status of [200,502,503]){
+  await assert.rejects(readApiJson(new Response('<!DOCTYPE html><title>Host error</title>',{status}),'Reconnect safely.'),{message:'Reconnect safely.'});
+ }
+ for(const text of ['{','null','[]','"text"']){
+  await assert.rejects(readApiJson(new Response(text),'Retry export.'),{message:'Retry export.'});
+ }
+ assert.deepEqual(await readApiJson(Response.json({error:'Sign in again.'},{status:401}),'Fallback'),{error:'Sign in again.'});
+ const artifact=checkpoint(createArena(0),0);
+ assert.deepEqual(await readApiJson(Response.json(artifact),'Fallback'),artifact);
+});
+
+test('Cloudflare CPU-limit responses explain the hosting issue and truncated exports are rejected',async()=>{
+ for(const text of ['error code: 1102','<!DOCTYPE html><p>Error 1102: Worker exceeded resource limits</p>']){
+  await assert.rejects(readApiJson(new Response(text,{status:503}),'Fallback'),/server reached its processing limit/);
+ }
+ await assert.rejects(readApiJson(new Response('{"format":"immunity-training-v2","genomes":['),'Export interrupted.'),{message:'Export interrupted.'});
 });

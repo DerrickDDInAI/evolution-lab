@@ -1,4 +1,5 @@
 'use client';
+import {readApiJson} from '../lib/api-response';
 import {movementKey} from '../lib/movement-input';
 import {readGameStorage,clearGameSession} from '../lib/browser-storage';
 import {type GameMode} from '../lib/game-mode';
@@ -74,7 +75,7 @@ export function useArena(help:boolean,zoom:number){
       const start=performance.now(),s=sessionRef.current,sentContact=contact.current,requestedMode=modeRef.current;
       try{
         const response=await fetch('/api/arena?mode='+requestedMode,s?{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({action:'input',mode:requestedMode,contactMode:'visible-v1',profileToken:profile.current,commands:commands.current.slice(0,MAX_PACKET_COMMANDS),...(sentContact?{contact:sentContact.report}:{})}),signal:AbortSignal.timeout(6000)}:{cache:'no-store',signal:AbortSignal.timeout(6000)});
-        const data=await response.json() as ArenaResponse;
+        const data=await readApiJson<ArenaResponse>(response,'The game server is temporarily unavailable. Reconnecting…');
         if(stopped)return;
         if(s?.id!==sessionRef.current?.id||requestedMode!==modeRef.current)return;
         if(!response.ok){if(response.status===401)clearSession();throw new Error(data.error||'Connection interrupted. Reconnecting…');}
@@ -147,7 +148,7 @@ export function useArena(help:boolean,zoom:number){
   async function enter(e:React.FormEvent){
     e.preventDefault();if(joining.current)return;joining.current=true;setBusy(true);setError('');
     try{
-      const start=performance.now(),r=await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',mode:modeRef.current,contactMode:'visible-v1',name:name.trim()||'Runner',profileToken:profile.current}),signal:AbortSignal.timeout(10000)}),data=await r.json() as ArenaResponse;
+      const start=performance.now(),r=await fetch('/api/arena',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',mode:modeRef.current,contactMode:'visible-v1',name:name.trim()||'Runner',profileToken:profile.current}),signal:AbortSignal.timeout(10000)}),data=await readApiJson<ArenaResponse>(r,'The game server is temporarily unavailable. Please try joining again.');
       if(!r.ok||!data.session)throw new Error(data.error||'Could not join. Please retry.');
       data.session.mode=modeRef.current;clearInput();contact.current=null;localEvent.current=null;blockedContact.current=null;showNotice(null);commands.current=[];sequence.current=0;predicted.current=null;setSession(data.session);sessionRef.current=data.session;update(data,performance.now()-start);
       try{sessionStorage.setItem('immunity-session',JSON.stringify(data.session));localStorage.setItem('immunity-name',name);}catch{}
